@@ -6,18 +6,21 @@ export interface LogoProps {
   variant?: "default" | "light";
   className?: string;
   showText?: boolean;
+  onClick?: () => void;
 }
 
 export function Logo({
   variant = "default",
   className,
   showText = true,
+  onClick,
 }: LogoProps) {
   const isLight = variant === "light";
 
   return (
     <Link
       href="/"
+      onClick={onClick}
       className={cn(
         "inline-flex items-center gap-2.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-lg group transition-opacity hover:opacity-95",
         className,
