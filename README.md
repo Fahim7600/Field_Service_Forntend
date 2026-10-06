@@ -1,4 +1,4 @@
-# FieldServe Frontend
+# Field Service Frontend
 
 > Modern, robust, and responsive Field Service Management (FSM) web application built with Next.js 15, React 19, TypeScript, Tailwind CSS, and Biome.
 
@@ -12,9 +12,38 @@
 
 ## 📌 Overview
 
-**FieldServe** is an enterprise-grade Field Service Management frontend designed to streamline field operations, service scheduling, work order dispatching, technician telemetry, invoice generation, and customer communication.
+**Field Service** is an enterprise-grade Field Service Management frontend designed to streamline field operations, service scheduling, work order dispatching, technician telemetry, invoice generation, and customer communication.
 
 It connects seamlessly to the backend API ([Field_Service Backend](https://github.com/Fahim7600/Field_Service.git)) via Next.js proxy rewrites, ensuring secure cookie handling and real-time operational workflows.
+
+---
+
+## 🎨 Design System & Theme Tokens
+
+Field Service uses a purpose-built **Industrial Amber** color system engineered for contrast, professional clarity, and tactile focus:
+
+### Color Palette
+
+| Token | Hex Value | Role / Usage |
+|---|---|---|
+| `brand-500` | `#F97316` | Safety Orange / Primary brand accent |
+| `brand-600` | `#EA580C` | Deep Amber / Hover states |
+| `brand-700` | `#C2410C` | Dark Terracotta / Gradient stops |
+| `terracotta` | `#A8442A` | Industrial Terracotta |
+| `charcoal-900` | `#111827` | Deep Charcoal / Primary text & headers |
+| `charcoal-800` | `#1F2937` | Base Charcoal / Primary buttons & active elements |
+| `charcoal-600` | `#4B5563` | Slate Charcoal / Secondary text & subtitles |
+| `ash` | `#9CA3AF` | Ash Grey / Footer text & placeholder tones |
+| `background` | `#F3F4F6` | App background |
+| `panel` | `#F9FAFB` | Sub-surface panel background |
+| `card` | `#FFFFFF` | Card surface |
+| `border` | `#E5E7EB` | Subtle dividing border |
+
+### UI Rules & Button Variants
+
+- **Primary Button Rule**: Standard action buttons use `charcoal-800` (`#1F2937`) as the primary fill to maintain an authoritative, high-contrast industrial look.
+- **Exclusive CTA Rule**: The `cta` button variant (`bg-gradient-to-r from-brand-500 to-brand-700 text-white shadow-sm`) is the **ONLY** place bold orange gradient styling is applied to buttons, reserved exclusively for primary transactional actions (e.g., *"Book Service"*, *"Pay Invoice"*).
+- **Gradient Line**: The utility class `.gradient-line` provides a 3px amber-to-terracotta border used at the base of the navigation bar and hero accents.
 
 ---
 
@@ -73,17 +102,24 @@ Field_Service_Forntend/
 ├── tsconfig.json             # Strict TypeScript configuration
 ├── public/                   # Static assets & icons
 └── src/
-    ├── app/                  # Next.js App Router pages and layouts
-    │   ├── favicon.ico
+    ├── app/                  # Next.js App Router pages, layouts, and error boundaries
+    │   ├── (dev)/
+    │   │   └── test-error/   # Dev-only test error page
+    │   ├── (marketing)/
+    │   │   ├── layout.tsx    # Public marketing shell with Navbar and Footer
+    │   │   ├── loading.tsx   # Skeleton loading state
+    │   │   └── page.tsx      # Landing page / design system verification
+    │   ├── error.tsx         # Global client error boundary with retry
+    │   ├── global-error.tsx  # Root fallback error boundary
     │   ├── globals.css       # Industrial amber theme tokens & base styles
     │   ├── layout.tsx        # Root layout with Inter font and Toaster
-    │   └── page.tsx          # Design system verification test page
+    │   └── not-found.tsx     # Custom 404 error page
     ├── components/
-    │   ├── ui/               # shadcn/ui primitive components
-    │   ├── layout/           # App shell, navbars, sidebars, headers
-    │   ├── shared/           # Reusable widgets, data tables, modals
-    │   └── forms/            # Domain-specific forms and inputs
-    ├── constants/            # Application constants, navigation items, enums
+    │   ├── layout/           # App shell, Navbar, NavLinks, AuthActions, Footer, MobileNav
+    │   ├── shared/           # Logo, Container, PageHeader, EmptyState
+    │   ├── forms/            # Domain-specific forms and inputs
+    │   └── ui/               # shadcn/ui primitive components (button, card, sheet, etc.)
+    ├── constants/            # Site config, navigation links, constants
     ├── hooks/                # Custom React hooks
     ├── lib/                  # Utilities (cn helper), api client configuration
     ├── providers/            # React Query, Auth, and Context providers
@@ -164,20 +200,26 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to view the 
   - [x] Next.js 15 App Router + TypeScript Strict setup
   - [x] Biome formatting, linting, and import organization
   - [x] Industrial Amber design system & CSS theme tokens
-  - [x] Core shadcn/ui components (Button with CTA variant, Input, Card, Badge, Skeleton, Separator, Sonner)
+  - [x] Core shadcn/ui components (Button with CTA variant, Input, Card, Badge, Skeleton, Separator, Sonner, Sheet)
   - [x] Next.js API proxy rewrites configuration
-- [ ] **Phase 2: Authentication & Role-Based Access Control**
+- [x] **Phase 2: Shell Layout, Navigation & Error Handling**
+  - [x] Responsive public Navbar with active path indicator and accessible skip link
+  - [x] Mobile slide-out Sheet navigation drawer with stacked actions
+  - [x] Solid charcoal Footer with link matrix and copyright
+  - [x] Custom 404 page, client error boundaries (`error.tsx`, `global-error.tsx`), and loading skeleton
+  - [x] Reusable shared layout primitives (`Container`, `PageHeader`, `EmptyState`)
+- [ ] **Phase 3: Authentication & Role-Based Access Control**
   - [ ] JWT authentication with secure httpOnly cookie session management
   - [ ] Customer, Technician, and Admin route guards via `middleware.ts`
   - [ ] User profile and password recovery workflows
-- [ ] **Phase 3: Customer Portal**
+- [ ] **Phase 4: Customer Portal**
   - [ ] Multi-step service booking wizard
   - [ ] Live work order tracker with timeline visualization
   - [ ] Customer billing history and online checkout
-- [ ] **Phase 4: Technician Mobile-Optimized Dashboard**
+- [ ] **Phase 5: Technician Mobile-Optimized Dashboard**
   - [ ] Real-time job queue and dispatch acceptance
   - [ ] Work logs, parts usage, and digital sign-off
-- [ ] **Phase 5: Admin Command Center**
+- [ ] **Phase 6: Admin Command Center**
   - [ ] Interactive dispatch calendar & technician map
   - [ ] Comprehensive customer, invoice, and inventory management
   - [ ] Operational metrics and revenue analytics
