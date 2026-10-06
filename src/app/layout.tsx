@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { siteConfig } from "@/constants/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -9,9 +10,20 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "FieldServe | Field Service Management",
-  description:
-    "Comprehensive field service management platform for dispatching, scheduling, work orders, and customer operations.",
+  metadataBase: new URL(siteConfig.url),
+  title: {
+    default: "Field Service | On-Demand Field Service Management",
+    template: "%s | Field Service",
+  },
+  description: siteConfig.description,
+  openGraph: {
+    siteName: siteConfig.name,
+    type: "website",
+    locale: "en_US",
+    url: siteConfig.url,
+    title: "Field Service | On-Demand Field Service Management",
+    description: siteConfig.description,
+  },
 };
 
 export default function RootLayout({

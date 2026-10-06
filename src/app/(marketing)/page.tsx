@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRing, CheckCircle2, Flame, Wrench } from "lucide-react";
+import { BellRing, CheckCircle2, Flame, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,42 +15,22 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* Header bar with gradient line */}
-      <header className="bg-card border-b border-border">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-xl shadow-sm">
-              <Wrench className="w-5 h-5 text-brand-500" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-charcoal-900">
-                FieldServe
-              </h1>
-              <p className="text-xs text-charcoal-600">
-                Field Service Management Platform
-              </p>
-            </div>
+    <div className="py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* Hero / Header Section */}
+        <div className="space-y-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 text-brand-700 text-xs font-semibold border border-brand-500/20">
+            <Sparkles className="size-3.5 text-brand-600" />
+            <span>Field Service Management v0.1.0</span>
           </div>
-          <Badge variant="outline" className="text-xs font-semibold px-3 py-1">
-            v0.1.0 Initial Setup
-          </Badge>
-        </div>
-        <div className="gradient-line w-full" />
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-8 space-y-8">
-        {/* Welcome Section */}
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-charcoal-900">
-            Design System & Component Verification
-          </h2>
-          <p className="text-sm text-charcoal-600">
-            Industrial Amber Theme tokens, shadcn/ui components, and API proxy
-            verification.
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-charcoal-900">
+            Field Service Design System & Verification
+          </h1>
+          <p className="text-base text-charcoal-600 max-w-2xl">
+            Industrial amber theme tokens, verified shadcn/ui components, and
+            Next.js 15 App Router architecture.
           </p>
         </div>
 
@@ -163,7 +143,7 @@ export default function Home() {
 
                 {/* Orange CTA Button */}
                 <Button variant="cta">
-                  <Flame className="w-4 h-4 mr-1.5" /> Book Service (CTA)
+                  <Flame className="size-4 mr-1.5" /> Book Service (CTA)
                 </Button>
 
                 {/* Outline Button */}
@@ -181,14 +161,13 @@ export default function Home() {
                   variant="outline"
                   className="w-full sm:w-auto"
                   onClick={() =>
-                    toast.success("Sonner Notification", {
-                      description:
-                        "FieldServe system notifications are operational.",
-                      icon: <CheckCircle2 className="w-4 h-4 text-brand-600" />,
+                    toast.success("Field Service System Notification", {
+                      description: "Operational status check succeeded.",
+                      icon: <CheckCircle2 className="size-4 text-brand-600" />,
                     })
                   }
                 >
-                  <BellRing className="w-4 h-4 mr-2 text-charcoal-600" />
+                  <BellRing className="size-4 mr-2 text-charcoal-600" />
                   Fire Sonner Toast
                 </Button>
               </div>
@@ -232,12 +211,11 @@ export default function Home() {
               </div>
             </CardContent>
             <CardFooter className="bg-panel border-t border-border text-xs text-charcoal-600 py-3">
-              Theme initialized with Inter typography and industrial amber
-              tokens.
+              Field Service design system tokens active.
             </CardFooter>
           </Card>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
