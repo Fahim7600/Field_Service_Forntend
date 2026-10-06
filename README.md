@@ -16,6 +16,43 @@
 
 It connects seamlessly to the backend API ([Field_Service Backend](https://github.com/Fahim7600/Field_Service.git)) via Next.js proxy rewrites, ensuring secure cookie handling and real-time operational workflows.
 
+The complete backend OpenAPI 3.0 schema is archived locally at [`docs/openapi.json`](docs/openapi.json).
+
+---
+
+## 🏗️ Architecture: Auth & Data Fetching
+
+The application employs a secure, modern authentication and dual data-fetching strategy:
+
+```text
+[ Browser / Client Components ]
+        │
+        ├── 1. Same-Origin Requests (/api/v1/...)
+        │      └── Next.js Rewrites Proxy ──► [ Express Backend API ]
+        │
+        ├── 2. In-Memory Access Token (Zustand - No persistence)
+        │      └── Sent via Authorization: Bearer <token>
+        │
+        ├── 3. httpOnly Refresh Cookie (Stored on frontend domain)
+        │      └── Silently exchanged on boot & on 401 via single-flight interceptor
+        │
+        └── 4. Client State: TanStack Query (60s staleTime, 4xx retry suppression, global toast)
+
+[ Next.js Server Components ]
+        │
+        └── Direct Server Fetch (serverFetch<T> in src/lib/server-api.ts)
+               └── Calls backend API directly (ISR, revalidate, tags) for public pages
+```
+
+### Key Architectural Pillars
+
+1. **Same-Origin API Proxy**: All client-side HTTP calls route through `/api/v1/*` using Next.js `rewrites()`. Because requests are same-origin, the backend's `httpOnly` refresh token cookie resides on the frontend domain, allowing middleware access and eliminating cross-origin cookie issues.
+2. **Strict In-Memory Access Tokens**: Access tokens are kept exclusively in memory within a Zustand store (`src/stores/auth-store.ts`). Tokens are never persisted to `localStorage` or `sessionStorage`, mitigating XSS attack vectors.
+3. **Silent Session Restoration**: On app load, `AuthProvider` silently hits `/auth/refresh-token` to retrieve a fresh access token and loads `/users/me` without requiring manual re-login.
+4. **Single-Flight 401 Interceptor**: If an authenticated call expires (401), the Axios client locks incoming 401s behind a single in-flight refresh promise, exchanges the cookie for a new access token, and retries all concurrent queued requests seamlessly.
+5. **Server-Side Fetch for Public Pages**: Public marketing and SEO pages execute on the server using `serverFetch<T>` (`server-only`), communicating directly with the backend at build or request time without proxy overhead.
+6. **TanStack Query for Dashboards**: Authenticated customer, technician, and admin views fetch via TanStack Query, offering instant caching, background revalidation, optimistic mutations, and automated error toast notifications.
+
 ---
 
 ## 🎨 Design System & Theme Tokens
@@ -93,6 +130,8 @@ Field Service uses a purpose-built **Industrial Amber** color system engineered 
 
 ```text
 Field_Service_Forntend/
+├── docs/
+│   └── openapi.json          # Live backend OpenAPI 3.0 specification
 ├── .env.example              # Environment variables template
 ├── .env.local                # Local environment secrets (gitignored)
 ├── biome.json                # Biome linter and formatter configuration
@@ -120,11 +159,11 @@ Field_Service_Forntend/
     │   ├── forms/            # Domain-specific forms and inputs
     │   └── ui/               # shadcn/ui primitive components (button, card, sheet, etc.)
     ├── constants/            # Site config, navigation links, constants
-    ├── hooks/                # Custom React hooks
-    ├── lib/                  # Utilities (cn helper), api client configuration
-    ├── providers/            # React Query, Auth, and Context providers
-    ├── stores/               # Zustand global state stores
-    └── types/                # TypeScript shared interfaces and type schemas
+    ├── hooks/                # Custom React hooks (useAuth, useDebounce)
+    ├── lib/                  # Utilities (cn helper), api-client, query-client, server-api
+    ├── providers/            # QueryProvider, AuthProvider
+    ├── stores/               # Zustand auth-store
+    └── types/                # API and Auth TypeScript definitions
 ```
 
 ---
@@ -208,18 +247,25 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to view the 
   - [x] Solid charcoal Footer with link matrix and copyright
   - [x] Custom 404 page, client error boundaries (`error.tsx`, `global-error.tsx`), and loading skeleton
   - [x] Reusable shared layout primitives (`Container`, `PageHeader`, `EmptyState`)
-- [ ] **Phase 3: Authentication & Role-Based Access Control**
-  - [ ] JWT authentication with secure httpOnly cookie session management
+- [x] **Phase 3: Core API Client, Auth Store & Architecture**
+  - [x] Local archive of OpenAPI 3.0 specification ([`docs/openapi.json`](docs/openapi.json))
+  - [x] Strict TypeScript types for API responses, errors, pagination, and Auth models
+  - [x] Axios client with single-flight silent 401 token refresh & typed helper methods
+  - [x] In-memory Zustand auth store without persistence
+  - [x] TanStack Query client with 4xx retry suppression and global toast handlers
+  - [x] Server-side `serverFetch<T>` utility and `useAuth` / `useDebounce` hooks
+- [ ] **Phase 4: Authentication Pages & Route Guards**
+  - [ ] Login & Register forms with React Hook Form + Zod
   - [ ] Customer, Technician, and Admin route guards via `middleware.ts`
-  - [ ] User profile and password recovery workflows
-- [ ] **Phase 4: Customer Portal**
+  - [ ] Password recovery and change password workflows
+- [ ] **Phase 5: Customer Portal**
   - [ ] Multi-step service booking wizard
   - [ ] Live work order tracker with timeline visualization
   - [ ] Customer billing history and online checkout
-- [ ] **Phase 5: Technician Mobile-Optimized Dashboard**
+- [ ] **Phase 6: Technician Mobile-Optimized Dashboard**
   - [ ] Real-time job queue and dispatch acceptance
   - [ ] Work logs, parts usage, and digital sign-off
-- [ ] **Phase 6: Admin Command Center**
+- [ ] **Phase 7: Admin Command Center**
   - [ ] Interactive dispatch calendar & technician map
   - [ ] Comprehensive customer, invoice, and inventory management
   - [ ] Operational metrics and revenue analytics
