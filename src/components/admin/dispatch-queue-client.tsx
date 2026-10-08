@@ -23,6 +23,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useUrlFilters } from "@/hooks/use-url-filters";
+import { extractArray } from "@/lib/extract-data";
 import { formatSafeDate, formatSafeDateTime } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import { adminService } from "@/services/admin.service";
@@ -44,7 +45,7 @@ export function DispatchQueueClient() {
     staleTime: 15000,
   });
 
-  const items = data?.data || [];
+  const items = extractArray<DispatchQueueItem>(data);
   const pagination = data?.pagination;
 
   const columns: ColumnDef<DispatchQueueItem>[] = [

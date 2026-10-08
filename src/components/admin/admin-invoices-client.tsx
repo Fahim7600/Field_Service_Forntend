@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useUrlFilters } from "@/hooks/use-url-filters";
+import { extractArray } from "@/lib/extract-data";
 import { formatCurrencyCents } from "@/lib/format-currency";
 import { formatSafeDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
@@ -39,7 +40,7 @@ export function AdminInvoicesClient() {
     staleTime: 15000,
   });
 
-  const items = data?.data || [];
+  const items = extractArray<InvoiceSummary>(data);
   const pagination = data?.pagination;
 
   const columns: ColumnDef<InvoiceSummary>[] = [

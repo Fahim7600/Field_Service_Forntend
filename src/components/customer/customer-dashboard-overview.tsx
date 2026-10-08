@@ -25,10 +25,12 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { extractArray } from "@/lib/extract-data";
 import { formatSafeDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
 import { requestsService } from "@/services/requests.service";
+import type { InvoiceSummary, ServiceRequestListItem } from "@/types/api";
 
 export function CustomerDashboardOverview() {
   const { data: requestsData, isLoading: isRequestsLoading } = useQuery({
@@ -49,8 +51,8 @@ export function CustomerDashboardOverview() {
     staleTime: 30000,
   });
 
-  const requests = requestsData?.data || [];
-  const invoices = invoicesData?.data || [];
+  const requests = extractArray<ServiceRequestListItem>(requestsData);
+  const invoices = extractArray<InvoiceSummary>(invoicesData);
   const pendingInvoices = invoices.filter((inv) => inv.status === "ISSUED");
   const isVip = subscription?.status === "ACTIVE";
 

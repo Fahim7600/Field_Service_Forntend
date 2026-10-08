@@ -19,11 +19,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUrlFilters } from "@/hooks/use-url-filters";
+import { extractArray } from "@/lib/extract-data";
 import { formatCurrencyCents } from "@/lib/format-currency";
 import { formatSafeDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
-import type { InvoiceStatus, InvoicesQueryParams } from "@/types/api";
+import type {
+  InvoiceStatus,
+  InvoiceSummary,
+  InvoicesQueryParams,
+} from "@/types/api";
 
 export function CustomerInvoicesClient() {
   const { filters, updateFilters } = useUrlFilters();
@@ -47,7 +52,7 @@ export function CustomerInvoicesClient() {
     staleTime: 15000,
   });
 
-  const invoices = data?.data || [];
+  const invoices = extractArray<InvoiceSummary>(data);
   const pagination = data?.pagination;
 
   const handleStatusChange = (val: string) => {

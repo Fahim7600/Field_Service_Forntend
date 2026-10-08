@@ -29,6 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUrlFilters } from "@/hooks/use-url-filters";
+import { extractArray } from "@/lib/extract-data";
 import { formatSafeDate, formatSafeDateTime } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import { technicianService } from "@/services/technician.service";
@@ -68,7 +69,7 @@ export function TechnicianTasksClient() {
     staleTime: 15000,
   });
 
-  const rawItems = data?.data || [];
+  const rawItems = extractArray<WorkOrderSummary>(data);
   // If in active tab, filter out ASSIGNED since they belong in Pending tab
   const items = React.useMemo(() => {
     if (activeTab === "active") {

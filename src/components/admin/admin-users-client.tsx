@@ -53,6 +53,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useUrlFilters } from "@/hooks/use-url-filters";
 import { getErrorMessage } from "@/lib/api-client";
+import { extractArray } from "@/lib/extract-data";
 import { formatSafeDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import { adminService } from "@/services/admin.service";
@@ -109,7 +110,7 @@ export function AdminUsersClient() {
     staleTime: 10000,
   });
 
-  const users = data?.data || [];
+  const users = extractArray<UserListItem>(data);
   const pagination = data?.pagination;
 
   // Mutation: Change Role

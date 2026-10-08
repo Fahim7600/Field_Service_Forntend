@@ -21,6 +21,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useUrlFilters } from "@/hooks/use-url-filters";
+import { extractArray } from "@/lib/extract-data";
 import { formatSafeDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import { requestsService } from "@/services/requests.service";
@@ -48,6 +49,8 @@ export function CustomerRequestsClient() {
     queryKey: ["customer-service-requests", filters],
     queryFn: () => requestsService.fetchMyRequests(filters),
   });
+
+  const items = extractArray<ServiceRequestListItem>(data);
 
   const columns: ColumnDef<ServiceRequestListItem>[] = [
     {
@@ -225,7 +228,7 @@ export function CustomerRequestsClient() {
             Try Again
           </Button>
         </div>
-      ) : !data?.data || data.data.length === 0 ? (
+      ) : items.length === 0 ? (
         /* Empty State */
         <EmptyState
           icon={ClipboardList}
@@ -249,7 +252,7 @@ export function CustomerRequestsClient() {
         /* Data List View */
         <div className="space-y-4">
           <ResponsiveDataList
-            items={data.data}
+            items={items}
             keyExtractor={(item) => item.id}
             columns={columns}
             mobileCardRender={renderMobileCard}
@@ -257,7 +260,7 @@ export function CustomerRequestsClient() {
 
           {/* Pagination Controls */}
           <PaginationControls
-            meta={data.pagination}
+            meta={data?.pagination}
             onPageChange={(p) => updateFilters({ page: p })}
           />
         </div>

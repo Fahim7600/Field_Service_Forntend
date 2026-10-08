@@ -29,9 +29,11 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { extractArray } from "@/lib/extract-data";
 import { formatSafeDateTime } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import { technicianService } from "@/services/technician.service";
+import type { WorkOrderSummary } from "@/types/api";
 
 export function TechnicianDashboardClient() {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -41,7 +43,7 @@ export function TechnicianDashboardClient() {
     staleTime: 15000,
   });
 
-  const tasks = data?.data || [];
+  const tasks = extractArray<WorkOrderSummary>(data);
 
   const inProgressTask = tasks.find(
     (t) => t.status === "IN_PROGRESS" || t.status === "ARRIVED",
