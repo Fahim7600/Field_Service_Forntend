@@ -29,7 +29,9 @@ export function useLogin() {
 
       // 3. User feedback
       const firstName = data.user.name ? data.user.name.split(" ")[0] : "User";
-      toast.success(`Welcome back, ${firstName}`);
+      toast.success(`Welcome back, ${firstName}!`, {
+        description: "You have successfully signed into your account.",
+      });
 
       // 4. Role-aware redirection
       if (data.user.mustChangePassword) {

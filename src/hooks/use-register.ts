@@ -44,7 +44,9 @@ export function useRegister() {
 
       // 3. User feedback
       const firstName = data.user.name ? data.user.name.split(" ")[0] : "there";
-      toast.success(`Account created. Welcome, ${firstName}!`);
+      toast.success("Account Created Successfully!", {
+        description: `Welcome aboard, ${firstName}! Your customer portal is ready.`,
+      });
 
       // 4. Default registration lands on customer portal
       router.replace("/customer");
