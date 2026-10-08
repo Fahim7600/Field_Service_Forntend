@@ -29,6 +29,11 @@ export interface RegisterPayload {
   address?: string;
 }
 
+export interface ChangePasswordPayload {
+  oldPassword: string;
+  newPassword: string;
+}
+
 export interface AuthResponse {
   user: User;
   accessToken: string;
