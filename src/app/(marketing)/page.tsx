@@ -1,221 +1,112 @@
-"use client";
+import { ArrowRight, Clock, CreditCard, ShieldCheck } from "lucide-react";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-import { BellRing, CheckCircle2, Flame, Sparkles } from "lucide-react";
-import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
+export const metadata: Metadata = {
+  title: "Field Service | Reliable On-Demand Repairs",
+  description:
+    "Connect with verified professionals for HVAC, plumbing, and electrical repairs instantly. Transparent pricing, priority dispatch, and guaranteed quality.",
+};
 
 export default function HomePage() {
   return (
-    <div className="py-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* Hero / Header Section */}
-        <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 text-brand-700 text-xs font-semibold border border-brand-500/20">
-            <Sparkles className="size-3.5 text-brand-600" />
-            <span>Field Service Management v0.1.0</span>
+    <div className="flex flex-col min-h-screen">
+      {/* Hero Section */}
+      <section className="min-h-[80vh] flex flex-col justify-center items-center text-center px-4 bg-gradient-to-b from-white to-gray-50">
+        <h1 className="text-5xl md:text-7xl font-extrabold text-charcoal-900 tracking-tight max-w-4xl">
+          Reliable Field Service, On Demand.
+        </h1>
+        <p className="text-lg md:text-xl text-charcoal-600 max-w-2xl mt-4">
+          Connect with verified professionals for HVAC, plumbing, and electrical
+          repairs instantly. Transparent pricing, priority dispatch, and
+          guaranteed quality.
+        </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
+          <Link
+            href="/register"
+            className={cn(
+              buttonVariants({ variant: "cta", size: "lg" }),
+              "h-12 px-6 text-base font-semibold",
+            )}
+          >
+            Book a Service
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+          <Link
+            href="/services"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "lg" }),
+              "h-12 px-6 text-base font-semibold text-charcoal-900 border-gray-300 hover:bg-gray-100",
+            )}
+          >
+            View Services
+          </Link>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-24 bg-white px-4 md:px-8 border-t border-gray-100">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          {/* Card 1 */}
+          <div className="bg-panel border border-gray-200 rounded-xl p-8 shadow-sm hover:shadow-md transition-shadow">
+            <ShieldCheck className="text-brand-500 w-10 h-10" />
+            <h2 className="text-xl font-bold text-charcoal-900 mt-4">
+              Verified Technicians
+            </h2>
+            <p className="text-charcoal-600 mt-2 leading-relaxed">
+              Every professional is thoroughly vetted, licensed, and insured for
+              your peace of mind.
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-charcoal-900">
-            Field Service Design System & Verification
-          </h1>
-          <p className="text-base text-charcoal-600 max-w-2xl">
-            Industrial amber theme tokens, verified shadcn/ui components, and
-            Next.js 15 App Router architecture.
+
+          {/* Card 2 */}
+          <div className="bg-panel border border-gray-200 rounded-xl p-8 shadow-sm hover:shadow-md transition-shadow">
+            <Clock className="text-brand-500 w-10 h-10" />
+            <h2 className="text-xl font-bold text-charcoal-900 mt-4">
+              Fast Priority Dispatch
+            </h2>
+            <p className="text-charcoal-600 mt-2 leading-relaxed">
+              Premium members get guaranteed 2-hour review times and priority
+              scheduling.
+            </p>
+          </div>
+
+          {/* Card 3 */}
+          <div className="bg-panel border border-gray-200 rounded-xl p-8 shadow-sm hover:shadow-md transition-shadow">
+            <CreditCard className="text-brand-500 w-10 h-10" />
+            <h2 className="text-xl font-bold text-charcoal-900 mt-4">
+              Transparent Pricing
+            </h2>
+            <p className="text-charcoal-600 mt-2 leading-relaxed">
+              No hidden fees. Pay securely online only after the job is
+              completed.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section (Dark Contrast) */}
+      <section className="py-20 bg-charcoal-900 text-center px-4">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+            Ready to fix it today?
+          </h2>
+          <p className="text-charcoal-300 mt-3 text-base md:text-lg">
+            Join thousands of satisfied homeowners and businesses. Request a
+            technician in under 2 minutes.
           </p>
+          <div className="mt-6 flex justify-center">
+            <Link
+              href="/register"
+              className="inline-flex items-center justify-center bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 px-8 rounded-md transition-colors shadow-md"
+            >
+              Get Started Now
+            </Link>
+          </div>
         </div>
-
-        {/* Color Palette Grid */}
-        <Card className="border border-border shadow-xs">
-          <CardHeader>
-            <CardTitle className="text-lg text-charcoal-900">
-              Color Tokens & Swatches
-            </CardTitle>
-            <CardDescription className="text-charcoal-600">
-              Industrial amber palette, charcoal scale, and high-contrast
-              surface definitions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Brand Colors */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-charcoal-600 mb-3">
-                Brand Amber / Safety Orange
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="rounded-lg p-3 bg-brand-500 text-white shadow-xs">
-                  <div className="font-semibold text-sm">brand-500</div>
-                  <div className="text-xs opacity-90">#F97316</div>
-                </div>
-                <div className="rounded-lg p-3 bg-brand-600 text-white shadow-xs">
-                  <div className="font-semibold text-sm">brand-600</div>
-                  <div className="text-xs opacity-90">#EA580C</div>
-                </div>
-                <div className="rounded-lg p-3 bg-brand-700 text-white shadow-xs">
-                  <div className="font-semibold text-sm">brand-700</div>
-                  <div className="text-xs opacity-90">#C2410C</div>
-                </div>
-                <div className="rounded-lg p-3 bg-terracotta text-white shadow-xs">
-                  <div className="font-semibold text-sm">terracotta</div>
-                  <div className="text-xs opacity-90">#A8442A</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Charcoal Scale */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-charcoal-600 mb-3">
-                Charcoal Scale
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="rounded-lg p-3 bg-charcoal-900 text-white shadow-xs">
-                  <div className="font-semibold text-sm">charcoal-900</div>
-                  <div className="text-xs text-ash">#111827</div>
-                </div>
-                <div className="rounded-lg p-3 bg-charcoal-800 text-white shadow-xs">
-                  <div className="font-semibold text-sm">charcoal-800</div>
-                  <div className="text-xs text-ash">#1F2937 (Primary)</div>
-                </div>
-                <div className="rounded-lg p-3 bg-charcoal-600 text-white shadow-xs">
-                  <div className="font-semibold text-sm">charcoal-600</div>
-                  <div className="text-xs text-ash">#4B5563</div>
-                </div>
-                <div className="rounded-lg p-3 bg-ash text-charcoal-900 shadow-xs">
-                  <div className="font-semibold text-sm">ash</div>
-                  <div className="text-xs opacity-80">#9CA3AF</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Surfaces */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-charcoal-600 mb-3">
-                Surfaces & Borders
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="rounded-lg p-3 bg-background border border-border text-charcoal-900">
-                  <div className="font-semibold text-sm">app background</div>
-                  <div className="text-xs text-charcoal-600">#F3F4F6</div>
-                </div>
-                <div className="rounded-lg p-3 bg-panel border border-border text-charcoal-900">
-                  <div className="font-semibold text-sm">panel background</div>
-                  <div className="text-xs text-charcoal-600">#F9FAFB</div>
-                </div>
-                <div className="rounded-lg p-3 bg-card border border-border text-charcoal-900">
-                  <div className="font-semibold text-sm">card surface</div>
-                  <div className="text-xs text-charcoal-600">#FFFFFF</div>
-                </div>
-                <div className="rounded-lg p-3 bg-border text-charcoal-900">
-                  <div className="font-semibold text-sm">border</div>
-                  <div className="text-xs text-charcoal-600">#E5E7EB</div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Interactive UI Components Test */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Button Variants & Actions */}
-          <Card className="border border-border shadow-xs">
-            <CardHeader>
-              <CardTitle className="text-lg text-charcoal-900">
-                Button Variants & CTA Rule
-              </CardTitle>
-              <CardDescription className="text-charcoal-600">
-                Default charcoal primary buttons vs. exclusive CTA amber
-                gradient.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Default Charcoal Button */}
-                <Button variant="default">Charcoal Default Button</Button>
-
-                {/* Orange CTA Button */}
-                <Button variant="cta">
-                  <Flame className="size-4 mr-1.5" /> Book Service (CTA)
-                </Button>
-
-                {/* Outline Button */}
-                <Button variant="outline">Outline Button</Button>
-              </div>
-
-              <Separator />
-
-              {/* Toast Trigger */}
-              <div>
-                <p className="text-xs font-semibold text-charcoal-600 mb-2">
-                  Sonner Toast Notification
-                </p>
-                <Button
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  onClick={() =>
-                    toast.success("Field Service System Notification", {
-                      description: "Operational status check succeeded.",
-                      icon: <CheckCircle2 className="size-4 text-brand-600" />,
-                    })
-                  }
-                >
-                  <BellRing className="size-4 mr-2 text-charcoal-600" />
-                  Fire Sonner Toast
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Badges and Skeletons */}
-          <Card className="border border-border shadow-xs">
-            <CardHeader>
-              <CardTitle className="text-lg text-charcoal-900">
-                Badges & Loading Skeletons
-              </CardTitle>
-              <CardDescription className="text-charcoal-600">
-                Status indicators and placeholder states.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Badges */}
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-charcoal-600">
-                  Badges
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="default">Default Badge</Badge>
-                  <Badge variant="secondary">Secondary</Badge>
-                  <Badge variant="outline">Outline Status</Badge>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Skeletons */}
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-charcoal-600">
-                  Skeleton Placeholders
-                </p>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="bg-panel border-t border-border text-xs text-charcoal-600 py-3">
-              Field Service design system tokens active.
-            </CardFooter>
-          </Card>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }
