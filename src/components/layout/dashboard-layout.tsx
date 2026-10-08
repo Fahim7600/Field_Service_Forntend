@@ -11,14 +11,14 @@ export interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       {/* Desktop Fixed Sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col">
+      <div className="hidden lg:flex lg:w-64 lg:flex-col shrink-0">
         <DashboardSidebar role={role} />
       </div>
 
       {/* Main Column */}
-      <div className="flex min-h-screen flex-col lg:pl-64">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Topbar */}
         <DashboardTopbar role={role} />
 
@@ -28,10 +28,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         </Suspense>
 
         {/* Main Content Area */}
-        <main
-          id="main-content"
-          className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto"
-        >
+        <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-6">
           {children}
         </main>
       </div>
