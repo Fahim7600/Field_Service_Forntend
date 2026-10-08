@@ -6,6 +6,7 @@ import {
   FileText,
   History,
   LayoutDashboard,
+  Sparkles,
   Users,
 } from "lucide-react";
 import type { Role } from "@/types/auth";
@@ -26,6 +27,16 @@ export const CUSTOMER_LINKS: DashboardLink[] = [
     label: "My Requests",
     href: "/customer/requests",
     icon: ClipboardList,
+  },
+  {
+    label: "Invoices",
+    href: "/customer/invoices",
+    icon: FileText,
+  },
+  {
+    label: "Premium",
+    href: "/customer/premium",
+    icon: Sparkles,
   },
   {
     label: "History",
