@@ -216,6 +216,99 @@ export interface AssignWorkOrderPayload {
   technicianId: string;
 }
 
+export interface WorkOrderSummary {
+  id: string;
+  status: string;
+  visitStart?: string | null;
+  visitEnd?: string | null;
+  acceptedAt?: string | null;
+  createdAt: string;
+  request: {
+    id: string;
+    requestNumber: string;
+    title: string;
+    priority: string;
+    category: {
+      id: string;
+      name: string;
+    };
+  };
+  customer: {
+    id: string;
+    name: string;
+  };
+  technician?: {
+    id: string;
+    name: string;
+  } | null;
+}
+
+export interface ServiceReportPartItem {
+  name: string;
+  quantity: number;
+}
+
+export interface ServiceReportDetail {
+  id: string;
+  workDone: string;
+  partsUsed?: ServiceReportPartItem[] | unknown;
+  hoursSpent: number;
+  photos?: Array<{ url: string; fileName?: string }>;
+  technician?: {
+    id: string;
+    name: string;
+  };
+  createdAt?: string;
+}
+
+export interface WorkOrderFullDetail {
+  id: string;
+  status: string;
+  visitStart?: string | null;
+  visitEnd?: string | null;
+  acceptedAt?: string | null;
+  arrivedAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  cancelledAt?: string | null;
+  cancelReason?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  serviceReport?: ServiceReportDetail | null;
+  request: ServiceRequestDetail;
+  customer: {
+    id: string;
+    name: string;
+  };
+  technician?: {
+    id: string;
+    name: string;
+  } | null;
+}
+
+export interface WorkOrdersQueryParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  sortBy?: "createdAt" | "visitStart" | "status" | string;
+  order?: "asc" | "desc";
+}
+
+export interface CreateServiceReportPayload {
+  workDone: string;
+  hoursSpent: number;
+  partsUsed?: ServiceReportPartItem[] | string;
+  files?: File[];
+}
+
+export interface UpdateWorkOrderStatusPayload {
+  status: "ARRIVED" | "IN_PROGRESS" | "COMPLETED";
+}
+
+export interface RejectWorkOrderPayload {
+  reason: string;
+}
+
 export interface WorkOrderDetail {
   id: string;
   workOrderNumber?: string;
