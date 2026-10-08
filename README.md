@@ -22,7 +22,7 @@ The complete backend OpenAPI 3.0 schema is archived locally at [`docs/openapi.js
 
 ## 🏗️ Architecture: Auth & Data Fetching
 
-The application employs a secure, modern authentication and dual data-fetching strategy:
+The application employs a secure authentication and dual data-fetching strategy:
 
 ```text
 [ Browser / Client Components ]
@@ -33,10 +33,13 @@ The application employs a secure, modern authentication and dual data-fetching s
         ├── 2. In-Memory Access Token (Zustand - No persistence)
         │      └── Sent via Authorization: Bearer <token>
         │
-        ├── 3. httpOnly Refresh Cookie (Stored on frontend domain)
+        ├── 3. httpOnly Refresh Cookie (Backend cookie)
         │      └── Silently exchanged on boot & on 401 via single-flight interceptor
         │
-        └── 4. Client State: TanStack Query (60s staleTime, 4xx retry suppression, global toast)
+        ├── 4. Routing Cookies (Set by /api/session route handler)
+        │      └── fs_role, fs_hint, fs_must_change
+        │
+        └── 5. Client State: TanStack Query (60s staleTime, 4xx retry suppression, global toast)
 
 [ Next.js Server Components ]
         │
@@ -46,12 +49,13 @@ The application employs a secure, modern authentication and dual data-fetching s
 
 ### Key Architectural Pillars
 
-1. **Same-Origin API Proxy**: All client-side HTTP calls route through `/api/v1/*` using Next.js `rewrites()`. Because requests are same-origin, the backend's `httpOnly` refresh token cookie resides on the frontend domain, allowing middleware access and eliminating cross-origin cookie issues.
-2. **Strict In-Memory Access Tokens**: Access tokens are kept exclusively in memory within a Zustand store (`src/stores/auth-store.ts`). Tokens are never persisted to `localStorage` or `sessionStorage`, mitigating XSS attack vectors.
-3. **Silent Session Restoration**: On app load, `AuthProvider` silently hits `/auth/refresh-token` to retrieve a fresh access token and loads `/users/me` without requiring manual re-login.
-4. **Single-Flight 401 Interceptor**: If an authenticated call expires (401), the Axios client locks incoming 401s behind a single in-flight refresh promise, exchanges the cookie for a new access token, and retries all concurrent queued requests seamlessly.
-5. **Server-Side Fetch for Public Pages**: Public marketing and SEO pages execute on the server using `serverFetch<T>` (`server-only`), communicating directly with the backend at build or request time without proxy overhead.
-6. **TanStack Query for Dashboards**: Authenticated customer, technician, and admin views fetch via TanStack Query, offering instant caching, background revalidation, optimistic mutations, and automated error toast notifications.
+1. **Same-Origin API Proxy**: All client-side HTTP calls route through `/api/v1/*` using Next.js `rewrites()`. Because requests are same-origin, the backend's `httpOnly` refresh token cookie resides on the frontend domain.
+2. **Strict In-Memory Access Tokens**: Access tokens are kept exclusively in memory within a Zustand store (`src/stores/auth-store.ts`). Tokens are never persisted to `localStorage` or `sessionStorage`.
+3. **Session Routing Cookies**: Next.js route handler (`/api/session`) synchronizes routing metadata (`fs_role`, `fs_hint`, `fs_must_change`) on the frontend origin.
+4. **Silent Session Restoration**: On app load, `AuthProvider` checks for the `fs_hint=1` cookie; if present, it silently contacts `/auth/refresh-token` and restores `/users/me`.
+5. **Single-Flight 401 Interceptor**: If an authenticated call expires (401), the Axios client locks incoming 401s behind a single in-flight refresh promise, exchanges the cookie for a new access token, and retries all concurrent queued requests.
+6. **Server-Side Fetch for Public Pages**: Public marketing pages execute on the server using `serverFetch<T>` (`server-only`), communicating directly with the backend.
+7. **TanStack Query for Dashboards**: Authenticated views fetch via TanStack Query with smart caching, background revalidation, and automated error reporting.
 
 ---
 
@@ -142,26 +146,38 @@ Field_Service_Forntend/
 ├── public/                   # Static assets & icons
 └── src/
     ├── app/                  # Next.js App Router pages, layouts, and error boundaries
+    │   ├── (auth)/
+    │   │   ├── layout.tsx    # Dedicated authentication shell
+    │   │   └── login/        # Login page with validated form & demo cards
+    │   ├── (dashboard)/
+    │   │   ├── admin/        # Admin command center workspace
+    │   │   ├── customer/     # Customer portal workspace
+    │   │   ├── technician/   # Technician operational workspace
+    │   │   ├── layout.tsx    # Dashboard shell
+    │   │   └── loading.tsx   # Dashboard skeleton loading state
     │   ├── (dev)/
     │   │   └── test-error/   # Dev-only test error page
     │   ├── (marketing)/
     │   │   ├── layout.tsx    # Public marketing shell with Navbar and Footer
     │   │   ├── loading.tsx   # Skeleton loading state
     │   │   └── page.tsx      # Landing page / design system verification
+    │   ├── api/
+    │   │   └── session/      # Session cookie synchronization route handler
     │   ├── error.tsx         # Global client error boundary with retry
     │   ├── global-error.tsx  # Root fallback error boundary
     │   ├── globals.css       # Industrial amber theme tokens & base styles
     │   ├── layout.tsx        # Root layout with Inter font and Toaster
     │   └── not-found.tsx     # Custom 404 error page
     ├── components/
+    │   ├── forms/            # LoginForm, DemoLogin, PasswordInput, SocialAuth
     │   ├── layout/           # App shell, Navbar, NavLinks, AuthActions, Footer, MobileNav
-    │   ├── shared/           # Logo, Container, PageHeader, EmptyState
-    │   ├── forms/            # Domain-specific forms and inputs
-    │   └── ui/               # shadcn/ui primitive components (button, card, sheet, etc.)
-    ├── constants/            # Site config, navigation links, constants
-    ├── hooks/                # Custom React hooks (useAuth, useDebounce)
-    ├── lib/                  # Utilities (cn helper), api-client, query-client, server-api
+    │   ├── shared/           # Logo, Container, PageHeader, EmptyState, TempSessionCard
+    │   └── ui/               # shadcn/ui primitive components
+    ├── constants/            # Site config, demo accounts, navigation links
+    ├── hooks/                # useAuth, useLogin, useDebounce
+    ├── lib/                  # api-client, session, session-cookies, auth-routes, query-client, server-api
     ├── providers/            # QueryProvider, AuthProvider
+    ├── services/             # auth.service.ts
     ├── stores/               # Zustand auth-store
     └── types/                # API and Auth TypeScript definitions
 ```
@@ -201,6 +217,12 @@ Field_Service_Forntend/
 | `BACKEND_URL` | `https://field-service-d24g.onrender.com` | Target Express + Prisma backend API endpoint |
 | `NEXT_PUBLIC_API_BASE` | `/api/v1` | Public API base path |
 | `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` | Local frontend origin |
+| `NEXT_PUBLIC_DEMO_ADMIN_EMAIL` | *(Optional)* | Admin demo account email |
+| `NEXT_PUBLIC_DEMO_ADMIN_PASSWORD` | *(Optional)* | Admin demo account password |
+| `NEXT_PUBLIC_DEMO_CUSTOMER_EMAIL` | *(Optional)* | Customer demo account email |
+| `NEXT_PUBLIC_DEMO_CUSTOMER_PASSWORD` | *(Optional)* | Customer demo account password |
+| `NEXT_PUBLIC_DEMO_TECHNICIAN_EMAIL` | *(Optional)* | Technician demo account email |
+| `NEXT_PUBLIC_DEMO_TECHNICIAN_PASSWORD` | *(Optional)* | Technician demo account password |
 
 ### Running the Development Server
 
@@ -209,6 +231,18 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser to view the application.
+
+---
+
+## 🔑 Demo Accounts
+
+One-click demo login buttons are integrated into the login page (`/login`) for fast evaluation across roles:
+
+- **Admin Dispatcher**: Full access to dispatching, technician oversight, customer service logs, and analytics.
+- **Customer**: Access to service booking, real-time job timeline, and invoice payment workflows.
+- **Field Technician**: Access to daily job schedule, checklist execution, parts logging, and sign-offs.
+
+*Demo credentials can be configured via the `NEXT_PUBLIC_DEMO_*` environment variables in `.env.local` or entered manually into the login form.*
 
 ---
 
@@ -223,13 +257,6 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to view the 
 | `npm run format` | `biome format --write .` | Formats codebase according to style rules |
 | `npm run fix` | `biome check --write .` | Automatically fixes linting and formatting issues |
 | `npm run typecheck`| `tsc --noEmit` | Validates TypeScript types across the project |
-
----
-
-## 🌐 Live Demo & Demo Credentials
-
-- **Live URL**: *Coming soon*
-- **Demo Credentials**: *Coming soon*
 
 ---
 
@@ -254,18 +281,25 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to view the 
   - [x] In-memory Zustand auth store without persistence
   - [x] TanStack Query client with 4xx retry suppression and global toast handlers
   - [x] Server-side `serverFetch<T>` utility and `useAuth` / `useDebounce` hooks
-- [ ] **Phase 4: Authentication Pages & Route Guards**
-  - [ ] Login & Register forms with React Hook Form + Zod
-  - [ ] Customer, Technician, and Admin route guards via `middleware.ts`
-  - [ ] Password recovery and change password workflows
-- [ ] **Phase 5: Customer Portal**
+- [x] **Phase 4: Authentication & Role-Aware Routing**
+  - [x] Login page with React Hook Form + Zod real-time validation
+  - [x] PasswordInput component with eye visibility toggle
+  - [x] Session cookie route handler (`/api/session`) for Next.js routing metadata (`fs_role`, `fs_hint`, `fs_must_change`)
+  - [x] One-click demo login system for Admin, Customer, and Technician roles
+  - [x] Dynamic role redirection (`getSafeRedirect()`) and logout flow
+  - [x] Temporary role dashboard landing pages
+- [ ] **Phase 5: Registration & Route Guards**
+  - [ ] Customer and Technician registration wizard with password strength indicator
+  - [ ] Next.js `middleware.ts` protecting `/admin/*`, `/customer/*`, and `/technician/*`
+  - [ ] Password change workflow for first-time staff logins
+- [ ] **Phase 6: Customer Portal & Booking Wizard**
   - [ ] Multi-step service booking wizard
   - [ ] Live work order tracker with timeline visualization
   - [ ] Customer billing history and online checkout
-- [ ] **Phase 6: Technician Mobile-Optimized Dashboard**
+- [ ] **Phase 7: Technician Mobile-Optimized Dashboard**
   - [ ] Real-time job queue and dispatch acceptance
   - [ ] Work logs, parts usage, and digital sign-off
-- [ ] **Phase 7: Admin Command Center**
+- [ ] **Phase 8: Admin Command Center**
   - [ ] Interactive dispatch calendar & technician map
   - [ ] Comprehensive customer, invoice, and inventory management
   - [ ] Operational metrics and revenue analytics
