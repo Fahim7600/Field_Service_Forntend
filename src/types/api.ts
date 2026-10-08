@@ -59,6 +59,57 @@ export interface ServiceRequestCreated {
 }
 
 export interface ServiceRequestAttachment {
+  id?: string;
+  fileUrl?: string;
+  url?: string;
+}
+
+export type RequestStatus =
+  | "SUBMITTED"
+  | "APPROVED"
+  | "REJECTED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export type RequestPriority = "NORMAL" | "HIGH";
+
+export interface ServiceRequestListItem {
   id: string;
-  fileUrl: string;
+  requestNumber: string;
+  title: string;
+  status: RequestStatus | string;
+  priority?: RequestPriority | string;
+  preferredDate?: string;
+  preferredAt?: string;
+  category?: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+export interface ServiceRequestDetail {
+  id: string;
+  requestNumber: string;
+  title: string;
+  description: string;
+  status: RequestStatus | string;
+  priority: RequestPriority | string;
+  preferredDate?: string;
+  preferredAt?: string;
+  address?: string;
+  category?: { id: string; name: string } | null;
+  categoryId?: string;
+  attachments?: Array<{ id?: string; fileUrl?: string; url?: string } | string>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ServiceRequestQueryParams {
+  page?: number;
+  limit?: number;
+  status?: RequestStatus | string;
+  priority?: RequestPriority | string;
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: "createdAt" | "preferredAt" | "priority" | "status" | string;
+  order?: "asc" | "desc";
 }

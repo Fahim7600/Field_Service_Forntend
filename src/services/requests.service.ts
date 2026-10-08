@@ -1,9 +1,13 @@
-import { apiGet, apiPost } from "@/lib/api-client";
+import { apiDelete, apiGet, apiGetPaginated, apiPost } from "@/lib/api-client";
 import type {
   CreateServiceRequestPayload,
+  PaginatedResponse,
   ServiceCategory,
   ServiceRequestAttachment,
   ServiceRequestCreated,
+  ServiceRequestDetail,
+  ServiceRequestListItem,
+  ServiceRequestQueryParams,
 } from "@/types/api";
 
 export const requestsService = {
@@ -12,6 +16,24 @@ export const requestsService = {
    */
   async fetchCategories(): Promise<ServiceCategory[]> {
     return apiGet<ServiceCategory[]>("/service-categories");
+  },
+
+  /**
+   * Retrieves paginated list of service requests with optional filters.
+   */
+  async fetchMyRequests(
+    params?: ServiceRequestQueryParams,
+  ): Promise<PaginatedResponse<ServiceRequestListItem>> {
+    return apiGetPaginated<ServiceRequestListItem>("/service-requests", {
+      params,
+    });
+  },
+
+  /**
+   * Retrieves single service request details by ID.
+   */
+  async fetchRequestById(id: string): Promise<ServiceRequestDetail> {
+    return apiGet<ServiceRequestDetail>(`/service-requests/${id}`);
   },
 
   /**
@@ -24,6 +46,13 @@ export const requestsService = {
       "/service-requests",
       payload,
     );
+  },
+
+  /**
+   * Cancels/deletes a pending service request.
+   */
+  async cancelServiceRequest(id: string): Promise<null> {
+    return apiDelete<null>(`/service-requests/${id}`);
   },
 
   /**
