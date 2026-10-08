@@ -4,6 +4,7 @@ import type { RequestStatus } from "@/types/api";
 
 export interface StatusBadgeProps {
   status: RequestStatus | string | null | undefined;
+  label?: string;
   className?: string;
 }
 
@@ -48,7 +49,7 @@ const STATUS_CONFIGS: Record<string, { label: string; className: string }> = {
   },
 };
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
+export function StatusBadge({ status, label, className }: StatusBadgeProps) {
   const normalizedKey = status
     ? String(status).trim().toUpperCase()
     : "UNKNOWN";
@@ -67,7 +68,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       )}
     >
       <span className="size-1.5 rounded-full bg-current mr-1.5 opacity-80" />
-      {config.label}
+      {label || config.label}
     </Badge>
   );
 }
