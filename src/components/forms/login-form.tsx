@@ -4,8 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { DemoLogin } from "@/components/forms/demo-login";
 import { PasswordInput } from "@/components/forms/password-input";
 import { SocialAuth } from "@/components/forms/social-auth";
@@ -23,6 +24,18 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const status = useAuthStore((state) => state.status);
+  const hasShownPasswordToastRef = useRef(false);
+
+  // If passwordChanged=1 is present in the query, show a one-time success toast
+  useEffect(() => {
+    if (
+      searchParams.get("passwordChanged") === "1" &&
+      !hasShownPasswordToastRef.current
+    ) {
+      hasShownPasswordToastRef.current = true;
+      toast.success("Password updated. Please log in with your new password.");
+    }
+  }, [searchParams]);
 
   // If already authenticated, redirect immediately to role home
   useEffect(() => {
@@ -142,6 +155,22 @@ export function LoginForm() {
         </Button>
       </form>
 
+      {/* Social Google Auth with divider */}
+      <div className="space-y-4">
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <Separator className="w-full" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card px-2 text-charcoal-600 font-medium">
+              OR
+            </span>
+          </div>
+        </div>
+
+        <SocialAuth />
+      </div>
+
       {/* Register Link */}
       <div className="text-center text-xs text-charcoal-600">
         Don&apos;t have an account?{" "}
@@ -153,16 +182,15 @@ export function LoginForm() {
         </Link>
       </div>
 
-      {/* Social Auth Spot */}
-      <SocialAuth />
-
       {/* Divider */}
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <Separator className="w-full" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-2 text-charcoal-600 font-medium">OR</span>
+          <span className="bg-card px-2 text-charcoal-600 font-medium">
+            DEMO ACCESS
+          </span>
         </div>
       </div>
 
