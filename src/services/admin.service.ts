@@ -1,17 +1,35 @@
-import { apiGetPaginated, apiPatch, apiPost } from "@/lib/api-client";
+import {
+  apiDelete,
+  apiGet,
+  apiGetPaginated,
+  apiPatch,
+  apiPost,
+} from "@/lib/api-client";
 import type {
   AssignWorkOrderPayload,
   AvailableTechnician,
   AvailableTechniciansQueryParams,
+  DashboardStats,
   DispatchQueueItem,
   DispatchQueueQueryParams,
   PaginatedResponse,
   ReviewRequestPayload,
   ReviewRequestResponse,
   ScheduleWorkOrderPayload,
+  UpdateUserRolePayload,
+  UpdateUserStatusPayload,
+  UserListItem,
+  UsersQueryParams,
 } from "@/types/api";
 
 export const adminService = {
+  /**
+   * Retrieves high-level analytics, revenue, volume, and distribution stats for admin overview.
+   */
+  async fetchDashboardStats(): Promise<DashboardStats> {
+    return apiGet<DashboardStats>("/admin/dashboard-stats");
+  },
+
   /**
    * Retrieves the admin dispatch queue (items awaiting review or technician assignment).
    */
@@ -81,5 +99,49 @@ export const adminService = {
       `/work-orders/${id}/assign`,
       payload,
     );
+  },
+
+  /**
+   * Retrieves paginated list of all users in the system (Supports search, role, status filters).
+   */
+  async fetchUsers(
+    params?: UsersQueryParams,
+  ): Promise<PaginatedResponse<UserListItem>> {
+    return apiGetPaginated<UserListItem>("/admin/users", {
+      params,
+    });
+  },
+
+  /**
+   * Modifies a user's role (ADMIN | TECHNICIAN | CUSTOMER).
+   */
+  async updateUserRole(
+    id: string,
+    payload: UpdateUserRolePayload,
+  ): Promise<UserListItem> {
+    return apiPatch<UserListItem, UpdateUserRolePayload>(
+      `/admin/users/${id}/role`,
+      payload,
+    );
+  },
+
+  /**
+   * Changes a user's status (ACTIVE | SUSPENDED).
+   */
+  async updateUserStatus(
+    id: string,
+    payload: UpdateUserStatusPayload,
+  ): Promise<UserListItem> {
+    return apiPatch<UserListItem, UpdateUserStatusPayload>(
+      `/admin/users/${id}/status`,
+      payload,
+    );
+  },
+
+  /**
+   * Deletes a user account.
+   */
+  async deleteUser(id: string): Promise<unknown> {
+    return apiDelete<unknown>(`/admin/users/${id}`);
   },
 };

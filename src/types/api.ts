@@ -429,3 +429,66 @@ export interface MySubscriptionResponse {
     interval: string;
   } | null;
 }
+
+export interface DashboardTrendItem {
+  date: string;
+  revenue?: number;
+  revenueCents?: number;
+  requests?: number;
+  completed?: number;
+  [key: string]: string | number | undefined;
+}
+
+export interface StatusDistributionItem {
+  status: string;
+  count: number;
+  [key: string]: string | number;
+}
+
+export interface CategoryDistributionItem {
+  category: string;
+  count: number;
+  [key: string]: string | number;
+}
+
+export interface DashboardStats {
+  totalRevenueCents: number;
+  totalRequests: number;
+  activePremiumUsers: number;
+  pendingDispatchCount: number;
+  revenueTrend?: DashboardTrendItem[];
+  requestsTrend?: DashboardTrendItem[];
+  requestsByStatus?: StatusDistributionItem[];
+  requestsByCategory?: CategoryDistributionItem[];
+}
+
+export interface UserListItem {
+  id: string;
+  name: string;
+  email: string;
+  role: "ADMIN" | "TECHNICIAN" | "CUSTOMER";
+  status: "ACTIVE" | "SUSPENDED";
+  phone?: string | null;
+  address?: string | null;
+  avatarUrl?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface UsersQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  status?: string;
+  sortBy?: string;
+  order?: "asc" | "desc";
+}
+
+export interface UpdateUserRolePayload {
+  role: "ADMIN" | "TECHNICIAN" | "CUSTOMER";
+}
+
+export interface UpdateUserStatusPayload {
+  status: "ACTIVE" | "SUSPENDED";
+}
