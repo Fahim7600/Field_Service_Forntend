@@ -25,6 +25,12 @@ The complete backend OpenAPI 3.0 schema is archived locally at [`docs/openapi.js
 The application employs a secure authentication and dual data-fetching strategy:
 
 ```text
+[ Incoming Request ]
+        │
+        ├── 0. Edge Middleware (src/middleware.ts)
+        │      └── Reads fs_role cookie: redirects unauthenticated users to /login and
+        │          enforces role-segregated routes (/admin, /technician, /customer)
+        │
 [ Browser / Client Components ]
         │
         ├── 1. Same-Origin Requests (/api/v1/...)
@@ -49,13 +55,14 @@ The application employs a secure authentication and dual data-fetching strategy:
 
 ### Key Architectural Pillars
 
-1. **Same-Origin API Proxy**: All client-side HTTP calls route through `/api/v1/*` using Next.js `rewrites()`. Because requests are same-origin, the backend's `httpOnly` refresh token cookie resides on the frontend domain.
-2. **Strict In-Memory Access Tokens**: Access tokens are kept exclusively in memory within a Zustand store (`src/stores/auth-store.ts`). Tokens are never persisted to `localStorage` or `sessionStorage`.
-3. **Session Routing Cookies**: Next.js route handler (`/api/session`) synchronizes routing metadata (`fs_role`, `fs_hint`, `fs_must_change`) on the frontend origin.
-4. **Silent Session Restoration**: On app load, `AuthProvider` checks for the `fs_hint=1` cookie; if present, it silently contacts `/auth/refresh-token` and restores `/users/me`.
-5. **Single-Flight 401 Interceptor**: If an authenticated call expires (401), the Axios client locks incoming 401s behind a single in-flight refresh promise, exchanges the cookie for a new access token, and retries all concurrent queued requests.
-6. **Server-Side Fetch for Public Pages**: Public marketing pages execute on the server using `serverFetch<T>` (`server-only`), communicating directly with the backend.
-7. **TanStack Query for Dashboards**: Authenticated views fetch via TanStack Query with smart caching, background revalidation, and automated error reporting.
+1. **Edge Middleware Route Protection**: `src/middleware.ts` runs on the Edge, intercepting protected dashboard paths (`/admin`, `/technician`, `/customer`) and authentication routes (`/login`, `/register`). It checks the verified `fs_role` cookie, redirects unauthenticated requests to login with encoded redirect params, and smoothly redirects users with mismatched roles to their authorized dashboard with `?role_redirect=1`.
+2. **Same-Origin API Proxy**: All client-side HTTP calls route through `/api/v1/*` using Next.js `rewrites()`. Because requests are same-origin, the backend's `httpOnly` refresh token cookie resides on the frontend domain.
+3. **Strict In-Memory Access Tokens**: Access tokens are kept exclusively in memory within a Zustand store (`src/stores/auth-store.ts`). Tokens are never persisted to `localStorage` or `sessionStorage`.
+4. **Session Routing Cookies**: Next.js route handler (`/api/session`) synchronizes routing metadata (`fs_role`, `fs_hint`, `fs_must_change`) on the frontend origin.
+5. **Silent Session Restoration**: On app load, `AuthProvider` checks for the `fs_hint=1` cookie; if present, it silently contacts `/auth/refresh-token` and restores `/users/me`.
+6. **Single-Flight 401 Interceptor**: If an authenticated call expires (401), the Axios client locks incoming 401s behind a single in-flight refresh promise, exchanges the cookie for a new access token, and retries all concurrent queued requests.
+7. **Server-Side Fetch for Public Pages**: Public marketing pages execute on the server using `serverFetch<T>` (`server-only`), communicating directly with the backend.
+8. **TanStack Query for Dashboards**: Authenticated views fetch via TanStack Query with smart caching, background revalidation, and automated error reporting.
 
 ---
 
@@ -88,8 +95,8 @@ Field Service implements end-to-end authentication patterns aligned strictly wit
 5. **One-Click Demo Access**:
    - Quick-fill demo authentication for Admin Dispatcher, Customer, and Field Technician accounts directly on the login card.
 
-6. **Session & Routing Cookies**:
-   - Uses `fs_role` (verified role), `fs_must_change` (temporary password flag), and `fs_hint` (non-sensitive boolean for silent session restoration) to optimize middleware routing and server-side state evaluation.
+6. **Edge Role Guarding & Session Routing Cookies**:
+   - Uses `fs_role` (verified role), `fs_must_change` (temporary password flag), and `fs_hint` (non-sensitive boolean for silent session restoration) for instant Edge middleware routing and server-side state evaluation.
 
 ---
 
@@ -179,6 +186,7 @@ Field_Service_Forntend/
 ├── tsconfig.json             # Strict TypeScript configuration
 ├── public/                   # Static assets & icons
 └── src/
+    ├── middleware.ts         # Edge middleware for role-based route guarding
     ├── app/                  # Next.js App Router pages, layouts, and error boundaries
     │   ├── (auth)/
     │   │   ├── change-password/ # Change password page (server component + client form)
@@ -190,7 +198,7 @@ Field_Service_Forntend/
     │   │   ├── admin/        # Admin command center workspace
     │   │   ├── customer/     # Customer portal workspace
     │   │   ├── technician/   # Technician operational workspace
-    │   │   ├── layout.tsx    # Dashboard shell
+    │   │   ├── layout.tsx    # Dashboard shell with fixed sidebar & topbar
     │   │   └── loading.tsx   # Dashboard skeleton loading state
     │   ├── (dev)/
     │   │   └── test-error/   # Dev-only test error page
@@ -206,11 +214,12 @@ Field_Service_Forntend/
     │   ├── layout.tsx        # Root layout with Inter font and Toaster
     │   └── not-found.tsx     # Custom 404 error page
     ├── components/
+    │   ├── dashboard/        # DashboardWelcomeHeader
     │   ├── forms/            # LoginForm, RegisterForm, ChangePasswordForm, DemoLogin, PasswordRequirements, PasswordInput, SocialAuth
-    │   ├── layout/           # App shell, Navbar, NavLinks, AuthActions, Footer, MobileNav
-    │   ├── shared/           # Logo, Container, PageHeader, EmptyState, TempSessionCard
-    │   └── ui/               # shadcn/ui primitive components
-    ├── constants/            # Site config, demo accounts, navigation links
+    │   ├── layout/           # App shell, Navbar, NavLinks, AuthActions, UserMenu, DashboardSidebar, DashboardTopbar, DashboardLayout, Footer, MobileNav
+    │   ├── shared/           # Logo, Container, PageHeader, EmptyState, RoleRedirectToast
+    │   └── ui/               # shadcn/ui primitive components (Avatar, DropdownMenu, Button, Sheet, etc.)
+    ├── constants/            # Site config, demo accounts, dashboard links, navigation links
     ├── hooks/                # useAuth, useLogin, useRegister, useChangePassword, useDebounce
     ├── lib/                  # api-client, session, session-cookies, auth-routes, query-client, server-api, validations
     ├── providers/            # QueryProvider, AuthProvider
@@ -332,14 +341,20 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
   - [x] Google OAuth sign-in button & `/oauth-callback` handler with token URL scrubbing
   - [x] Forced password change flow (`/change-password`) for first-login technicians
   - [x] Session and routing cookie invalidation on credential change
-- [ ] **Phase 6: Customer Portal & Booking Wizard**
+- [x] **Phase 6: Edge Middleware Guarding & Dashboard Shell**
+  - [x] Edge middleware route protection (`src/middleware.ts`)
+  - [x] Cross-role redirection with `?role_redirect=1` query and toast notification
+  - [x] Authenticated `<UserMenu />` dropdown with initials fallback and profile/dashboard links
+  - [x] Dashboard navigation constants for Admin, Technician, and Customer roles
+  - [x] Fixed sidebar shell, sticky topbar with notifications and mobile slide-out drawer
+- [ ] **Phase 7: Customer Portal & Booking Wizard**
   - [ ] Multi-step service booking wizard
   - [ ] Live work order tracker with timeline visualization
   - [ ] Customer billing history and online checkout
-- [ ] **Phase 7: Technician Mobile-Optimized Dashboard**
+- [ ] **Phase 8: Technician Mobile-Optimized Dashboard**
   - [ ] Real-time job queue and dispatch acceptance
   - [ ] Work logs, parts usage, and digital sign-off
-- [ ] **Phase 8: Admin Command Center**
+- [ ] **Phase 9: Admin Command Center**
   - [ ] Interactive dispatch calendar & technician map
   - [ ] Comprehensive customer, invoice, and inventory management
   - [ ] Operational metrics and revenue analytics

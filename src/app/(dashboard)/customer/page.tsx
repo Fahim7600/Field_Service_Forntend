@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { TempSessionCard } from "@/components/shared/temp-session-card";
+import { DashboardWelcomeHeader } from "@/components/dashboard/dashboard-welcome-header";
 
 export const metadata: Metadata = {
   title: "Customer Portal",
@@ -7,10 +7,13 @@ export const metadata: Metadata = {
     "Field Service customer portal for booking and service tracking.",
 };
 
-// TEMPORARY: Temporary landing page for CUSTOMER role.
-// Will be replaced by full customer service hub in subsequent milestones.
 export default function CustomerDashboardPage() {
   return (
-    <TempSessionCard expectedRole="CUSTOMER" dashboardTitle="Customer Portal" />
+    <div className="space-y-6">
+      <DashboardWelcomeHeader
+        title="Customer Portal"
+        description="Book services, track technician arrival, and view past job history."
+      />
+    </div>
   );
 }
