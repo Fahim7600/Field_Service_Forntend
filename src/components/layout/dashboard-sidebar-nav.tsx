@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { DashboardLink } from "@/constants/dashboard";
+import { ROLE_DASHBOARD_LINKS } from "@/constants/dashboard";
 import { cn } from "@/lib/utils";
+import type { Role } from "@/types/auth";
 
 export interface DashboardSidebarNavProps {
-  links: DashboardLink[];
+  role: Role;
   onLinkClick?: () => void;
 }
 
 export function DashboardSidebarNav({
-  links,
+  role,
   onLinkClick,
 }: DashboardSidebarNavProps) {
   const pathname = usePathname();
+  const links = ROLE_DASHBOARD_LINKS[role] || [];
 
   return (
     <nav className="space-y-1.5 px-3">

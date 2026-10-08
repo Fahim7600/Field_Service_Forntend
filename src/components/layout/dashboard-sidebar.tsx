@@ -1,8 +1,9 @@
+"use client";
+
 import { DashboardSidebarNav } from "@/components/layout/dashboard-sidebar-nav";
 import { Logo } from "@/components/shared/logo";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ROLE_DASHBOARD_LINKS } from "@/constants/dashboard";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types/auth";
 
@@ -23,7 +24,6 @@ export function DashboardSidebar({
   className,
   onLinkClick,
 }: DashboardSidebarProps) {
-  const links = ROLE_DASHBOARD_LINKS[role] || [];
   const meta = ROLE_LABELS[role] || { title: "Workspace", badge: role };
 
   return (
@@ -53,7 +53,7 @@ export function DashboardSidebar({
 
       {/* Navigation List */}
       <div className="flex-1 overflow-y-auto">
-        <DashboardSidebarNav links={links} onLinkClick={onLinkClick} />
+        <DashboardSidebarNav role={role} onLinkClick={onLinkClick} />
       </div>
 
       {/* Bottom Panel */}
