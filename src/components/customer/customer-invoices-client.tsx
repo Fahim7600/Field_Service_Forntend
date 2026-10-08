@@ -43,7 +43,8 @@ export function CustomerInvoicesClient() {
     page: pageParam,
     limit: 10,
     status: statusParam !== "ALL" ? statusParam : undefined,
-    sortBy: "createdAt:desc",
+    sortBy: "createdAt",
+    order: "desc",
   };
 
   const { data, isLoading, isError, error, refetch } = useQuery({
