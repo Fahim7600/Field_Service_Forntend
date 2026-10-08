@@ -59,6 +59,40 @@ The application employs a secure authentication and dual data-fetching strategy:
 
 ---
 
+## 🔐 Authentication Flows
+
+Field Service implements end-to-end authentication patterns aligned strictly with the backend OpenAPI specification:
+
+1. **Email & Password Login**:
+   - Submits credentials to `POST /api/v1/auth/login`.
+   - Stores `accessToken` in the in-memory Zustand store and syncs `fs_role`, `fs_hint`, and `fs_must_change` via `/api/session`.
+   - If `mustChangePassword` is returned as `true`, the user is immediately routed to `/change-password`. Otherwise, redirects to the role home (`/admin`, `/technician`, `/customer`).
+
+2. **Customer Registration with Auto-Login**:
+   - Validates full name, email, optional phone/address, and strict password rules via `registerSchema` (React Hook Form + Zod).
+   - Shows live interactive password complexity checklist (`PasswordRequirements`).
+   - Automatically sanitizes empty strings and posts payload to `POST /api/v1/auth/register`.
+   - Automatically initializes session in memory, sets session cookies, and redirects the new customer to `/customer`.
+
+3. **Google OAuth via Proxy**:
+   - Triggers sign-in through the frontend proxy endpoint `GET /api/v1/auth/google`.
+   - The backend redirects to `/oauth-callback?token=...`.
+   - The callback handler scrubs the token from the browser history via `window.history.replaceState`, loads the profile with `GET /api/v1/users/me`, syncs session cookies, and transitions to the user's role dashboard.
+
+4. **Forced Password Change for First-Time Staff**:
+   - Server component reads `fs_must_change` cookie and passes the requirement to `<ChangePasswordForm />`.
+   - Displays a security alert explaining that a password update is required.
+   - Live requirement checklist enforces uppercase, lowercase, number, and 8+ characters.
+   - On `PATCH /api/v1/auth/change-password` success, clears all credentials, caches, and routing cookies, then directs to `/login?passwordChanged=1` for clean re-authentication with new privileges.
+
+5. **One-Click Demo Access**:
+   - Quick-fill demo authentication for Admin Dispatcher, Customer, and Field Technician accounts directly on the login card.
+
+6. **Session & Routing Cookies**:
+   - Uses `fs_role` (verified role), `fs_must_change` (temporary password flag), and `fs_hint` (non-sensitive boolean for silent session restoration) to optimize middleware routing and server-side state evaluation.
+
+---
+
 ## 🎨 Design System & Theme Tokens
 
 Field Service uses a purpose-built **Industrial Amber** color system engineered for contrast, professional clarity, and tactile focus:
@@ -147,8 +181,11 @@ Field_Service_Forntend/
 └── src/
     ├── app/                  # Next.js App Router pages, layouts, and error boundaries
     │   ├── (auth)/
+    │   │   ├── change-password/ # Change password page (server component + client form)
     │   │   ├── layout.tsx    # Dedicated authentication shell
-    │   │   └── login/        # Login page with validated form & demo cards
+    │   │   ├── login/        # Login page with validated form & demo cards
+    │   │   ├── oauth-callback/ # Google OAuth token callback handler
+    │   │   └── register/     # Registration page with auto-login
     │   ├── (dashboard)/
     │   │   ├── admin/        # Admin command center workspace
     │   │   ├── customer/     # Customer portal workspace
@@ -169,13 +206,13 @@ Field_Service_Forntend/
     │   ├── layout.tsx        # Root layout with Inter font and Toaster
     │   └── not-found.tsx     # Custom 404 error page
     ├── components/
-    │   ├── forms/            # LoginForm, DemoLogin, PasswordInput, SocialAuth
+    │   ├── forms/            # LoginForm, RegisterForm, ChangePasswordForm, DemoLogin, PasswordRequirements, PasswordInput, SocialAuth
     │   ├── layout/           # App shell, Navbar, NavLinks, AuthActions, Footer, MobileNav
     │   ├── shared/           # Logo, Container, PageHeader, EmptyState, TempSessionCard
     │   └── ui/               # shadcn/ui primitive components
     ├── constants/            # Site config, demo accounts, navigation links
-    ├── hooks/                # useAuth, useLogin, useDebounce
-    ├── lib/                  # api-client, session, session-cookies, auth-routes, query-client, server-api
+    ├── hooks/                # useAuth, useLogin, useRegister, useChangePassword, useDebounce
+    ├── lib/                  # api-client, session, session-cookies, auth-routes, query-client, server-api, validations
     ├── providers/            # QueryProvider, AuthProvider
     ├── services/             # auth.service.ts
     ├── stores/               # Zustand auth-store
@@ -288,10 +325,13 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
   - [x] One-click demo login system for Admin, Customer, and Technician roles
   - [x] Dynamic role redirection (`getSafeRedirect()`) and logout flow
   - [x] Temporary role dashboard landing pages
-- [ ] **Phase 5: Registration & Route Guards**
-  - [ ] Customer and Technician registration wizard with password strength indicator
-  - [ ] Next.js `middleware.ts` protecting `/admin/*`, `/customer/*`, and `/technician/*`
-  - [ ] Password change workflow for first-time staff logins
+- [x] **Phase 5: Registration, Password Change & Social OAuth**
+  - [x] Customer registration form with live password complexity validation
+  - [x] Password requirements live interactive checklist (`PasswordRequirements`)
+  - [x] Auto-login and session initialization upon registration
+  - [x] Google OAuth sign-in button & `/oauth-callback` handler with token URL scrubbing
+  - [x] Forced password change flow (`/change-password`) for first-login technicians
+  - [x] Session and routing cookie invalidation on credential change
 - [ ] **Phase 6: Customer Portal & Booking Wizard**
   - [ ] Multi-step service booking wizard
   - [ ] Live work order tracker with timeline visualization
