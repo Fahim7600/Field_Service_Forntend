@@ -322,3 +322,110 @@ export interface WorkOrderDetail {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export type InvoiceStatus = "DRAFT" | "ISSUED" | "PAID" | "VOID";
+export type InvoiceItemType = "LABOR" | "PARTS" | "EXTRA";
+
+export interface InvoiceItem {
+  id?: string;
+  type: InvoiceItemType | string;
+  description: string;
+  quantity: number;
+  unitAmountCents: number;
+  amountCents?: number;
+}
+
+export interface InvoiceSummary {
+  id: string;
+  invoiceNumber: string;
+  type?: string;
+  status: InvoiceStatus | string;
+  totalCents: number;
+  currency: string;
+  issuedAt?: string | null;
+  paidAt?: string | null;
+  createdAt: string;
+  workOrder: {
+    id: string;
+    status?: string;
+  };
+  customer: {
+    id: string;
+    name: string;
+    email?: string;
+  };
+}
+
+export interface InvoiceDetail extends InvoiceSummary {
+  laborCents: number;
+  partsCents: number;
+  extraCents: number;
+  discountCents: number;
+  taxCents: number;
+  notes?: string | null;
+  voidedAt?: string | null;
+  voidReason?: string | null;
+  items: InvoiceItem[];
+  payments?: Array<{
+    id: string;
+    status: string;
+    amountCents: number;
+    createdAt: string;
+  }>;
+}
+
+export interface CreateInvoicePayload {
+  workOrderId: string;
+  items: InvoiceItem[];
+  notes?: string;
+}
+
+export interface InvoicesQueryParams {
+  page?: number;
+  limit?: number;
+  status?: InvoiceStatus | string;
+  sortBy?: "createdAt" | "totalCents" | "status" | string;
+  order?: "asc" | "desc";
+}
+
+export interface InitiatePaymentPayload {
+  invoiceId: string;
+}
+
+export interface InitiatePaymentResponse {
+  paymentId?: string;
+  paymentUrl?: string;
+  checkoutUrl?: string;
+  url?: string;
+  sessionId?: string;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  interval: "MONTH" | "YEAR" | string;
+  priceCents: number;
+  description?: string;
+  features?: string[];
+}
+
+export interface SubscriptionCheckoutPayload {
+  planId: string;
+}
+
+export interface SubscriptionCheckoutResponse {
+  checkoutUrl?: string;
+  paymentUrl?: string;
+  url?: string;
+  sessionId?: string;
+}
+
+export interface MySubscriptionResponse {
+  id: string;
+  status: "ACTIVE" | "PAST_DUE" | "CANCELLED" | "INACTIVE" | string;
+  currentPeriodEnd?: string | null;
+  plan?: {
+    name: string;
+    interval: string;
+  } | null;
+}
