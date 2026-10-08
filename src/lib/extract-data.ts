@@ -26,6 +26,10 @@ export function extractArray<T>(payload: unknown): T[] {
   if (obj.data && typeof obj.data === "object") {
     const nested = obj.data as Record<string, unknown>;
     const candidates = [
+      "categories",
+      "services",
+      "skills",
+      "technicians",
       "workOrders",
       "items",
       "tasks",
@@ -34,6 +38,7 @@ export function extractArray<T>(payload: unknown): T[] {
       "users",
       "plans",
       "data",
+      "results",
     ];
     for (const key of candidates) {
       if (Array.isArray(nested[key])) {
@@ -44,6 +49,10 @@ export function extractArray<T>(payload: unknown): T[] {
 
   // Check root keys
   const rootCandidates = [
+    "categories",
+    "services",
+    "skills",
+    "technicians",
     "workOrders",
     "items",
     "tasks",

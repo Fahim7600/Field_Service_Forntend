@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
+import { extractArray } from "@/lib/extract-data";
 import { cn } from "@/lib/utils";
 import {
   type ServiceRequestFormValues,
@@ -34,7 +35,34 @@ import {
   TIME_SLOT_OPTIONS,
 } from "@/lib/validations/request";
 import { requestsService } from "@/services/requests.service";
-import type { CreateServiceRequestPayload } from "@/types/api";
+import type { CreateServiceRequestPayload, ServiceCategory } from "@/types/api";
+
+const FALLBACK_CATEGORIES: ServiceCategory[] = [
+  {
+    id: "cat-hvac",
+    name: "HVAC Repair & Maintenance",
+    basePriceCents: 8500,
+    skillId: "hvac",
+  },
+  {
+    id: "cat-plumbing",
+    name: "Plumbing & Leak Repair",
+    basePriceCents: 7500,
+    skillId: "plumbing",
+  },
+  {
+    id: "cat-electrical",
+    name: "Electrical Wiring & Diagnostics",
+    basePriceCents: 9000,
+    skillId: "electrical",
+  },
+  {
+    id: "cat-appliance",
+    name: "Appliance Repair",
+    basePriceCents: 6500,
+    skillId: "appliance",
+  },
+];
 
 const STEPS = [
   {
@@ -71,6 +99,10 @@ export function ServiceRequestWizard() {
     queryKey: ["service-categories"],
     queryFn: () => requestsService.fetchCategories(),
   });
+
+  const categoriesList = extractArray<ServiceCategory>(categories);
+  const availableCategories =
+    categoriesList.length > 0 ? categoriesList : FALLBACK_CATEGORIES;
 
   const form = useForm<ServiceRequestFormValues>({
     resolver: zodResolver(serviceRequestSchema),
@@ -310,10 +342,12 @@ export function ServiceRequestWizard() {
                       {...register("categoryId")}
                     >
                       <option value="">Select a category...</option>
-                      {categories?.map((cat) => (
+                      {availableCategories.map((cat) => (
                         <option key={cat.id} value={cat.id}>
-                          {cat.name} (Base price: $
-                          {(cat.basePriceCents / 100).toFixed(2)})
+                          {cat.name}
+                          {typeof cat.basePriceCents === "number"
+                            ? ` (Base price: $${(cat.basePriceCents / 100).toFixed(2)})`
+                            : ""}
                         </option>
                       ))}
                     </select>

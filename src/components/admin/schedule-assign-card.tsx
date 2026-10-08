@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/lib/api-client";
+import { extractArray } from "@/lib/extract-data";
 import { formatSafeDateTime } from "@/lib/format-date";
 import { adminService } from "@/services/admin.service";
 import type { AvailableTechnician } from "@/types/api";
@@ -208,9 +209,8 @@ export function ScheduleAssignCard({
     staleTime: 10000,
   });
 
-  const availableTechs: AvailableTechnician[] = Array.isArray(techData?.data)
-    ? techData.data
-    : [];
+  const availableTechs: AvailableTechnician[] =
+    extractArray<AvailableTechnician>(techData);
 
   // Reset selected technician if they are no longer available in the new list
   React.useEffect(() => {

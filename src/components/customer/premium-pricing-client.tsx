@@ -28,6 +28,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { getErrorMessage } from "@/lib/api-client";
+import { extractArray } from "@/lib/extract-data";
 import { formatCurrencyCents } from "@/lib/format-currency";
 import { formatSafeDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
@@ -107,7 +108,8 @@ export function PremiumPricingClient() {
     },
   });
 
-  const plans = plansData && plansData.length > 0 ? plansData : FALLBACK_PLANS;
+  const plansList = extractArray<SubscriptionPlan>(plansData);
+  const plans = plansList.length > 0 ? plansList : FALLBACK_PLANS;
   const isMemberActive = mySubscription?.status === "ACTIVE";
 
   if (isPlansLoading || isSubLoading) {
