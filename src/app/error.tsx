@@ -1,9 +1,19 @@
 "use client";
 
-import { AlertTriangle, RotateCcw } from "lucide-react";
+import { AlertTriangle, Home, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
+
+import { Logo } from "@/components/shared/logo";
 import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export default function ErrorPage({
@@ -20,57 +30,69 @@ export default function ErrorPage({
   const isDev = process.env.NODE_ENV === "development";
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="max-w-lg w-full text-center space-y-6">
-        <div className="mx-auto size-20 rounded-full bg-destructive/10 flex items-center justify-center text-destructive shadow-xs">
-          <AlertTriangle className="size-10" aria-hidden="true" />
-        </div>
+    <div className="min-h-screen bg-[#F3F4F6] dark:bg-charcoal-900 flex flex-col items-center justify-center p-4 sm:p-6">
+      <div className="mb-6">
+        <Logo />
+      </div>
 
-        <div className="space-y-2">
-          <span className="text-xs font-bold tracking-widest uppercase text-destructive bg-destructive/10 px-3 py-1 rounded-full">
-            System Error
-          </span>
-          <h1 className="text-3xl font-extrabold text-charcoal-900 tracking-tight sm:text-4xl">
-            Something went wrong
-          </h1>
-          <p className="text-sm text-charcoal-600 leading-relaxed">
-            An unexpected error occurred while processing your request. Our
-            technical team has been notified.
-          </p>
-        </div>
-
-        {isDev && error?.message && (
-          <div className="text-left bg-charcoal-900 text-ash p-4 rounded-lg font-mono text-xs overflow-x-auto border border-charcoal-800">
-            <p className="text-destructive font-semibold mb-1">
-              Development Error Details:
-            </p>
-            <p className="text-white">{error.message}</p>
-            {error.digest && (
-              <p className="text-ash/70 mt-1">Digest: {error.digest}</p>
-            )}
+      <Card className="max-w-md w-full text-center border-border shadow-lg bg-card overflow-hidden">
+        <div className="h-1.5 bg-destructive w-full" />
+        <CardHeader className="pt-8 pb-4 space-y-4">
+          <div className="mx-auto size-16 rounded-full bg-destructive/10 flex items-center justify-center text-destructive ring-8 ring-destructive/5">
+            <AlertTriangle className="size-8" aria-hidden="true" />
           </div>
-        )}
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold tracking-widest uppercase text-destructive bg-destructive/10 px-2.5 py-0.5 rounded-full inline-block">
+              Application Error
+            </span>
+            <CardTitle className="text-2xl font-bold font-heading text-foreground">
+              Something went wrong
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
+              An unexpected error occurred while rendering this view. Our
+              engineering team has been notified.
+            </CardDescription>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-3 pb-6 pt-0">
+          {isDev && error?.message && (
+            <div className="text-left bg-charcoal-900 text-charcoal-100 p-3 rounded-lg font-mono text-[11px] overflow-x-auto border border-charcoal-800">
+              <p className="text-rose-400 font-semibold mb-1">
+                Development Diagnostics:
+              </p>
+              <p className="break-all">{error.message}</p>
+              {error.digest && (
+                <p className="text-charcoal-400 mt-1 text-[10px]">
+                  Digest: {error.digest}
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+
+        <CardFooter className="p-6 pt-0 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Button
             variant="default"
             onClick={reset}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto gap-2 font-semibold"
           >
-            <RotateCcw className="size-4 mr-2" />
-            Try again
+            <RotateCcw className="size-4" />
+            <span>Try Again</span>
           </Button>
           <Link
             href="/"
             className={cn(
               buttonVariants({ variant: "outline" }),
-              "w-full sm:w-auto",
+              "w-full sm:w-auto gap-2",
             )}
           >
-            Go home
+            <Home className="size-4" />
+            <span>Go to Home</span>
           </Link>
-        </div>
-      </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
