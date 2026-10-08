@@ -5,13 +5,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 
 export interface DashboardWelcomeHeaderProps {
-  title: string;
+  title?: string;
   description: string;
+  actions?: React.ReactNode;
 }
 
 export function DashboardWelcomeHeader({
   title: _title,
   description,
+  actions,
 }: DashboardWelcomeHeaderProps) {
   const { user, isLoading } = useAuth();
 
@@ -26,5 +28,11 @@ export function DashboardWelcomeHeader({
 
   const name = user?.name || "User";
 
-  return <PageHeader title={`Welcome, ${name}`} description={description} />;
+  return (
+    <PageHeader
+      title={`Welcome, ${name}`}
+      description={description}
+      actions={actions}
+    />
+  );
 }
