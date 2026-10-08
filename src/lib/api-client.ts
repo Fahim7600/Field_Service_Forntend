@@ -4,6 +4,7 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from "axios";
+import { clearSessionCookies } from "@/lib/session";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ApiResponse, FieldError, PaginatedResponse } from "@/types/api";
 import type { RefreshTokenResponse } from "@/types/auth";
@@ -179,6 +180,11 @@ apiClient.interceptors.response.use(
               return null;
             } catch {
               useAuthStore.getState().logout();
+              try {
+                await clearSessionCookies();
+              } catch {
+                // Ignore cookie clearing error
+              }
               if (
                 typeof window !== "undefined" &&
                 !window.location.pathname.startsWith("/login")
