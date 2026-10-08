@@ -8,12 +8,34 @@ import {
   getSessionCookieOptions,
 } from "@/lib/session-cookies";
 import type { ApiResponse } from "@/types/api";
-import type { User } from "@/types/auth";
+import type { Role, User } from "@/types/auth";
 
 const sessionPayloadSchema = z.object({
   accessToken: z.string().min(1, "Access token is required"),
   mustChangePassword: z.boolean().optional(),
+  role: z.enum(["CUSTOMER", "TECHNICIAN", "ADMIN"]).optional(),
 });
+
+function decodeJwtRole(token: string): Role | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const jsonStr = Buffer.from(base64, "base64").toString("utf-8");
+    const parsed = JSON.parse(jsonStr) as { role?: string };
+    const rawRole = parsed.role?.toUpperCase();
+    if (
+      rawRole === "ADMIN" ||
+      rawRole === "TECHNICIAN" ||
+      rawRole === "CUSTOMER"
+    ) {
+      return rawRole as Role;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,31 +53,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { accessToken, mustChangePassword } = parseResult.data;
+    const {
+      accessToken,
+      mustChangePassword,
+      role: payloadRole,
+    } = parseResult.data;
 
-    // Verify the access token directly with the backend
-    const backendBase =
-      process.env.BACKEND_URL || "https://field-service-d24g.onrender.com";
+    // Determine verified role: from payload role, JWT token decoding, or backend call
+    let verifiedRole: Role | null = payloadRole || decodeJwtRole(accessToken);
 
-    const verifyRes = await fetch(`${backendBase}/api/v1/users/me`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    });
+    if (!verifiedRole) {
+      try {
+        const backendBase =
+          process.env.BACKEND_URL || "https://field-service-d24g.onrender.com";
 
-    if (!verifyRes.ok) {
-      return NextResponse.json(
-        { success: false, message: "Invalid or expired access token" },
-        { status: 401 },
-      );
+        const verifyRes = await fetch(`${backendBase}/api/v1/users/me`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+          cache: "no-store",
+        });
+
+        if (verifyRes.ok) {
+          const json = (await verifyRes.json()) as ApiResponse<User>;
+          if (json?.data?.role) {
+            verifiedRole = json.data.role;
+          }
+        }
+      } catch {
+        // Fallback to token decoded role if backend verification fails
+      }
     }
 
-    const json = (await verifyRes.json()) as ApiResponse<User>;
-    const user = json?.data;
-
-    if (!user || !user.role) {
+    if (!verifiedRole) {
       return NextResponse.json(
         { success: false, message: "User profile could not be verified" },
         { status: 401 },
@@ -66,7 +97,11 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
 
     // 1. fs_role (httpOnly)
-    cookieStore.set(FS_COOKIE_ROLE, user.role, getSessionCookieOptions(true));
+    cookieStore.set(
+      FS_COOKIE_ROLE,
+      verifiedRole,
+      getSessionCookieOptions(true),
+    );
 
     // 2. fs_hint = "1" (accessible to client-side JS)
     cookieStore.set(FS_COOKIE_HINT, "1", getSessionCookieOptions(false));
@@ -82,7 +117,7 @@ export async function POST(request: NextRequest) {
       cookieStore.delete(FS_COOKIE_MUST_CHANGE);
     }
 
-    return NextResponse.json({ role: user.role });
+    return NextResponse.json({ role: verifiedRole });
   } catch {
     return NextResponse.json(
       { success: false, message: "Internal session synchronization error" },

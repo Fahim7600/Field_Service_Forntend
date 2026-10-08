@@ -19,6 +19,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     initialized.current = true;
 
+    // If user is already authenticated in store (e.g. from login mutation), skip silent refresh
+    if (
+      useAuthStore.getState().status === "authenticated" &&
+      useAuthStore.getState().user
+    ) {
+      return;
+    }
+
     async function initializeAuth() {
       // Check for session hint cookie before making unnecessary requests for anonymous visitors
       if (typeof document !== "undefined") {
@@ -36,11 +44,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const baseURL = process.env.NEXT_PUBLIC_API_BASE || "/api/v1";
 
       try {
-        // Step 1: Silent refresh token exchange via httpOnly cookie
+        // Step 1: Silent refresh token exchange via httpOnly cookie (60s timeout for cold start)
         const refreshRes = await axios.post<ApiResponse<RefreshTokenResponse>>(
           `${baseURL}/auth/refresh-token`,
           {},
-          { withCredentials: true, timeout: 10000 },
+          { withCredentials: true, timeout: 60000 },
         );
 
         const accessToken = refreshRes.data?.data?.accessToken;
@@ -58,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               Authorization: `Bearer ${accessToken}`,
             },
             withCredentials: true,
-            timeout: 10000,
+            timeout: 60000,
           },
         );
 
@@ -69,9 +77,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await clearSessionCookies();
           setStatus("unauthenticated");
         }
-      } catch {
-        // Clear stale session cookies on failure and transition quietly to unauthenticated
-        await clearSessionCookies();
+      } catch (err: unknown) {
+        // Only clear cookies if we got an explicit 401 Unauthorized, not a network/timeout blip
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          await clearSessionCookies();
+        }
         setStatus("unauthenticated");
       }
     }

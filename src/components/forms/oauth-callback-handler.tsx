@@ -54,8 +54,8 @@ export function OAuthCallbackHandler() {
         // 4. Set complete session
         setSession(user, token);
 
-        // 5. Synchronize routing cookies
-        await syncSessionCookies(token, user.mustChangePassword);
+        // 5. Synchronize routing cookies with user role
+        await syncSessionCookies(token, user.mustChangePassword, user.role);
 
         // 6. User feedback & redirection
         const firstName = user.name ? user.name.split(" ")[0] : "there";

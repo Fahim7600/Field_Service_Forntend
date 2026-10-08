@@ -20,8 +20,12 @@ export function useLogin() {
       // 1. Update in-memory Zustand session
       setSession(data.user, data.accessToken);
 
-      // 2. Synchronize HTTP cookies for Next.js routing
-      await syncSessionCookies(data.accessToken, data.user.mustChangePassword);
+      // 2. Synchronize HTTP cookies for Next.js routing with role passed explicitly
+      await syncSessionCookies(
+        data.accessToken,
+        data.user.mustChangePassword,
+        data.user.role,
+      );
 
       // 3. User feedback
       const firstName = data.user.name ? data.user.name.split(" ")[0] : "User";

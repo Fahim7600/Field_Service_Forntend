@@ -108,7 +108,7 @@ export const apiClient: AxiosInstance = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 30000,
+  timeout: 60000,
 });
 
 // Request interceptor: add bearer token from memory Zustand store

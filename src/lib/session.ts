@@ -16,6 +16,7 @@ export interface RouterLike {
 export async function syncSessionCookies(
   accessToken: string,
   mustChangePassword?: boolean,
+  role?: Role,
 ): Promise<{ role: Role } | null> {
   try {
     const res = await fetch("/api/session", {
@@ -23,7 +24,7 @@ export async function syncSessionCookies(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ accessToken, mustChangePassword }),
+      body: JSON.stringify({ accessToken, mustChangePassword, role }),
     });
 
     if (!res.ok) {

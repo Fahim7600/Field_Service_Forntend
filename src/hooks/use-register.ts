@@ -36,7 +36,11 @@ export function useRegister() {
       setSession(data.user, data.accessToken);
 
       // 2. Synchronize frontend routing cookies
-      await syncSessionCookies(data.accessToken, data.user.mustChangePassword);
+      await syncSessionCookies(
+        data.accessToken,
+        data.user.mustChangePassword,
+        data.user.role,
+      );
 
       // 3. User feedback
       const firstName = data.user.name ? data.user.name.split(" ")[0] : "there";
