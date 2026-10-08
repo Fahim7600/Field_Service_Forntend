@@ -187,7 +187,10 @@ apiClient.interceptors.response.use(
               }
               if (
                 typeof window !== "undefined" &&
-                !window.location.pathname.startsWith("/login")
+                (window.location.pathname.startsWith("/admin") ||
+                  window.location.pathname.startsWith("/customer") ||
+                  window.location.pathname.startsWith("/technician") ||
+                  window.location.pathname.startsWith("/dashboard"))
               ) {
                 window.location.assign("/login");
               }

@@ -12,8 +12,11 @@ function makeQueryClient(): QueryClient {
   return new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
-        // Skip toast if explicitly opted out
+        // Skip toast if explicitly opted out or if it is an unauthenticated 401 error
         if (query.meta?.skipToast === true) {
+          return;
+        }
+        if (error instanceof ApiError && error.status === 401) {
           return;
         }
         toast.error(getErrorMessage(error));
