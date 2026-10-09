@@ -1,124 +1,427 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { isPast, parseISO } from "date-fns";
 import {
   AlertCircle,
-  ArrowRight,
+  ArrowUpDown,
   CreditCard,
+  Eye,
+  FileText,
   Receipt,
-  Search,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
-import * as React from "react";
 
+import { EmptyState } from "@/components/shared/empty-state";
+import { PaginationControls } from "@/components/shared/pagination-controls";
+import {
+  type ColumnDef,
+  ResponsiveDataList,
+} from "@/components/shared/responsive-data-list";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUrlFilters } from "@/hooks/use-url-filters";
 import { extractArray } from "@/lib/extract-data";
-import { formatCurrencyCents } from "@/lib/format-currency";
-import { formatSafeDate } from "@/lib/format-date";
+import { formatMoney, safeFormatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
-import type {
-  InvoiceStatus,
-  InvoiceSummary,
-  InvoicesQueryParams,
-} from "@/types/api";
+import type { CustomerInvoiceStatus, InvoiceListItem } from "@/types/api";
+
+const CUSTOMER_STATUS_CHIPS: Array<{
+  label: string;
+  value: CustomerInvoiceStatus | "ALL";
+}> = [
+  { label: "All Invoices", value: "ALL" },
+  { label: "Unpaid", value: "ISSUED" },
+  { label: "Paid", value: "PAID" },
+  { label: "Void", value: "VOID" },
+  { label: "Cancelled", value: "CANCELLED" },
+];
 
 export function CustomerInvoicesClient() {
-  const { filters, updateFilters } = useUrlFilters();
-
-  const statusParam = (filters.status as InvoiceStatus | "ALL") || "ALL";
-  const searchParam = (filters.search as string) || "";
-  const pageParam = filters.page || 1;
-
-  const [searchInput, setSearchInput] = React.useState(searchParam);
-
-  const queryParams: InvoicesQueryParams = {
-    page: pageParam,
+  const { filters, updateFilters, resetFilters } = useUrlFilters({
+    page: 1,
     limit: 10,
-    status: statusParam !== "ALL" ? statusParam : undefined,
     sortBy: "createdAt",
     order: "desc",
-  };
+  });
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["customer-invoices", queryParams],
-    queryFn: () => financeService.fetchInvoices(queryParams),
+  const rawStatus = filters.status ? String(filters.status).toUpperCase() : "";
+  const statusFilter =
+    rawStatus && rawStatus !== "ALL"
+      ? (rawStatus as CustomerInvoiceStatus)
+      : undefined;
+  const page = filters.page || 1;
+  const limit = filters.limit || 10;
+  const sortBy = filters.sortBy || "createdAt";
+  const order = filters.order || "desc";
+
+  const sortValue =
+    sortBy === "totalCents" && order === "desc"
+      ? "highest_total"
+      : sortBy === "createdAt" && order === "asc"
+        ? "oldest"
+        : "newest";
+
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: [
+      "customer",
+      "invoices",
+      { status: statusFilter, page, limit, sortBy, order },
+    ],
+    queryFn: () =>
+      financeService.fetchInvoices({
+        status: statusFilter,
+        page,
+        limit,
+        sortBy,
+        order,
+      }),
     staleTime: 15000,
   });
 
-  const invoices = extractArray<InvoiceSummary>(data);
+  const items = extractArray<InvoiceListItem>(data);
   const pagination = data?.pagination;
 
-  const handleStatusChange = (val: string) => {
-    updateFilters({ status: val === "ALL" ? undefined : val, page: 1 });
+  const handleSortChange = (value: string) => {
+    if (value === "highest_total") {
+      updateFilters({ sortBy: "totalCents", order: "desc", page: 1 });
+    } else if (value === "oldest") {
+      updateFilters({ sortBy: "createdAt", order: "asc", page: 1 });
+    } else {
+      updateFilters({ sortBy: "createdAt", order: "desc", page: 1 });
+    }
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateFilters({ search: searchInput || undefined, page: 1 });
+  const handleStatusChange = (statusVal: CustomerInvoiceStatus | "ALL") => {
+    updateFilters({
+      status: statusVal === "ALL" ? undefined : statusVal,
+      page: 1,
+    });
+  };
+
+  const isFiltered = Boolean(statusFilter);
+
+  const checkIsOverdue = (dueDateStr?: string | null, status?: string) => {
+    if (!dueDateStr || status !== "ISSUED") return false;
+    try {
+      const parsed = parseISO(dueDateStr);
+      return !Number.isNaN(parsed.getTime()) && isPast(parsed);
+    } catch {
+      return false;
+    }
+  };
+
+  const columns: ColumnDef<InvoiceListItem>[] = [
+    {
+      id: "invoiceNumber",
+      header: "Invoice #",
+      cell: (item) => (
+        <div className="flex flex-col">
+          <Link
+            href={`/customer/invoices/${item.id}`}
+            className="font-mono font-bold text-foreground hover:underline"
+          >
+            {item.invoiceNumber || item.id.slice(0, 8)}
+          </Link>
+          <span className="text-[11px] text-muted-foreground">
+            Issued {safeFormatDate(item.issuedAt || item.createdAt)}
+          </span>
+        </div>
+      ),
+    },
+    {
+      id: "service",
+      header: "Service",
+      cell: (item) => {
+        const woRef = item.workOrder;
+        const woNumber =
+          woRef?.workOrderNumber || item.workOrderId?.slice(0, 8);
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">
+              {woNumber ? `Work Order #${woNumber}` : "Service Visit"}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "total",
+      header: "Total",
+      cell: (item) => (
+        <span className="font-semibold text-foreground font-mono">
+          {formatMoney(item.totalCents)}
+        </span>
+      ),
+    },
+    {
+      id: "dueDate",
+      header: "Due Date",
+      cell: (item) => {
+        const isOverdue = checkIsOverdue(item.dueDate, item.status);
+        return (
+          <div className="flex items-center gap-1.5">
+            <span
+              className={cn(
+                "text-xs",
+                isOverdue
+                  ? "text-destructive font-semibold"
+                  : "text-muted-foreground",
+              )}
+            >
+              {safeFormatDate(item.dueDate)}
+            </span>
+            {isOverdue && (
+              <Badge
+                variant="destructive"
+                className="text-[9px] uppercase px-1.5 py-0 font-bold tracking-wider"
+              >
+                Overdue
+              </Badge>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (item) => (
+        <StatusBadge
+          status={item.status}
+          label={item.status === "ISSUED" ? "Unpaid" : undefined}
+        />
+      ),
+    },
+    {
+      id: "actions",
+      header: "Action",
+      className: "text-right",
+      cell: (item) => {
+        const isUnpaid = item.status === "ISSUED";
+        return (
+          <div className="flex items-center justify-end gap-2">
+            <Link
+              href={`/customer/invoices/${item.id}`}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "h-8 px-2.5 text-xs gap-1.5 font-medium",
+              )}
+            >
+              <Eye className="size-3.5" />
+              <span>View</span>
+            </Link>
+            {isUnpaid && (
+              <Link
+                href={`/customer/invoices/${item.id}`}
+                className={cn(
+                  buttonVariants({ variant: "cta", size: "sm" }),
+                  "h-8 px-3 text-xs gap-1.5 font-semibold shadow-xs",
+                )}
+              >
+                <CreditCard className="size-3.5" />
+                <span>Pay</span>
+              </Link>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  const renderMobileCard = (item: InvoiceListItem) => {
+    const isUnpaid = item.status === "ISSUED";
+    const isOverdue = checkIsOverdue(item.dueDate, item.status);
+    const woRef = item.workOrder;
+    const woNumber = woRef?.workOrderNumber || item.workOrderId?.slice(0, 8);
+
+    return (
+      <Card className="border-border shadow-xs hover:border-border/80 transition-colors">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-0.5">
+              <Link
+                href={`/customer/invoices/${item.id}`}
+                className="font-mono font-bold text-sm text-foreground hover:underline"
+              >
+                {item.invoiceNumber || item.id.slice(0, 8)}
+              </Link>
+              <p className="text-[11px] text-muted-foreground">
+                {woNumber ? `Work Order #${woNumber}` : "Service Visit"}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {isOverdue && (
+                <Badge
+                  variant="destructive"
+                  className="text-[9px] uppercase px-1.5 py-0 font-bold tracking-wider"
+                >
+                  Overdue
+                </Badge>
+              )}
+              <StatusBadge
+                status={item.status}
+                label={item.status === "ISSUED" ? "Unpaid" : undefined}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs py-1 border-y border-border/50">
+            <div>
+              <span className="text-[10px] uppercase font-semibold text-muted-foreground block">
+                Due Date
+              </span>
+              <span
+                className={cn(
+                  "font-medium",
+                  isOverdue
+                    ? "text-destructive font-semibold"
+                    : "text-foreground",
+                )}
+              >
+                {safeFormatDate(item.dueDate)}
+              </span>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] uppercase font-semibold text-muted-foreground block">
+                Total Amount
+              </span>
+              <span className="font-bold text-foreground font-mono">
+                {formatMoney(item.totalCents)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <Link
+              href={`/customer/invoices/${item.id}`}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "h-8 px-3 text-xs gap-1.5 font-medium flex-1 sm:flex-initial justify-center",
+              )}
+            >
+              <Eye className="size-3.5" />
+              <span>View Invoice</span>
+            </Link>
+            {isUnpaid && (
+              <Link
+                href={`/customer/invoices/${item.id}`}
+                className={cn(
+                  buttonVariants({ variant: "cta", size: "sm" }),
+                  "h-8 px-3 text-xs gap-1.5 font-semibold shadow-xs flex-1 sm:flex-initial justify-center",
+                )}
+              >
+                <CreditCard className="size-3.5" />
+                <span>Pay Now</span>
+              </Link>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
     <div className="space-y-6">
-      {/* Search & Tabs Controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <Tabs
-          value={statusParam}
-          onValueChange={handleStatusChange}
-          className="w-full sm:w-auto"
+      {/* Tab Navigation Header (Invoices / Future Payments) */}
+      <div className="flex items-center border-b border-border">
+        <button
+          type="button"
+          className="pb-2.5 px-4 text-sm font-bold text-primary border-b-2 border-primary -mb-px flex items-center gap-2"
         >
-          <TabsList className="grid grid-cols-4 w-full sm:w-auto">
-            <TabsTrigger value="ALL">All</TabsTrigger>
-            <TabsTrigger value="ISSUED">To Pay</TabsTrigger>
-            <TabsTrigger value="PAID">Paid</TabsTrigger>
-            <TabsTrigger value="DRAFT">Draft</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <form
-          onSubmit={handleSearchSubmit}
-          className="flex w-full sm:w-72 items-center gap-2"
-        >
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search invoice #..."
-              className="pl-9 h-9 text-xs"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </div>
-          <Button
-            type="submit"
-            size="sm"
-            variant="outline"
-            className="h-9 px-3"
-          >
-            Search
-          </Button>
-        </form>
+          <Receipt className="size-4" />
+          <span>Invoices</span>
+        </button>
       </div>
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="space-y-3">
-          {[...Array(4)].map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton loading items
-            <Skeleton key={i} className="h-24 w-full rounded-xl" />
-          ))}
+      {/* Filter Chips & Sort Controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Status Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          {CUSTOMER_STATUS_CHIPS.map((chip) => {
+            const isSelected =
+              chip.value === "ALL"
+                ? !statusFilter
+                : statusFilter === chip.value;
+            return (
+              <button
+                key={chip.value}
+                type="button"
+                onClick={() => handleStatusChange(chip.value)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border shrink-0",
+                  isSelected
+                    ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                    : "bg-card text-muted-foreground border-border hover:bg-accent/50 hover:text-foreground",
+                )}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
         </div>
-      )}
 
-      {/* Error State */}
-      {isError && (
-        <Card className="border-destructive/40 bg-destructive/5 p-6 text-center">
+        {/* Sort & Refresh */}
+        <div className="flex items-center justify-between md:justify-end gap-2.5 shrink-0">
+          <Select
+            value={sortValue}
+            onValueChange={(val) => {
+              if (val) handleSortChange(val);
+            }}
+          >
+            <SelectTrigger className="h-9 w-[150px] text-xs gap-1.5">
+              <ArrowUpDown className="size-3.5 text-muted-foreground shrink-0" />
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest" className="text-xs">
+                Newest First
+              </SelectItem>
+              <SelectItem value="oldest" className="text-xs">
+                Oldest First
+              </SelectItem>
+              <SelectItem value="highest_total" className="text-xs">
+                Highest Total
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="h-9 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+            aria-label="Refresh invoices"
+          >
+            <RefreshCw
+              className={cn("size-3.5", isFetching && "animate-spin")}
+            />
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      {isLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
+        </div>
+      ) : isError ? (
+        <Card className="border-destructive/30 bg-destructive/5 text-center p-6 space-y-3">
           <CardContent className="space-y-3 p-0">
             <AlertCircle className="size-8 text-destructive mx-auto" />
             <div className="space-y-1">
@@ -126,160 +429,66 @@ export function CustomerInvoicesClient() {
                 Failed to load invoices
               </h3>
               <p className="text-xs text-muted-foreground">
-                {error instanceof Error
-                  ? error.message
-                  : "An unexpected error occurred."}
+                {error
+                  ? (error as Error).message
+                  : "Unable to retrieve your billing records."}
               </p>
             </div>
-            <Button size="sm" variant="outline" onClick={() => refetch()}>
-              Try Again
+            <Button
+              size="sm"
+              onClick={() => refetch()}
+              className="gap-1.5 text-xs font-semibold"
+            >
+              <RefreshCw className="size-3.5" />
+              <span>Retry</span>
             </Button>
           </CardContent>
         </Card>
-      )}
-
-      {/* Empty State */}
-      {!isLoading && !isError && invoices.length === 0 && (
-        <Card className="border-dashed border-border p-12 text-center">
-          <CardContent className="space-y-3 p-0">
-            <Receipt className="size-10 text-muted-foreground mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-base font-semibold text-foreground">
-                No invoices found
-              </h3>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                {statusParam === "ISSUED"
-                  ? "Great news! You have no outstanding invoices to pay."
-                  : "Invoices generated for completed service requests will appear here."}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Invoices List / Cards */}
-      {!isLoading && !isError && invoices.length > 0 && (
-        <div className="space-y-3">
-          {invoices.map((invoice) => {
-            const isIssued = invoice.status === "ISSUED";
-
-            return (
-              <Card
-                key={invoice.id}
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title={isFiltered ? "No matching invoices" : "No invoices yet"}
+          description={
+            isFiltered
+              ? "No billing records match the selected status filter."
+              : "Invoices will appear here once your field service appointments are completed and billed."
+          }
+          action={
+            isFiltered ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => resetFilters()}
+                className="gap-1.5 text-xs font-semibold"
+              >
+                <span>Clear Filters</span>
+              </Button>
+            ) : (
+              <Link
+                href="/customer/requests/new"
                 className={cn(
-                  "border-border bg-card transition-all hover:border-primary/40 shadow-xs",
-                  isIssued && "border-amber-500/40 bg-amber-500/[0.02]",
+                  buttonVariants({ variant: "cta", size: "sm" }),
+                  "gap-1.5 text-xs font-semibold shadow-xs",
                 )}
               >
-                <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="space-y-1.5 flex-1">
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <span className="font-mono font-bold text-sm text-foreground">
-                        Invoice #
-                        {invoice.invoiceNumber || invoice.id.slice(0, 8)}
-                      </span>
-                      <StatusBadge status={invoice.status} />
-                      {isIssued && (
-                        <Badge
-                          variant="outline"
-                          className="border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] animate-pulse"
-                        >
-                          Payment Due
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                      <span>
-                        Date:{" "}
-                        {formatSafeDate(invoice.issuedAt || invoice.createdAt)}
-                      </span>
-                      {invoice.workOrder && (
-                        <span>
-                          Work Order:{" "}
-                          <span className="font-mono">
-                            #{invoice.workOrder.id.slice(0, 8)}
-                          </span>
-                        </span>
-                      )}
-                      {invoice.paidAt && (
-                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                          Paid: {formatSafeDate(invoice.paidAt)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                <span>Book Service</span>
+              </Link>
+            )
+          }
+        />
+      ) : (
+        <div className="space-y-4">
+          <ResponsiveDataList
+            items={items}
+            columns={columns}
+            keyExtractor={(item) => item.id}
+            mobileCardRender={renderMobileCard}
+          />
 
-                  {/* Financial Total & CTA */}
-                  <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 border-t sm:border-t-0 pt-3 sm:pt-0 border-border">
-                    <div className="text-left sm:text-right">
-                      <span className="text-[10px] text-muted-foreground uppercase font-semibold block">
-                        Total Amount
-                      </span>
-                      <span className="font-mono font-bold text-base text-foreground">
-                        {formatCurrencyCents(
-                          invoice.totalCents,
-                          invoice.currency,
-                        )}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/customer/invoices/${invoice.id}`}
-                        className={cn(
-                          buttonVariants({
-                            variant: isIssued ? "default" : "outline",
-                            size: "sm",
-                          }),
-                          "gap-1.5",
-                        )}
-                      >
-                        {isIssued ? (
-                          <>
-                            <CreditCard className="size-3.5" />
-                            <span>Pay Now</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>View Details</span>
-                            <ArrowRight className="size-3.5" />
-                          </>
-                        )}
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between pt-4 border-t border-border text-xs text-muted-foreground">
-          <span>
-            Page {pagination.page} of {pagination.totalPages} (
-            {pagination.total} total)
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={pagination.page <= 1}
-              onClick={() => updateFilters({ page: pagination.page - 1 })}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={pagination.page >= pagination.totalPages}
-              onClick={() => updateFilters({ page: pagination.page + 1 })}
-            >
-              Next
-            </Button>
-          </div>
+          <PaginationControls
+            meta={pagination}
+            onPageChange={(p) => updateFilters({ page: p })}
+          />
         </div>
       )}
     </div>
