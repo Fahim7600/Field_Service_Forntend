@@ -461,6 +461,15 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
      - Stripe Webhook endpoint: `https://field-service-d24g.onrender.com/api/v1/payments/webhook`.
      - Test card number: `4242 4242 4242 4242`.
 
+7. **Payments History & Admin Refunds**:
+   - **Customer Payment History (`/customer/payments`)**: Dedicated transaction ledger with URL-synced status filters (`All`, `Succeeded`, `Pending`, `Failed`, `Cancelled`, `Refunded`), sort controls, and direct links to invoices or uncompleted checkout recovery.
+   - **Admin Payments & Refunds (`/admin/payments`)**: Centralized payment transactions registry allowing administrators to review transaction details, Stripe payment references, and initiate refunds.
+   - **Refund Processing (`POST /api/v1/admin/payments/{id}/refund`)**:
+     - Full refund initiation with two-step confirmation dialog (`RefundPaymentDialog` + `AlertDialog`).
+     - Validated mandatory refund reason (5–300 characters) logged for audit compliance.
+     - Live mutation locking and double-click protection to prevent duplicate refund attempts.
+     - Automated multi-cache invalidation updating invoice, payment, and work order views across admin and customer dashboards.
+
 - [x] **Phase 8: Technician Mobile-Optimized Dashboard**
   - [x] Real-time task queue with single-status URL-synced chips (`All`, `Assigned`, `Scheduled`, `Arrived`, `In progress`, `Completed`, `Cancelled`)
   - [x] Job assignment acceptance & decline modal with validated reason (10-500 chars)
@@ -477,6 +486,7 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
   - [x] Work order detail view with customer context, dispatch guidance, and status timeline
   - [x] Interactive technician assignment and visit scheduling forms with conflict safety
   - [x] Comprehensive invoice and billing management (draft editing, issuance, voiding, fallback creation)
+  - [x] Customer payment transactions, receipts, and refund management
   - [ ] Customer and inventory management
   - [ ] Operational metrics and revenue analytics
 
