@@ -76,7 +76,6 @@ export function RejectRequestDialog({
       setIsSubmitting(true);
       await adminService.reviewRequest(requestId, {
         decision: "REJECT",
-        status: "REJECTED",
         reason: values.reason.trim(),
       });
 

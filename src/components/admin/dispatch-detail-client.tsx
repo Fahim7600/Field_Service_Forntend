@@ -40,7 +40,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getErrorMessage } from "@/lib/api-client";
-import { formatSafeDateTime } from "@/lib/format-date";
+import { safeFormatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { adminService } from "@/services/admin.service";
 import { requestsService } from "@/services/requests.service";
@@ -69,7 +69,6 @@ export function DispatchDetailClient({ id }: DispatchDetailClientProps) {
     mutationFn: async () => {
       return adminService.reviewRequest(id, {
         decision: "APPROVE",
-        status: "APPROVED",
       });
     },
     onSuccess: async () => {
@@ -197,7 +196,7 @@ export function DispatchDetailClient({ id }: DispatchDetailClientProps) {
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Submitted on {formatSafeDateTime(request.createdAt)}
+              Submitted on {safeFormatDateTime(request.createdAt)}
             </p>
           </div>
         </div>
@@ -268,7 +267,7 @@ export function DispatchDetailClient({ id }: DispatchDetailClientProps) {
                     {request.preferredAt && (
                       <p className="text-muted-foreground flex items-center gap-1">
                         <Calendar className="size-3" />
-                        Preferred: {formatSafeDateTime(request.preferredAt)}
+                        Preferred: {safeFormatDateTime(request.preferredAt)}
                       </p>
                     )}
                   </div>
@@ -404,7 +403,7 @@ export function DispatchDetailClient({ id }: DispatchDetailClientProps) {
                 </p>
                 {request.reviewedAt && (
                   <p className="text-[11px] text-muted-foreground">
-                    Reviewed on {formatSafeDateTime(request.reviewedAt)}
+                    Reviewed on {safeFormatDateTime(request.reviewedAt)}
                   </p>
                 )}
               </AlertDescription>

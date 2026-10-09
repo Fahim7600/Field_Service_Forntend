@@ -39,7 +39,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/lib/api-client";
 import { extractArray } from "@/lib/extract-data";
-import { formatSafeDateTime } from "@/lib/format-date";
+import { safeFormatDateTime } from "@/lib/format";
 import { adminService } from "@/services/admin.service";
 import type { AvailableTechnician } from "@/types/api";
 
@@ -327,7 +327,7 @@ export function ScheduleAssignCard({
             {preferredAt && (
               <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                 <Clock className="size-3 text-muted-foreground" />
-                Customer requested: {formatSafeDateTime(preferredAt)}
+                Customer requested: {safeFormatDateTime(preferredAt)}
               </span>
             )}
           </div>

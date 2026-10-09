@@ -3,16 +3,18 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
-  Clock,
-  ExternalLink,
+  ArrowRight,
+  Filter,
   Inbox,
-  Sparkles,
-  Star,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
+import * as React from "react";
 
+import { DueBadge } from "@/components/shared/due-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PaginationControls } from "@/components/shared/pagination-controls";
+import { PriorityBadge } from "@/components/shared/priority-badge";
 import {
   type ColumnDef,
   ResponsiveDataList,
@@ -21,81 +23,78 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { useUrlFilters } from "@/hooks/use-url-filters";
 import { extractArray } from "@/lib/extract-data";
-import { formatSafeDate, formatSafeDateTime } from "@/lib/format-date";
+import { isPast, parseSafeDate, safeFormatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { adminService } from "@/services/admin.service";
 import type { DispatchQueueItem } from "@/types/api";
 
+const PRIORITY_OPTIONS = [
+  { label: "All Priorities", value: "" },
+  { label: "High / Premium", value: "HIGH" },
+  { label: "Normal", value: "NORMAL" },
+] as const;
+
 export function DispatchQueueClient() {
   const { filters, updateFilters } = useUrlFilters();
 
-  const typeFilter =
-    (filters.type as "REQUEST_REVIEW" | "NEEDS_TECHNICIAN") || undefined;
+  const priorityFilter = (filters.priority as string) || "";
   const page = filters.page || 1;
   const limit = filters.limit || 10;
 
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["admin", "dispatch-queue", { page, limit, type: typeFilter }],
-    queryFn: () =>
-      adminService.fetchDispatchQueue({ page, limit, type: typeFilter }),
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "dispatch-queue", { page, limit }],
+    queryFn: () => adminService.fetchDispatchQueue({ page, limit }),
     placeholderData: (previousData) => previousData,
     staleTime: 15000,
   });
 
-  const items = extractArray<DispatchQueueItem>(data);
+  const rawItems = extractArray<DispatchQueueItem>(data);
   const pagination = data?.pagination;
+
+  // Filter in client if priority filter is selected
+  const items = React.useMemo(() => {
+    if (!priorityFilter) return rawItems;
+    return rawItems.filter((item) => {
+      const p = String(item.priority || "").toUpperCase();
+      if (priorityFilter === "HIGH") {
+        return p === "HIGH" || Boolean(item.isPremium);
+      }
+      if (priorityFilter === "NORMAL") {
+        return p === "NORMAL" && !item.isPremium;
+      }
+      return true;
+    });
+  }, [rawItems, priorityFilter]);
+
+  // Compute metrics
+  const totalCount = pagination?.total ?? rawItems.length;
+  const overdueCount = React.useMemo(() => {
+    return rawItems.filter((i) => {
+      if (i.isLate || i.isReviewOverdue) return true;
+      if (!i.reviewDueAt) return false;
+      const d = parseSafeDate(i.reviewDueAt);
+      return d ? isPast(d) : false;
+    }).length;
+  }, [rawItems]);
 
   const columns: ColumnDef<DispatchQueueItem>[] = [
     {
       id: "requestNumber",
       header: "Request #",
-      cell: (item) => {
-        const isHighPriority = item.priority === "HIGH";
-        const isPremium = Boolean(item.isPremium);
-        const isOverdue = Boolean(item.isLate);
-
-        return (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-mono font-semibold text-charcoal-900 dark:text-charcoal-100">
-                {item.requestNumber || item.id.slice(0, 8)}
-              </span>
-              {isHighPriority && (
-                <Badge
-                  variant="outline"
-                  className="gap-1 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold px-1.5 py-0 text-[10px]"
-                >
-                  <Star className="size-3 fill-amber-500 text-amber-500" />
-                  HIGH
-                </Badge>
-              )}
-              {isPremium && (
-                <Badge
-                  variant="outline"
-                  className="gap-1 border-purple-500/40 bg-purple-500/10 text-purple-700 dark:text-purple-300 font-semibold px-1.5 py-0 text-[10px]"
-                >
-                  <Sparkles className="size-3 text-purple-500" />
-                  PREMIUM
-                </Badge>
-              )}
-            </div>
-            {isOverdue && (
-              <div className="flex items-center gap-1 text-[11px] font-medium text-destructive">
-                <AlertCircle className="size-3 shrink-0" />
-                <span>Review Overdue</span>
-              </div>
-            )}
-            {item.title && (
-              <span className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">
-                {item.title}
-              </span>
-            )}
-          </div>
-        );
-      },
+      cell: (item) => (
+        <div className="flex flex-col gap-0.5">
+          <span className="font-mono font-bold text-charcoal-900 dark:text-charcoal-100">
+            {item.requestNumber || `#${item.id.slice(0, 8)}`}
+          </span>
+          {item.title && (
+            <span className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">
+              {item.title}
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       id: "customer",
@@ -123,209 +122,201 @@ export function DispatchQueueClient() {
       ),
     },
     {
-      id: "type",
-      header: "Queue Stage",
-      cell: (item) => {
-        const isNeedsTech = item.type === "NEEDS_TECHNICIAN";
-        return (
-          <StatusBadge
-            status={isNeedsTech ? "APPROVED" : "SUBMITTED"}
-            label={isNeedsTech ? "Needs Tech" : "Awaiting Review"}
-          />
-        );
-      },
+      id: "priority",
+      header: "Priority",
+      cell: (item) => <PriorityBadge priority={item.priority} />,
     },
     {
-      id: "date",
-      header: "Submitted At",
+      id: "submitted",
+      header: "Submitted",
       cell: (item) => (
-        <div className="flex flex-col text-xs text-muted-foreground">
-          <span>{formatSafeDate(item.createdAt)}</span>
-          <span className="text-[11px] opacity-80">
-            {formatSafeDateTime(item.createdAt, "h:mm a")}
-          </span>
-        </div>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {safeFormatDate(item.createdAt)}
+        </span>
       ),
     },
     {
-      id: "actions",
-      header: "Actions",
+      id: "due",
+      header: "Review Due",
+      cell: (item) => (
+        <DueBadge reviewDueAt={item.reviewDueAt} status="SUBMITTED" />
+      ),
+    },
+    {
+      id: "action",
+      header: "Action",
       className: "text-right",
-      cell: (item) => {
-        const targetId = item.requestId || item.id;
-        const isNeedsTech = item.type === "NEEDS_TECHNICIAN";
-
-        return (
+      cell: (item) => (
+        <div className="flex justify-end">
           <Link
-            href={`/admin/dispatch/${targetId}`}
+            href={`/admin/dispatch/${item.id}`}
             className={cn(
-              buttonVariants({
-                size: "sm",
-                variant: item.priority === "HIGH" ? "default" : "outline",
-              }),
-              "text-xs h-8 gap-1.5 shadow-2xs",
+              buttonVariants({ variant: "default", size: "sm" }),
+              "h-8 px-3 font-semibold",
             )}
           >
-            <span>{isNeedsTech ? "Assign" : "Review"}</span>
-            <ExternalLink className="size-3.5" />
+            Review
+            <ArrowRight className="ml-1.5 size-3.5" />
           </Link>
-        );
-      },
+        </div>
+      ),
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Filter Tabs & Controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
-        <div className="flex items-center gap-1.5 bg-muted/50 p-1 rounded-xl border border-border">
-          <Button
-            size="sm"
-            variant={typeFilter === undefined ? "default" : "ghost"}
-            className="text-xs h-8 rounded-lg"
-            onClick={() => updateFilters({ type: undefined, page: 1 })}
-          >
-            All Items
-          </Button>
-          <Button
-            size="sm"
-            variant={typeFilter === "REQUEST_REVIEW" ? "default" : "ghost"}
-            className="text-xs h-8 rounded-lg"
-            onClick={() => updateFilters({ type: "REQUEST_REVIEW", page: 1 })}
-          >
-            Awaiting Review
-          </Button>
-          <Button
-            size="sm"
-            variant={typeFilter === "NEEDS_TECHNICIAN" ? "default" : "ghost"}
-            className="text-xs h-8 rounded-lg"
-            onClick={() => updateFilters({ type: "NEEDS_TECHNICIAN", page: 1 })}
-          >
-            Needs Technician
-          </Button>
+      {/* Controls Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-panel border border-border p-4 rounded-xl shadow-xs">
+        {/* Count summary */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-charcoal-900 dark:text-charcoal-100">
+              Queue Status:
+            </span>
+            <Badge
+              variant="outline"
+              className="font-semibold text-xs px-2.5 py-0.5"
+            >
+              {totalCount} waiting
+            </Badge>
+          </div>
+          {overdueCount > 0 && (
+            <Badge
+              variant="outline"
+              className="bg-destructive/15 text-destructive border-destructive/30 text-xs font-semibold px-2 py-0.5 inline-flex items-center gap-1"
+            >
+              <AlertCircle className="size-3" />
+              <span>{overdueCount} overdue</span>
+            </Badge>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Clock className="size-3.5 text-muted-foreground" />
-          <span>High-priority requests sorted to top</span>
+        {/* Priority Filter and Refresh */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-background border border-input rounded-lg px-2.5 py-1">
+            <Filter className="size-3.5 text-muted-foreground" />
+            <select
+              value={priorityFilter}
+              onChange={(e) =>
+                updateFilters({
+                  priority: e.target.value || undefined,
+                  page: 1,
+                })
+              }
+              aria-label="Filter by priority"
+              className="bg-transparent text-xs font-medium text-foreground focus:outline-hidden cursor-pointer"
+            >
+              {PRIORITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="h-8 gap-1.5 text-xs"
+          >
+            <RefreshCw
+              className={cn("size-3.5", isFetching && "animate-spin")}
+            />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
         </div>
       </div>
 
-      {/* Loading Skeletons */}
-      {isLoading && !data && (
-        <div className="space-y-3">
-          <div className="rounded-xl border border-border bg-card p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-6 w-20" />
+      {/* Main Table / Skeletons / Error / Empty View */}
+      {isLoading ? (
+        <Card className="border-border shadow-xs">
+          <CardContent className="p-6 space-y-4">
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton
+                  // biome-ignore lint/suspicious/noArrayIndexKey: Skeletons
+                  key={i}
+                  className="h-14 w-full rounded-lg"
+                />
+              ))}
             </div>
-            <div className="space-y-2">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
+          </CardContent>
+        </Card>
+      ) : isError ? (
+        <Card className="border-destructive/30 bg-destructive/5 shadow-xs">
+          <CardContent className="p-8 text-center space-y-4">
+            <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
+              <AlertCircle className="size-6" />
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Error State */}
-      {isError && (
-        <Card className="border-destructive/30 bg-destructive/5 p-6 text-center">
-          <CardContent className="space-y-3 p-0">
-            <AlertCircle className="size-8 text-destructive mx-auto" />
             <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-destructive">
+              <h3 className="text-base font-bold text-destructive">
                 Failed to load dispatch queue
               </h3>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
                 {error instanceof Error
                   ? error.message
-                  : "An error occurred while fetching requests."}
+                  : "An unexpected error occurred while communicating with the server."}
               </p>
             </div>
             <Button
-              size="sm"
               variant="outline"
-              onClick={() => window.location.reload()}
+              size="sm"
+              onClick={() => refetch()}
+              className="border-destructive/30 text-destructive hover:bg-destructive/10"
             >
-              Retry
+              <RefreshCw className="size-3.5 mr-1.5" />
+              Try Again
             </Button>
           </CardContent>
         </Card>
-      )}
-
-      {/* Data Table */}
-      {!isLoading && !isError && (
-        <>
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={Inbox}
+          title="Queue is clear"
+          description={
+            priorityFilter
+              ? "No service requests match the selected priority filter."
+              : "There are no service requests currently waiting for review or dispatch."
+          }
+          action={
+            priorityFilter ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => updateFilters({ priority: undefined, page: 1 })}
+              >
+                Clear Filter
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="space-y-4">
           <ResponsiveDataList
             items={items}
             keyExtractor={(item) => item.id}
             columns={columns}
-            emptyState={
-              <EmptyState
-                icon={Inbox}
-                title="Dispatch Queue is Empty"
-                description={
-                  typeFilter
-                    ? "No pending items found for the selected filter stage."
-                    : "All customer service requests have been reviewed and assigned."
-                }
-              />
-            }
-            mobileCardRender={(item) => {
-              const targetId = item.requestId || item.id;
-              const isHighPriority = item.priority === "HIGH";
-              const isPremium = Boolean(item.isPremium);
-              const isNeedsTech = item.type === "NEEDS_TECHNICIAN";
-
-              return (
-                <Card
-                  className={`p-4 border transition-colors shadow-2xs space-y-3 ${
-                    isHighPriority
-                      ? "border-amber-500/40 bg-amber-500/[0.02]"
-                      : "border-border bg-card"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono text-xs font-bold text-charcoal-900 dark:text-charcoal-100">
-                          {item.requestNumber || item.id.slice(0, 8)}
-                        </span>
-                        {isHighPriority && (
-                          <Badge
-                            variant="outline"
-                            className="gap-1 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold px-1.5 py-0 text-[10px]"
-                          >
-                            <Star className="size-2.5 fill-amber-500 text-amber-500" />
-                            HIGH
-                          </Badge>
-                        )}
-                        {isPremium && (
-                          <Badge
-                            variant="outline"
-                            className="gap-1 border-purple-500/40 bg-purple-500/10 text-purple-700 dark:text-purple-300 font-semibold px-1.5 py-0 text-[10px]"
-                          >
-                            <Sparkles className="size-2.5 text-purple-500" />
-                            PREMIUM
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs font-semibold text-charcoal-800 dark:text-charcoal-200">
-                        {item.title || "Service Request"}
-                      </p>
-                    </div>
-
-                    <StatusBadge
-                      status={isNeedsTech ? "APPROVED" : "SUBMITTED"}
-                      label={isNeedsTech ? "Needs Tech" : "Pending"}
-                    />
+            mobileCardRender={(item) => (
+              <Card className="border border-border bg-card p-4 shadow-2xs space-y-3">
+                <CardContent className="p-0 space-y-3 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono font-bold text-sm text-charcoal-900 dark:text-charcoal-100">
+                      {item.requestNumber || `#${item.id.slice(0, 8)}`}
+                    </span>
+                    <PriorityBadge priority={item.priority} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs border-y border-border/50 py-2">
+                  {item.title && (
+                    <p className="font-medium text-charcoal-800 dark:text-charcoal-200">
+                      {item.title}
+                    </p>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2 text-muted-foreground pt-1 border-t border-border/50">
                     <div>
-                      <span className="text-muted-foreground block text-[10px] uppercase">
+                      <span className="block text-[10px] uppercase tracking-wider font-semibold text-charcoal-500">
                         Customer
                       </span>
                       <span className="font-medium text-charcoal-900 dark:text-charcoal-100">
@@ -333,7 +324,7 @@ export function DispatchQueueClient() {
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground block text-[10px] uppercase">
+                      <span className="block text-[10px] uppercase tracking-wider font-semibold text-charcoal-500">
                         Category
                       </span>
                       <span className="font-medium text-charcoal-900 dark:text-charcoal-100">
@@ -342,29 +333,30 @@ export function DispatchQueueClient() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 pt-1">
-                    <span className="text-[11px] text-muted-foreground">
-                      {formatSafeDate(item.createdAt)}
-                    </span>
+                  <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wider font-semibold text-charcoal-500">
+                        Review Due
+                      </span>
+                      <DueBadge
+                        reviewDueAt={item.reviewDueAt}
+                        status="SUBMITTED"
+                      />
+                    </div>
                     <Link
-                      href={`/admin/dispatch/${targetId}`}
+                      href={`/admin/dispatch/${item.id}`}
                       className={cn(
-                        buttonVariants({
-                          size: "sm",
-                          variant: isHighPriority ? "default" : "outline",
-                        }),
-                        "text-xs h-8 gap-1.5",
+                        buttonVariants({ variant: "default", size: "sm" }),
+                        "h-8 px-3 font-semibold",
                       )}
                     >
-                      <span>
-                        {isNeedsTech ? "Assign Technician" : "Review Request"}
-                      </span>
-                      <ExternalLink className="size-3.5" />
+                      Review
+                      <ArrowRight className="ml-1.5 size-3.5" />
                     </Link>
                   </div>
-                </Card>
-              );
-            }}
+                </CardContent>
+              </Card>
+            )}
           />
 
           {pagination && pagination.totalPages > 1 && (
@@ -375,7 +367,7 @@ export function DispatchQueueClient() {
               />
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
