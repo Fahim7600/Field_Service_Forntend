@@ -19,7 +19,8 @@ import {
 import Link from "next/link";
 import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
-import { ImageUploader } from "@/components/forms/image-uploader";
+import { ImagePicker, type PickedImage } from "@/components/forms/image-picker";
+import { UploadProgress } from "@/components/forms/upload-progress";
 import { Container } from "@/components/shared/container";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -50,7 +51,6 @@ interface ServiceReportClientProps {
 }
 
 export function ServiceReportClient({ id }: ServiceReportClientProps) {
-  const [isUploadingPhotos, setIsUploadingPhotos] = React.useState(false);
   const [draftRestored, setDraftRestored] = React.useState(false);
 
   // Fetch Task
@@ -69,6 +69,7 @@ export function ServiceReportClient({ id }: ServiceReportClientProps) {
   const {
     state: completionState,
     errorMessage: completionError,
+    uploadProgress,
     isBusy,
     isReportSaved,
     submitAndComplete,
@@ -90,7 +91,7 @@ export function ServiceReportClient({ id }: ServiceReportClientProps) {
     },
   });
 
-  // Restore draft on mount
+  // Restore text draft on mount
   React.useEffect(() => {
     if (!draftRestored && task) {
       const draft = loadDraft(id);
@@ -99,7 +100,7 @@ export function ServiceReportClient({ id }: ServiceReportClientProps) {
           workDone: draft.workDone || "",
           partsUsed: draft.partsUsed || "",
           hoursSpent: draft.hoursSpent || 1,
-          photos: draft.photos || [],
+          photos: [],
         });
       }
       setDraftRestored(true);
@@ -113,29 +114,40 @@ export function ServiceReportClient({ id }: ServiceReportClientProps) {
     }
   }, [task, markReportAlreadySaved]);
 
-  // Debounced auto-save draft while typing
-  const watchedValues = form.watch();
+  // Debounced auto-save text draft while typing
+  const workDone = form.watch("workDone");
+  const partsUsed = form.watch("partsUsed");
+  const hoursSpent = form.watch("hoursSpent");
+  const photos = form.watch("photos");
+
   React.useEffect(() => {
     if (!draftRestored || isReportSaved) return;
 
     const timer = setTimeout(() => {
-      saveDraft(id, watchedValues);
+      saveDraft(id, {
+        workDone,
+        partsUsed,
+        hoursSpent: Number(hoursSpent) || 1,
+      });
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [id, watchedValues, draftRestored, isReportSaved]);
+  }, [id, workDone, partsUsed, hoursSpent, draftRestored, isReportSaved]);
 
-  // Prevent accidental navigation when form is dirty or photos are uploading
+  // Prevent accidental navigation when form is dirty or photos are picked
   React.useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if ((form.formState.isDirty || isUploadingPhotos) && !isReportSaved) {
+      const hasUnsavedContent =
+        (form.formState.isDirty || (photos && photos.length > 0)) &&
+        !isReportSaved;
+      if (hasUnsavedContent) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [form.formState.isDirty, isUploadingPhotos, isReportSaved]);
+  }, [form.formState.isDirty, photos, isReportSaved]);
 
   // 1. Loading State
   if (isLoading) {
@@ -527,22 +539,33 @@ export function ServiceReportClient({ id }: ServiceReportClientProps) {
             </div>
 
             {/* Completion Photos */}
-            <div className="space-y-1.5 pt-2 border-t border-border">
+            <div className="space-y-2 pt-2 border-t border-border">
               <Controller
                 control={form.control}
                 name="photos"
                 render={({ field }) => (
-                  <ImageUploader
-                    value={field.value || []}
-                    onChange={(urls) => field.onChange(urls)}
-                    onUploadingChange={setIsUploadingPhotos}
+                  <ImagePicker
+                    value={(field.value as PickedImage[]) || []}
+                    onChange={(images) => field.onChange(images)}
                     disabled={isBusy}
                     label="Completion Photos (Optional)"
                     maxFiles={5}
                   />
                 )}
               />
+              <p className="text-[11px] text-muted-foreground">
+                Photos are not saved in drafts. If you reload the page you will
+                need to select them again.
+              </p>
             </div>
+
+            {/* Upload Progress Bar if submitting report */}
+            {completionState === "saving-report" && (
+              <UploadProgress
+                progress={uploadProgress}
+                label="Submitting service report and photos..."
+              />
+            )}
           </CardContent>
 
           <CardFooter className="flex items-center justify-between border-t border-border pt-4 bg-slate-50/50 dark:bg-slate-900/20">
@@ -556,7 +579,7 @@ export function ServiceReportClient({ id }: ServiceReportClientProps) {
             <Button
               type="submit"
               variant="default"
-              disabled={isBusy || isUploadingPhotos || !form.formState.isValid}
+              disabled={isBusy || !form.formState.isValid}
             >
               {isBusy ? (
                 <>
@@ -564,11 +587,6 @@ export function ServiceReportClient({ id }: ServiceReportClientProps) {
                   {completionState === "saving-report"
                     ? "Submitting report..."
                     : "Completing job..."}
-                </>
-              ) : isUploadingPhotos ? (
-                <>
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                  Uploading photos...
                 </>
               ) : (
                 <>

@@ -1,9 +1,13 @@
-import { apiGet, apiGetPaginated, apiPatch, apiPost } from "@/lib/api-client";
+import {
+  apiGet,
+  apiGetPaginated,
+  apiPatch,
+  apiPost,
+  apiPostForm,
+} from "@/lib/api-client";
 import type {
-  CreateServiceReportPayload,
   PaginatedResponse,
   ServiceReportDetail,
-  SubmitServiceReportPayload,
   TechnicianTask,
   TechnicianTasksQueryParams,
   WorkOrder,
@@ -82,65 +86,66 @@ export const technicianService = {
   },
 
   /**
-   * Submits a service report with work done description, parts used, hours spent, and photo attachments.
+   * Submits a service report with work done description, parts used, hours spent, and photo attachments as multipart/form-data.
    */
   async submitServiceReport(
     id: string,
-    payload: SubmitServiceReportPayload | CreateServiceReportPayload | FormData,
+    payload:
+      | {
+          workDone: string;
+          partsUsed: string;
+          hoursSpent: number;
+          photos?: (File | { file: File })[];
+        }
+      | FormData,
+    onProgress?: (percent: number) => void,
   ): Promise<{
+    id: string;
+    workOrderId: string;
+    workDone: string;
+    hoursSpent: number;
     report?: ServiceReportDetail;
-    id?: string;
-    workOrderId?: string;
   }> {
     if (payload instanceof FormData) {
-      return apiPost<{ report: ServiceReportDetail }, FormData>(
-        `/work-orders/${id}/service-report`,
-        payload,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        },
-      );
+      return apiPostForm<{
+        id: string;
+        workOrderId: string;
+        workDone: string;
+        hoursSpent: number;
+        report?: ServiceReportDetail;
+      }>(`/work-orders/${id}/service-report`, payload, {
+        onUploadProgress: onProgress,
+      });
     }
 
-    if ("files" in payload && payload.files && payload.files.length > 0) {
-      const formData = new FormData();
-      formData.append("workDone", payload.workDone);
-      formData.append("hoursSpent", String(payload.hoursSpent));
-      if (payload.partsUsed) {
-        formData.append(
-          "partsUsed",
-          typeof payload.partsUsed === "string"
-            ? payload.partsUsed
-            : JSON.stringify(payload.partsUsed),
-        );
-      }
-      for (const file of payload.files) {
-        formData.append("photos", file);
-      }
+    const formData = new FormData();
+    formData.append("workDone", payload.workDone);
+    formData.append("partsUsed", payload.partsUsed || "None");
+    formData.append("hoursSpent", String(payload.hoursSpent));
 
-      return apiPost<{ report: ServiceReportDetail }, FormData>(
-        `/work-orders/${id}/service-report`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        },
-      );
+    if (payload.photos && Array.isArray(payload.photos)) {
+      for (const item of payload.photos) {
+        if (item instanceof File) {
+          formData.append("photos", item);
+        } else if (
+          item &&
+          typeof item === "object" &&
+          "file" in item &&
+          item.file instanceof File
+        ) {
+          formData.append("photos", item.file);
+        }
+      }
     }
 
-    return apiPost<
-      { report?: ServiceReportDetail; id?: string },
-      Record<string, unknown>
-    >(`/work-orders/${id}/service-report`, {
-      workDone: payload.workDone,
-      hoursSpent: payload.hoursSpent,
-      partsUsed: payload.partsUsed,
-      ...("photos" in payload && payload.photos
-        ? { photos: payload.photos }
-        : {}),
+    return apiPostForm<{
+      id: string;
+      workOrderId: string;
+      workDone: string;
+      hoursSpent: number;
+      report?: ServiceReportDetail;
+    }>(`/work-orders/${id}/service-report`, formData, {
+      onUploadProgress: onProgress,
     });
   },
 };

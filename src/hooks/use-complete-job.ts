@@ -36,6 +36,7 @@ export function useCompleteJob({
 
   const [state, setState] = React.useState<CompleteJobState>("idle");
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = React.useState<number>(0);
 
   // Track if report is already successfully committed to avoid calling it twice
   const reportCommittedRef = React.useRef(false);
@@ -113,7 +114,7 @@ export function useCompleteJob({
   ]);
 
   /**
-   * Main submission: Step 1 (Save Report) -> Step 2 (Mark Completed).
+   * Main submission: Step 1 (Save Report with multipart photos) -> Step 2 (Mark Completed).
    */
   const submitAndComplete = React.useCallback(
     async (values: ServiceReportFormValues) => {
@@ -124,21 +125,25 @@ export function useCompleteJob({
       // 1. Step 1: Submit Service Report (if not already committed)
       if (!reportCommittedRef.current) {
         updateState("saving-report");
+        setUploadProgress(0);
 
         try {
           // OpenAPI spec requires partsUsed (non-empty string).
           // If empty/omitted in UI, normalize to "None" so backend validation passes.
           const normalizedPartsUsed = values.partsUsed?.trim() || "None";
 
-          await technicianService.submitServiceReport(workOrderId, {
-            workDone: values.workDone,
-            hoursSpent: values.hoursSpent,
-            partsUsed: normalizedPartsUsed,
-            photos:
-              values.photos && values.photos.length > 0
-                ? values.photos
-                : undefined,
-          });
+          await technicianService.submitServiceReport(
+            workOrderId,
+            {
+              workDone: values.workDone,
+              hoursSpent: values.hoursSpent,
+              partsUsed: normalizedPartsUsed,
+              photos: values.photos,
+            },
+            (percent) => {
+              setUploadProgress(percent);
+            },
+          );
           reportCommittedRef.current = true;
           updateState("report-saved");
         } catch (err: unknown) {
@@ -201,6 +206,7 @@ export function useCompleteJob({
   return {
     state,
     errorMessage,
+    uploadProgress,
     isBusy,
     isReportSaved,
     submitAndComplete,

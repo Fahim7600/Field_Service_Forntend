@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { PickedImage } from "@/components/forms/image-picker";
 
 export const serviceReportSchema = z.object({
   workDone: z
@@ -14,7 +15,15 @@ export const serviceReportSchema = z.object({
     .min(0.25, "Hours spent must be at least 0.25 (15 mins)")
     .max(24, "Hours spent cannot exceed 24 hours per visit"),
   photos: z
-    .array(z.string().url("Invalid photo URL"))
+    .array(
+      z.custom<PickedImage>(
+        (val): val is PickedImage =>
+          typeof val === "object" &&
+          val !== null &&
+          "file" in (val as Record<string, unknown>),
+        { message: "Invalid photo attachment" },
+      ),
+    )
     .max(5, "Maximum 5 photos allowed"),
 });
 

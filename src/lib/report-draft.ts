@@ -1,22 +1,23 @@
-import type { ServiceReportFormValues } from "./validations/service-report";
-
-const STORAGE_PREFIX = "field_service_report_draft_";
-
 export interface ServiceReportDraftValues {
   workDone: string;
   partsUsed: string;
   hoursSpent: number;
-  photos: string[];
   lastSavedAt: string;
 }
 
+const STORAGE_PREFIX = "field_service_report_draft_";
+
 /**
- * Safely saves the report form draft into sessionStorage.
- * Never throws exceptions if storage is blocked or full.
+ * Safely saves text fields of the report form draft into sessionStorage.
+ * File attachments are not saved in sessionStorage.
  */
 export function saveDraft(
   workOrderId: string,
-  values: ServiceReportFormValues,
+  values: {
+    workDone?: string;
+    partsUsed?: string;
+    hoursSpent?: number;
+  },
 ): void {
   if (typeof window === "undefined" || !workOrderId) return;
 
@@ -24,8 +25,7 @@ export function saveDraft(
     const draft: ServiceReportDraftValues = {
       workDone: values.workDone || "",
       partsUsed: values.partsUsed || "",
-      hoursSpent: values.hoursSpent || 0,
-      photos: Array.isArray(values.photos) ? values.photos : [],
+      hoursSpent: values.hoursSpent || 1,
       lastSavedAt: new Date().toISOString(),
     };
     window.sessionStorage.setItem(
