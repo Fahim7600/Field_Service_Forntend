@@ -387,11 +387,14 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
   - [ ] Live work order tracker with timeline visualization
   - [ ] Customer billing history and online checkout
 - [x] **Phase 8: Technician Mobile-Optimized Dashboard**
-  - [x] Real-time task queue with URL-synced status chips
-  - [x] Job assignment acceptance & decline modal with reasons
-  - [x] Step progression (Scheduled -> Arrived -> In progress) with confirmation dialogs
+  - [x] Real-time task queue with single-status URL-synced chips (`All`, `Assigned`, `Scheduled`, `Arrived`, `In progress`, `Completed`, `Cancelled`)
+  - [x] Job assignment acceptance & decline modal with validated reason (10-500 chars)
+  - [x] Step progression (`SCHEDULED` -> `ARRIVED` -> `IN_PROGRESS`) with state machine rules & confirmation dialogs
   - [x] Visual work progress stepper and Google Maps location integration
-  - [ ] Comprehensive service report form with photos and signature (Next)
+  - [x] Dedicated service report page (`/technician/tasks/[id]/report`) with local draft persistence and image upload
+  - [x] Two-step retry-safe completion workflow (`useCompleteJob`) ensuring reports are never double-submitted
+  - [x] Daily agenda schedule grouped by calendar day with range selector chips (`7`, `30`, `all`)
+  - [x] Technician overview dashboard with four independent metric cards and spotlight next visit
 - [x] **Phase 9: Admin Command Center**
   - [x] Dispatch queue with "Needs review" and "Needs technician" URL-synced tabs
   - [x] Request review detail with Approve (auto-creates work order) & Reject modal
