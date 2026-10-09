@@ -327,11 +327,17 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
 3. **Work Order Management (`/admin/work-orders`)**: Full list of generated work orders with single-status filters, sorting (createdAt, visitStart, status), and responsive data tables.
 4. **Work Order Inspection (`/admin/work-orders/[id]`)**: Full view of customer details, linked service request, assigned technician, visit window, dispatch actions guidance, and chronological status transition history.
 
-### Dispatch Rules & Conflict Handling
-- **Step 1: Work order APPROVED**: Admin chooses a visit window exclusively to query active, free technicians qualified with the required skill (`GET /admin/technicians/available`). Admin then calls `POST /work-orders/{id}/assign` with `{ technicianId }` ONLY (status becomes `ASSIGNED`).
-- **Step 2: Technician Acceptance**: The assigned technician receives the job and accepts or rejects. If rejected, the job returns to `APPROVED` and re-enters the "Needs technician" queue with a logged reason.
-- **Step 3: Scheduling Visit**: After technician acceptance, Admin schedules the visit window via `POST /work-orders/{id}/schedule` with `{ visitStart, visitEnd }` (ISO UTC format).
-- **Concurrency & 409 Conflict Safety**: If multiple Admins act concurrently on the same work order, or if an overlapping visit occurs, the system surfaces inline destructive conflict alerts, refetches fresh state, and avoids stale overwrites.
+### Technician Workflow
+1. **Task Queue (`/technician/tasks`)**: Horizontally scrollable status chips (All, Assigned, Scheduled, Arrived, In progress, Completed, Cancelled) synced to single status parameter in URL. Highlights urgent jobs needing response and jobs scheduled for today.
+2. **Assignment Response (`/technician/tasks/[id]`)**:
+   - Status `ASSIGNED`: Technician inspects customer info, location, service category, description, and attached photos.
+   - **Accept**: Calls `POST /work-orders/{id}/accept`. Status moves to accepted state while staying in `ASSIGNED` awaiting visit scheduling by dispatch.
+   - **Reject**: Opens dialog with required reason (10-500 chars) calling `POST /work-orders/{id}/reject`. Job returns to `APPROVED` and re-enters the dispatch queue.
+3. **Execution Steps**:
+   - Status `SCHEDULED`: Once scheduled by dispatcher, technician clicks "Mark as Arrived" (`PATCH /work-orders/{id}/status` -> `ARRIVED`).
+   - Status `ARRIVED`: Technician clicks "Start Work" (`PATCH /work-orders/{id}/status` -> `IN_PROGRESS`).
+   - Status `IN_PROGRESS`: Technician clicks "Complete and file report" directing to `/technician/tasks/[id]/report`.
+4. **Visual Progress**: Reusable `WorkProgressStepper` displays real-time milestone progression across all device viewports.
 
 ---
 
@@ -348,7 +354,7 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
   - [x] Mobile slide-out Sheet navigation drawer with stacked actions
   - [x] Solid charcoal Footer with link matrix and copyright
   - [x] Custom 404 page, client error boundaries (`error.tsx`, `global-error.tsx`), and loading skeleton
-  - [x] Reusable shared layout primitives (`Container`, `PageHeader`, `EmptyState`, `StatusBadge`, `PriorityBadge`, `DueBadge`, `StatusTimeline`, `ResponsiveDataList`, `PaginationControls`)
+  - [x] Reusable shared layout primitives (`Container`, `PageHeader`, `EmptyState`, `StatusBadge`, `PriorityBadge`, `DueBadge`, `StatusTimeline`, `WorkProgressStepper`, `ResponsiveDataList`, `PaginationControls`)
 - [x] **Phase 3: Core API Client, Auth Store & Architecture**
   - [x] Local archive of OpenAPI 3.0 specification ([`docs/openapi.json`](docs/openapi.json))
   - [x] Strict TypeScript types for API responses, errors, pagination, and Auth models
@@ -380,15 +386,18 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
   - [ ] Multi-step service booking wizard
   - [ ] Live work order tracker with timeline visualization
   - [ ] Customer billing history and online checkout
-- [ ] **Phase 8: Technician Mobile-Optimized Dashboard**
-  - [ ] Real-time job queue and dispatch acceptance
-  - [ ] Work logs, parts usage, and digital sign-off
+- [x] **Phase 8: Technician Mobile-Optimized Dashboard**
+  - [x] Real-time task queue with URL-synced status chips
+  - [x] Job assignment acceptance & decline modal with reasons
+  - [x] Step progression (Scheduled -> Arrived -> In progress) with confirmation dialogs
+  - [x] Visual work progress stepper and Google Maps location integration
+  - [ ] Comprehensive service report form with photos and signature (Next)
 - [x] **Phase 9: Admin Command Center**
   - [x] Dispatch queue with "Needs review" and "Needs technician" URL-synced tabs
   - [x] Request review detail with Approve (auto-creates work order) & Reject modal
   - [x] Work orders list with status filters, sorting, and pagination
   - [x] Work order detail view with customer context, dispatch guidance, and status timeline
-  - [ ] Interactive technician assignment and visit scheduling forms (Next)
+  - [x] Interactive technician assignment and visit scheduling forms with conflict safety
   - [ ] Comprehensive customer, invoice, and inventory management
   - [ ] Operational metrics and revenue analytics
 
