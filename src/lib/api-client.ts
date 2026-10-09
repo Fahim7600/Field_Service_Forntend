@@ -118,6 +118,9 @@ apiClient.interceptors.request.use(
     if (token && config.headers && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    }
     return config;
   },
   (error: unknown) => Promise.reject(error),
@@ -282,4 +285,29 @@ export async function apiGetPaginated<T>(
 ): Promise<PaginatedResponse<T>> {
   const response = await apiClient.get<PaginatedResponse<T>>(url, config);
   return response.data;
+}
+
+export async function apiPostForm<T>(
+  url: string,
+  formData: FormData,
+  options?: {
+    onUploadProgress?: (percent: number) => void;
+    signal?: AbortSignal;
+  },
+): Promise<T> {
+  const response = await apiClient.post<ApiResponse<T>>(url, formData, {
+    headers: {
+      "Content-Type": undefined,
+    },
+    signal: options?.signal,
+    onUploadProgress: (progressEvent) => {
+      if (options?.onUploadProgress && progressEvent.total) {
+        const percent = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total,
+        );
+        options.onUploadProgress(Math.min(100, Math.max(0, percent)));
+      }
+    },
+  });
+  return response.data.data;
 }
