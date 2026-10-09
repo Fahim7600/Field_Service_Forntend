@@ -97,6 +97,14 @@ Field Service implements end-to-end authentication patterns aligned strictly wit
 
 6. **Edge Role Guarding & Session Routing Cookies**:
    - Uses `fs_role` (verified role), `fs_must_change` (temporary password flag), and `fs_hint` (non-sensitive boolean for silent session restoration) for instant Edge middleware routing and server-side state evaluation.
+   - Forced password change rule: redirects any user with `fs_must_change === "1"` to `/change-password` upon navigating to any dashboard or auth page.
+   - Role-specific dashboard route protection with `?role_redirect=1` query feedback.
+
+7. **User & Technician Profiles**:
+   - Role-specific profile routes (`/customer/profile`, `/technician/profile`, `/admin/profile`) connected to the navigation user menu.
+   - Reusable `AccountDetailsForm` updating name, phone, and address via `PATCH /api/v1/users/me` with partial diff payloads.
+   - Professional technician profile manager supporting bio, service area coverage, weekly day-by-day shift hours configuration (`PATCH /api/v1/technicians/me/profile`), and an interactive certified skills checklist (`PUT /api/v1/technicians/me/skills`).
+   - `SecurityCard` component providing convenient access to voluntary password changes.
 
 ---
 
