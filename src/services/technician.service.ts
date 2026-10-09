@@ -2,53 +2,52 @@ import { apiGet, apiGetPaginated, apiPatch, apiPost } from "@/lib/api-client";
 import type {
   CreateServiceReportPayload,
   PaginatedResponse,
-  RejectWorkOrderPayload,
   ServiceReportDetail,
-  UpdateWorkOrderStatusPayload,
-  WorkOrderFullDetail,
-  WorkOrderSummary,
-  WorkOrdersQueryParams,
+  TechnicianTask,
+  TechnicianTasksQueryParams,
+  WorkOrder,
 } from "@/types/api";
 
 export const technicianService = {
   /**
-   * Retrieves active tasks assigned to the authenticated technician (ASSIGNED, SCHEDULED, ARRIVED, IN_PROGRESS).
+   * Retrieves tasks assigned to the authenticated technician with optional single status filter.
    */
-  async fetchMyAssignedTasks(params?: {
-    page?: number;
-    limit?: number;
-  }): Promise<PaginatedResponse<WorkOrderSummary>> {
-    return apiGetPaginated<WorkOrderSummary>("/work-orders/my-assigned", {
+  async fetchMyTasks(
+    params?: TechnicianTasksQueryParams,
+  ): Promise<PaginatedResponse<TechnicianTask>> {
+    return apiGetPaginated<TechnicianTask>("/work-orders/my-assigned", {
       params,
     });
   },
 
   /**
-   * Retrieves work orders with status filter (e.g. for completed history or specific statuses).
+   * Alias for fetchMyTasks
    */
-  async fetchWorkOrders(
-    params?: WorkOrdersQueryParams,
-  ): Promise<PaginatedResponse<WorkOrderSummary>> {
-    return apiGetPaginated<WorkOrderSummary>("/work-orders", {
-      params,
-    });
+  async fetchMyAssignedTasks(
+    params?: TechnicianTasksQueryParams,
+  ): Promise<PaginatedResponse<TechnicianTask>> {
+    return this.fetchMyTasks(params);
   },
 
   /**
-   * Retrieves full work order details by ID including service request, attachments, and service report.
+   * Retrieves full work order details by ID for the technician.
    */
-  async fetchWorkOrderById(id: string): Promise<WorkOrderFullDetail> {
-    const res = await apiGet<{ workOrder: WorkOrderFullDetail }>(
-      `/work-orders/${id}`,
-    );
-    return res.workOrder;
+  async fetchTaskById(id: string): Promise<WorkOrder> {
+    return apiGet<WorkOrder>(`/work-orders/${id}`);
   },
 
   /**
-   * Accepts an assigned work order.
+   * Alias for fetchTaskById
    */
-  async acceptTask(id: string): Promise<unknown> {
-    return apiPost<unknown>(`/work-orders/${id}/accept`);
+  async fetchWorkOrderById(id: string): Promise<WorkOrder> {
+    return this.fetchTaskById(id);
+  },
+
+  /**
+   * Accepts an assigned work order (moves status to ACCEPTED/keeps in ASSIGNED awaiting scheduling).
+   */
+  async acceptTask(id: string): Promise<{ id: string; status: string }> {
+    return apiPost<{ id: string; status: string }>(`/work-orders/${id}/accept`);
   },
 
   /**
@@ -56,11 +55,11 @@ export const technicianService = {
    */
   async rejectTask(
     id: string,
-    payload: RejectWorkOrderPayload,
-  ): Promise<unknown> {
-    return apiPost<unknown, RejectWorkOrderPayload>(
+    reason: string,
+  ): Promise<{ id: string; status: string }> {
+    return apiPost<{ id: string; status: string }, { reason: string }>(
       `/work-orders/${id}/reject`,
-      payload,
+      { reason },
     );
   },
 
@@ -69,16 +68,20 @@ export const technicianService = {
    */
   async updateTaskStatus(
     id: string,
-    payload: UpdateWorkOrderStatusPayload,
-  ): Promise<{ workOrder: WorkOrderSummary }> {
+    status: "ARRIVED" | "IN_PROGRESS" | "COMPLETED",
+    notes?: string,
+  ): Promise<{ id: string; status: string }> {
     return apiPatch<
-      { workOrder: WorkOrderSummary },
-      UpdateWorkOrderStatusPayload
-    >(`/work-orders/${id}/status`, payload);
+      { id: string; status: string },
+      { status: string; notes?: string }
+    >(`/work-orders/${id}/status`, {
+      status,
+      ...(notes ? { notes } : {}),
+    });
   },
 
   /**
-   * Submits a service report with work done description, parts used, hours spent, and optional photo attachments.
+   * Submits a service report with work done description, parts used, hours spent, and photo attachments.
    */
   async submitServiceReport(
     id: string,
@@ -96,7 +99,6 @@ export const technicianService = {
       );
     }
 
-    // Build FormData if files are present in the payload
     if (payload.files && payload.files.length > 0) {
       const formData = new FormData();
       formData.append("workDone", payload.workDone);

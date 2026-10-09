@@ -53,12 +53,22 @@ export interface WorkOrder {
   completedAt?: string | null;
   cancelledAt?: string | null;
   cancelReason?: string | null;
+  hasReport?: boolean;
+  serviceReport?: {
+    id: string;
+    summary?: string;
+    workPerformed?: string;
+    partsUsed?: string[];
+    customerSignature?: string;
+    createdAt?: string;
+  } | null;
   createdAt: string;
   updatedAt?: string;
   technician?: {
     id: string;
     name: string;
     email?: string;
+    phone?: string;
   } | null;
   customer?: {
     id: string;
@@ -80,6 +90,48 @@ export interface WorkOrder {
       skillId?: string;
     };
   } | null;
+}
+
+export interface TechnicianTask {
+  id: string;
+  workOrderNumber?: string;
+  status: WorkOrderStatus | string;
+  serviceRequestId?: string;
+  visitStart?: string | null;
+  visitEnd?: string | null;
+  scheduledDate?: string | null;
+  acceptedAt?: string | null;
+  hasReport?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  customer?: {
+    id?: string;
+    name: string;
+    email?: string;
+    phone?: string;
+  } | null;
+  request?: {
+    id: string;
+    requestNumber?: string;
+    title: string;
+    description?: string;
+    status?: string;
+    priority?: Priority | string;
+    address?: string;
+    category?: {
+      id: string;
+      name: string;
+      skillId?: string;
+    } | null;
+  } | null;
+}
+
+export interface TechnicianTasksQueryParams {
+  page?: number;
+  limit?: number;
+  status?: WorkOrderStatus;
+  sortBy?: "createdAt" | "visitStart" | "status";
+  order?: "asc" | "desc";
 }
 
 export interface WorkOrdersQueryParams {

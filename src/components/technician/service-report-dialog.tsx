@@ -133,9 +133,7 @@ export function ServiceReportDialog({
       });
 
       // 2. Complete the Work Order status
-      await technicianService.updateTaskStatus(workOrderId, {
-        status: "COMPLETED",
-      });
+      await technicianService.updateTaskStatus(workOrderId, "COMPLETED");
 
       toast.success("Job completed and service report filed successfully!");
 

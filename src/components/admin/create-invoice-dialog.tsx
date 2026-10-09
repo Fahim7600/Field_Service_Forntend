@@ -36,8 +36,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/api-client";
 import { financeService } from "@/services/finance.service";
-import { technicianService } from "@/services/technician.service";
-import type { InvoiceItemType, WorkOrderSummary } from "@/types/api";
+import { workOrdersService } from "@/services/work-orders.service";
+import type { InvoiceItemType, WorkOrder } from "@/types/api";
 
 const invoiceItemSchema = z.object({
   type: z.enum(["LABOR", "PARTS", "EXTRA"]),
@@ -72,12 +72,12 @@ export function CreateInvoiceDialog({
   const { data: workOrdersData, isLoading: isLoadingWOs } = useQuery({
     queryKey: ["work-orders", "completed"],
     queryFn: () =>
-      technicianService.fetchWorkOrders({ status: "COMPLETED", limit: 50 }),
+      workOrdersService.fetchWorkOrders({ status: "COMPLETED", limit: 50 }),
     enabled: open,
     staleTime: 15000,
   });
 
-  const completedOrders: WorkOrderSummary[] = workOrdersData?.data || [];
+  const completedOrders: WorkOrder[] = workOrdersData?.data || [];
 
   const {
     register,
