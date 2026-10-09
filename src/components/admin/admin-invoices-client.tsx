@@ -43,8 +43,6 @@ const STATUS_CHIPS: Array<{ label: string; value: InvoiceStatus | "ALL" }> = [
   { label: "Issued", value: "ISSUED" },
   { label: "Paid", value: "PAID" },
   { label: "Void", value: "VOID" },
-  { label: "Refunded", value: "REFUNDED" },
-  { label: "Cancelled", value: "CANCELLED" },
 ];
 
 export function AdminInvoicesClient() {

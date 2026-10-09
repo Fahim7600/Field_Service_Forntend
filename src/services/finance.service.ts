@@ -3,6 +3,7 @@ import type {
   CreateInvoicePayload,
   InitiatePaymentPayload,
   InitiatePaymentResponse,
+  InitiatePaymentResult,
   Invoice,
   InvoiceListItem,
   InvoicesQueryParams,
@@ -10,7 +11,9 @@ import type {
   MySubscriptionResponse,
   PaginatedResponse,
   Payment,
-  PaymentsQueryParams,
+  PaymentListParams,
+  RefundPaymentPayload,
+  RefundPaymentResponse,
   SubscriptionCheckoutPayload,
   SubscriptionCheckoutResponse,
   SubscriptionPlan,
@@ -87,34 +90,39 @@ export const financeService = {
 
   /**
    * Initiates a Stripe checkout payment session for an issued invoice.
-   * Accepts an invoice ID string or an InitiatePaymentPayload object.
+   * The spec documents { checkoutUrl, sessionId } but the backend returns
+   * { paymentId, paymentUrl } when it re-opens a still-open session, so all
+   * known field names are accepted. The caller must still validate the url
+   * with isSafeCheckoutUrl before redirecting.
    */
   async initiatePayment(
     input: string | InitiatePaymentPayload,
-  ): Promise<InitiatePaymentResponse> {
+  ): Promise<InitiatePaymentResult> {
     const payload: InitiatePaymentPayload =
       typeof input === "string" ? { invoiceId: input } : input;
 
-    const res = await apiPost<InitiatePaymentResponse, InitiatePaymentPayload>(
+    const data = await apiPost<InitiatePaymentResponse, InitiatePaymentPayload>(
       "/payments/initiate",
       payload,
     );
 
-    // Normalize URL field across potential response variations
-    const checkoutUrl = res.checkoutUrl || res.url;
+    const url = data.paymentUrl ?? data.checkoutUrl ?? data.url;
+    if (!url) {
+      throw new Error("Invalid payment response");
+    }
+
     return {
-      paymentId: res.paymentId,
-      checkoutUrl,
-      url: checkoutUrl,
-      sessionId: res.sessionId,
+      paymentId: data.paymentId ?? data.id ?? null,
+      url,
     };
   },
 
   /**
-   * Retrieves paginated payment transactions.
+   * Paginated payments. The same endpoint serves both roles: customers get
+   * their own payments, admins get all payments (server-side filtering).
    */
   async fetchPayments(
-    params?: PaymentsQueryParams,
+    params?: PaymentListParams,
   ): Promise<PaginatedResponse<Payment>> {
     return apiGetPaginated<Payment>("/payments", {
       params,
@@ -126,6 +134,20 @@ export const financeService = {
    */
   async fetchPaymentById(id: string): Promise<Payment> {
     return apiGet<Payment>(`/payments/${id}`);
+  },
+
+  /**
+   * Issues a full refund through Stripe (Admin only). The spec body only
+   * accepts a reason; there is no partial amount field.
+   */
+  async refundPayment(
+    id: string,
+    payload: RefundPaymentPayload,
+  ): Promise<RefundPaymentResponse> {
+    return apiPost<RefundPaymentResponse, RefundPaymentPayload>(
+      `/admin/payments/${id}/refund`,
+      payload,
+    );
   },
 
   /**

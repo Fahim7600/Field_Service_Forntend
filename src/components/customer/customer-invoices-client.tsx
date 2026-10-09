@@ -46,7 +46,6 @@ const CUSTOMER_STATUS_CHIPS: Array<{
   { label: "Unpaid", value: "ISSUED" },
   { label: "Paid", value: "PAID" },
   { label: "Void", value: "VOID" },
-  { label: "Cancelled", value: "CANCELLED" },
 ];
 
 export function CustomerInvoicesClient() {

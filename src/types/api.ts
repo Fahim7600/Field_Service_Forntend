@@ -341,18 +341,6 @@ export * from "./finance";
 export type InvoiceSummary = InvoiceListItem;
 export type InvoiceDetail = Invoice;
 
-export interface InitiatePaymentPayload {
-  invoiceId: string;
-}
-
-export interface InitiatePaymentResponse {
-  paymentId?: string;
-  paymentUrl?: string;
-  checkoutUrl?: string;
-  url?: string;
-  sessionId?: string;
-}
-
 export interface SubscriptionPlan {
   id: string;
   name: string;
