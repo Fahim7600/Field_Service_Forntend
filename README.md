@@ -306,6 +306,22 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
 
 ---
 
+## 🛠️ Utilities
+
+### Safe Formatting Helpers (`src/lib/format.ts`)
+- **`formatMoney(cents, currency)`**: Formats integer amounts in cents to localized currency (e.g. `15000` -> `"$150.00"`). Returns `"-"` safely on null/undefined/NaN.
+- **`safeFormatDate(value, pattern, fallback)`**: Uses `date-fns` `parseISO` + `isValid` to format dates safely without ever throwing.
+- **`safeFormatDateTime(value, fallback)`**: Formats full timestamp (`"dd MMM yyyy, hh:mm a"`).
+- **`formatRelative(value)`**: Displays relative time strings (e.g., `"in 2 hours"`, `"3 hours ago"`).
+- **`isPast(value)`**: Safe date past-predicate check.
+- **`toIsoFromLocalInput(localValue)`** & **`toLocalInputValue(iso)`**: Converts between HTML5 `<input type="datetime-local">` values and ISO strings.
+
+### URL Filter Hook (`src/hooks/use-url-filters.ts`)
+- **`useUrlFilters(defaults)`**: URL search param synchronization hook. Automatically resets `page` back to 1 when any non-page filter changes, drops empty/default keys, and uses non-polluting `router.replace({ scroll: false })` for filter modifications.
+- **`useDebouncedSearchFilter(key, delay)`**: Debounced text search filter hook synchronized with URL parameters.
+
+---
+
 ## 🗺️ Roadmap
 
 - [x] **Phase 1: Project Scaffolding & Design System**
