@@ -172,6 +172,41 @@ export interface ServiceRequestQueryParams {
   order?: "asc" | "desc";
 }
 
+export interface CustomerServiceHistoryItem {
+  id: string;
+  workOrderNumber: string;
+  status: WorkOrderStatus | string;
+  completedAt?: string | null;
+  scheduledDate?: string | null;
+  visitStart?: string | null;
+  visitEnd?: string | null;
+  createdAt?: string;
+  serviceRequestId?: string;
+  category?: { id: string; name: string } | null;
+  serviceRequest?: {
+    id: string;
+    requestNumber?: string;
+    title?: string;
+    category?: { id: string; name: string } | null;
+  } | null;
+  technician?: {
+    id: string;
+    name?: string;
+    user?: { name: string; email?: string; phone?: string };
+  } | null;
+  technicianName?: string;
+}
+
+export interface CustomerServiceHistoryQueryParams {
+  page?: number;
+  limit?: number;
+  status?: "COMPLETED" | "INVOICED" | "PAID" | "CLOSED" | "CANCELLED" | string;
+  categoryId?: string;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  order?: "asc" | "desc";
+}
+
 export * from "./work-order";
 
 // Backward-compatibility aliases for legacy naming
