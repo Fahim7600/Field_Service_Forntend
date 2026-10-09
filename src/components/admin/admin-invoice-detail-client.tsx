@@ -6,34 +6,57 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock,
-  CreditCard,
+  Edit,
+  ExternalLink,
   Loader2,
-  Receipt,
   Send,
   ShieldAlert,
+  Sparkles,
   User,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import * as React from "react";
 import { toast } from "sonner";
 
+import { EditInvoiceForm } from "@/components/admin/edit-invoice-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardFooter,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/api-client";
-import { formatCurrencyCents } from "@/lib/format-currency";
-import { formatSafeDate, formatSafeDateTime } from "@/lib/format-date";
+import { formatMoney, safeFormatDate, safeFormatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
-import type { InvoiceDetail } from "@/types/api";
+import type { Invoice } from "@/types/api";
 
 interface AdminInvoiceDetailClientProps {
   id: string;
@@ -44,26 +67,60 @@ export function AdminInvoiceDetailClient({
 }: AdminInvoiceDetailClientProps) {
   const queryClient = useQueryClient();
 
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [isIssueDialogOpen, setIsIssueDialogOpen] = React.useState(false);
+  const [isVoidDialogOpen, setIsVoidDialogOpen] = React.useState(false);
+  const [voidReason, setVoidReason] = React.useState("");
+
   const {
     data: invoice,
     isLoading,
     isError,
     error,
-  } = useQuery<InvoiceDetail>({
+    refetch,
+  } = useQuery<Invoice>({
     queryKey: ["invoices", id],
     queryFn: () => financeService.fetchInvoiceById(id),
     staleTime: 10000,
   });
 
-  const sendMutation = useMutation({
-    mutationFn: async () => financeService.sendInvoice(id),
+  // Issue Invoice Mutation
+  const issueMutation = useMutation({
+    mutationFn: async () => financeService.issueInvoice(id),
     onSuccess: async () => {
-      toast.success("Invoice issued and sent to customer!");
+      toast.success("Invoice issued", {
+        description: "The customer has been notified.",
+      });
+      setIsIssueDialogOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["invoices", id] });
       await queryClient.invalidateQueries({ queryKey: ["invoices"] });
     },
-    onError: (err) => {
-      toast.error(getErrorMessage(err));
+    onError: (err: unknown) => {
+      toast.error("Failed to issue invoice", {
+        description: getErrorMessage(err),
+      });
+      queryClient.invalidateQueries({ queryKey: ["invoices", id] });
+    },
+  });
+
+  // Void Invoice Mutation
+  const voidMutation = useMutation({
+    mutationFn: async (reason: string) =>
+      financeService.voidInvoice(id, reason),
+    onSuccess: async () => {
+      toast.success("Invoice voided", {
+        description: "The invoice status has been updated to VOID.",
+      });
+      setIsVoidDialogOpen(false);
+      setVoidReason("");
+      await queryClient.invalidateQueries({ queryKey: ["invoices", id] });
+      await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    },
+    onError: (err: unknown) => {
+      toast.error("Failed to void invoice", {
+        description: getErrorMessage(err),
+      });
+      queryClient.invalidateQueries({ queryKey: ["invoices", id] });
     },
   });
 
@@ -79,7 +136,7 @@ export function AdminInvoiceDetailClient({
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Skeleton className="h-64 w-full rounded-xl" />
+            <Skeleton className="h-72 w-full rounded-xl" />
           </div>
           <div className="space-y-6">
             <Skeleton className="h-80 w-full rounded-xl" />
@@ -91,326 +148,649 @@ export function AdminInvoiceDetailClient({
 
   if (isError || !invoice) {
     return (
-      <Card className="border-destructive/30 bg-destructive/5 p-6 text-center">
-        <CardContent className="space-y-3 p-0">
-          <AlertCircle className="size-8 text-destructive mx-auto" />
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-destructive">
-              Failed to load invoice details
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {error instanceof Error
-                ? error.message
-                : "The invoice could not be found."}
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <Link
-              href="/admin/invoices"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "gap-1.5",
-              )}
-            >
-              <ArrowLeft className="size-4" />
-              <span>Back to Invoices</span>
-            </Link>
-            <Button size="sm" onClick={() => window.location.reload()}>
-              Retry
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="max-w-md mx-auto py-12 text-center space-y-4">
+        <Card className="border-destructive/30 bg-destructive/5 p-6 space-y-4">
+          <CardContent className="space-y-3 p-0">
+            <AlertCircle className="size-8 text-destructive mx-auto" />
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-destructive">
+                Invoice Not Found
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {error
+                  ? getErrorMessage(error)
+                  : "The requested billing invoice could not be located."}
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Link
+                href="/admin/invoices"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "gap-1.5 text-xs font-semibold",
+                )}
+              >
+                <ArrowLeft className="size-3.5" />
+                <span>All Invoices</span>
+              </Link>
+              <Button
+                size="sm"
+                onClick={() => refetch()}
+                className="gap-1.5 text-xs font-semibold"
+              >
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  const isDraft = invoice.status === "DRAFT";
-  const isIssued = invoice.status === "ISSUED";
-  const isPaid = invoice.status === "PAID";
-  const isVoid = invoice.status === "VOID";
+  const status = String(invoice.status).toUpperCase();
+  const isDraft = status === "DRAFT";
+  const isIssued = status === "ISSUED";
+  const isPaid = status === "PAID";
+  const isVoid = status === "VOID";
+  const isCancelled = status === "CANCELLED";
+  const isRefunded = status === "REFUNDED";
+
+  const isPendingAction = issueMutation.isPending || voidMutation.isPending;
+
+  // Calculate breakdown if not directly provided on root invoice
+  const subtotalCents = invoice.subtotalCents ?? 0;
+  const discountCents = invoice.discountCents ?? 0;
+  const taxCents = invoice.taxCents ?? 0;
+  const totalCents = invoice.totalCents ?? 0;
+
+  const laborCents =
+    invoice.laborCents ??
+    (invoice.items || [])
+      .filter((it) => it.type === "LABOR")
+      .reduce(
+        (sum, it) => sum + (it.totalCents || it.quantity * it.unitAmountCents),
+        0,
+      );
+
+  const partsCents =
+    invoice.partsCents ??
+    (invoice.items || [])
+      .filter((it) => it.type === "PARTS")
+      .reduce(
+        (sum, it) => sum + (it.totalCents || it.quantity * it.unitAmountCents),
+        0,
+      );
+
+  const extraCents =
+    invoice.extraCents ??
+    (invoice.items || [])
+      .filter((it) => it.type === "EXTRA")
+      .reduce(
+        (sum, it) => sum + (it.totalCents || it.quantity * it.unitAmountCents),
+        0,
+      );
+
+  const workOrderId =
+    invoice.workOrderId ||
+    invoice.workOrder?.id ||
+    invoice.workOrder?.serviceRequestId;
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border pb-4">
-        <div className="flex items-center gap-3">
+      {/* Top Navigation & Title Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
           <Link
             href="/admin/invoices"
-            className={cn(
-              buttonVariants({ variant: "outline", size: "icon-sm" }),
-              "rounded-lg",
-            )}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="size-4" />
-            <span className="sr-only">Back to Invoices</span>
+            <ArrowLeft className="size-3.5" />
+            <span>Back to Invoices</span>
           </Link>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="font-heading text-lg font-bold text-foreground">
-                Invoice #{invoice.invoiceNumber || invoice.id.slice(0, 8)}
-              </h1>
-              <StatusBadge status={invoice.status} />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Created {formatSafeDate(invoice.createdAt)} • Linked Work Order #
-              {invoice.workOrder?.id?.slice(0, 8)}
-            </p>
+          <div className="flex items-center gap-3 pt-1">
+            <h1 className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-foreground">
+              {invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8)}`}
+            </h1>
+            <StatusBadge status={invoice.status} />
           </div>
         </div>
+
+        {/* Action Buttons for DRAFT */}
+        {isDraft && !isEditing && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(true)}
+              disabled={isPendingAction}
+              className="gap-1.5 text-xs font-medium"
+            >
+              <Edit className="size-3.5" />
+              <span>Edit Charges</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setIsIssueDialogOpen(true)}
+              disabled={isPendingAction}
+              className="gap-1.5 text-xs font-semibold shadow-xs"
+            >
+              <Send className="size-3.5" />
+              <span>Issue Invoice</span>
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left: Line Items & Breakdown */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Customer & Billing Meta */}
-          <Card className="border-border bg-card shadow-xs">
-            <CardHeader className="pb-3 border-b border-border/60">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <User className="size-4 text-primary" />
-                <span>Customer & Billing Information</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <span className="text-muted-foreground uppercase text-[10px] block font-semibold">
-                  Customer
-                </span>
-                <p className="font-semibold text-foreground text-sm">
-                  {invoice.customer?.name || "Customer"}
-                </p>
-                {invoice.customer?.email && (
-                  <p className="text-muted-foreground">
-                    {invoice.customer.email}
-                  </p>
-                )}
-              </div>
-              <div>
-                <span className="text-muted-foreground uppercase text-[10px] block font-semibold">
-                  Issue / Due Dates
-                </span>
-                <p className="text-foreground">
-                  Issued:{" "}
-                  {invoice.issuedAt
-                    ? formatSafeDate(invoice.issuedAt)
-                    : "Not issued yet (Draft)"}
-                </p>
-                {invoice.paidAt && (
-                  <p className="text-emerald-600 dark:text-emerald-400 font-medium">
-                    Paid: {formatSafeDateTime(invoice.paidAt)}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+      {/* Prominent Void Notice */}
+      {isVoid && (
+        <Alert className="border-destructive/40 bg-destructive/5 text-destructive py-3">
+          <XCircle className="size-4 text-destructive shrink-0" />
+          <div className="space-y-1">
+            <AlertTitle className="font-semibold text-xs">
+              Invoice Voided
+            </AlertTitle>
+            <AlertDescription className="text-xs text-destructive/90">
+              {invoice.voidReason
+                ? `Reason: ${invoice.voidReason}`
+                : "This invoice was voided by an administrator and is no longer payable."}
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
 
-          {/* Line Items Table */}
-          <Card className="border-border bg-card shadow-xs overflow-hidden">
-            <CardHeader className="pb-3 border-b border-border/60 bg-panel/40">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Receipt className="size-4 text-primary" />
-                <span>Line Items ({invoice.items?.length || 0})</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-border bg-muted/40 text-charcoal-600">
-                    <tr>
-                      <th className="px-4 py-2.5 font-semibold">Type</th>
-                      <th className="px-4 py-2.5 font-semibold">Description</th>
-                      <th className="px-4 py-2.5 font-semibold text-right">
-                        Qty
-                      </th>
-                      <th className="px-4 py-2.5 font-semibold text-right">
-                        Unit Price
-                      </th>
-                      <th className="px-4 py-2.5 font-semibold text-right">
-                        Amount
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/60">
-                    {(invoice.items || []).map((item, idx) => (
-                      <tr
-                        key={item.id || item.description + idx}
-                        className="hover:bg-muted/20"
-                      >
-                        <td className="px-4 py-2.5">
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] uppercase font-mono"
-                          >
-                            {item.type}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-2.5 font-medium text-foreground">
-                          {item.description}
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">
-                          {item.quantity}
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">
-                          {formatCurrencyCents(
-                            item.unitAmountCents,
-                            invoice.currency,
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-semibold font-mono text-foreground">
-                          {formatCurrencyCents(
-                            item.amountCents ??
-                              item.quantity * item.unitAmountCents,
-                            invoice.currency,
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
+      {/* Inline Editing Form for Draft */}
+      {isEditing && isDraft ? (
+        <EditInvoiceForm
+          invoice={invoice}
+          onCancel={() => setIsEditing(false)}
+          onSuccess={() => setIsEditing(false)}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Details (Left 2 Cols) */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Line Items Card */}
+            <Card className="border-border shadow-xs overflow-hidden">
+              <CardHeader className="pb-3 border-b border-border">
+                <CardTitle className="text-sm font-bold text-foreground">
+                  Line Items Breakdown
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Detailed labor, parts, and extra charges recorded for this
+                  job.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {invoice.items && invoice.items.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/40 text-muted-foreground font-semibold">
+                          <th className="py-2.5 px-4">
+                            Item &amp; Description
+                          </th>
+                          <th className="py-2.5 px-3">Type</th>
+                          <th className="py-2.5 px-3 text-right">Qty</th>
+                          <th className="py-2.5 px-3 text-right">Unit Price</th>
+                          <th className="py-2.5 px-4 text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {invoice.items.map((item, idx) => {
+                          const itemTotal =
+                            item.totalCents !== undefined
+                              ? item.totalCents
+                              : item.quantity * item.unitAmountCents;
+                          return (
+                            <tr
+                              key={item.id || `line-${idx}`}
+                              className="hover:bg-muted/20 transition-colors"
+                            >
+                              <td className="py-3 px-4 font-medium text-foreground">
+                                {item.description || "Service Charge"}
+                              </td>
+                              <td className="py-3 px-3">
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] uppercase font-semibold px-2 py-0.5"
+                                >
+                                  {item.type}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-3 text-right font-mono text-muted-foreground">
+                                {item.quantity}
+                              </td>
+                              <td className="py-3 px-3 text-right font-mono text-muted-foreground">
+                                {formatMoney(item.unitAmountCents)}
+                              </td>
+                              <td className="py-3 px-4 text-right font-mono font-semibold text-foreground">
+                                {formatMoney(itemTotal)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-6 text-center text-xs text-muted-foreground">
+                    No detailed line items listed. Aggregate charges are
+                    summarized below.
+                  </div>
+                )}
+              </CardContent>
 
-            {/* Financial Summary Breakdown */}
-            <CardFooter className="border-t border-border bg-panel/50 p-4 flex flex-col items-end gap-1.5 text-xs">
-              <div className="w-full sm:w-64 space-y-1.5">
-                {invoice.laborCents > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Labor Charges:</span>
-                    <span className="font-mono">
-                      {formatCurrencyCents(
-                        invoice.laborCents,
-                        invoice.currency,
-                      )}
+              {/* Totals Summary Block */}
+              <div className="p-6 bg-muted/20 border-t border-border space-y-2.5 text-xs">
+                {laborCents > 0 && (
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Labor Charges</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {formatMoney(laborCents)}
                     </span>
                   </div>
                 )}
-                {invoice.partsCents > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Parts & Materials:</span>
-                    <span className="font-mono">
-                      {formatCurrencyCents(
-                        invoice.partsCents,
-                        invoice.currency,
-                      )}
+
+                {partsCents > 0 && (
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Parts &amp; Materials</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {formatMoney(partsCents)}
                     </span>
                   </div>
                 )}
-                {invoice.extraCents > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Extra Fees:</span>
-                    <span className="font-mono">
-                      {formatCurrencyCents(
-                        invoice.extraCents,
-                        invoice.currency,
-                      )}
+
+                {extraCents > 0 && (
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Extra / Disposal Charges</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {formatMoney(extraCents)}
                     </span>
                   </div>
                 )}
-                {invoice.discountCents > 0 && (
-                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
-                    <span>Premium Discount:</span>
-                    <span className="font-mono">
-                      -
-                      {formatCurrencyCents(
-                        invoice.discountCents,
-                        invoice.currency,
-                      )}
+
+                {subtotalCents > 0 && (
+                  <div className="flex justify-between items-center pt-1 border-t border-border/60 text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {formatMoney(subtotalCents)}
                     </span>
                   </div>
                 )}
-                {invoice.taxCents > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Estimated Tax:</span>
-                    <span className="font-mono">
-                      {formatCurrencyCents(invoice.taxCents, invoice.currency)}
+
+                {/* Premium Member Discount */}
+                {discountCents > 0 && (
+                  <div className="flex justify-between items-center text-emerald-700 dark:text-emerald-400 font-medium">
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="size-3.5" />
+                      <span>Premium Member Discount</span>
+                    </span>
+                    <span className="font-mono font-semibold">
+                      -{formatMoney(discountCents)}
                     </span>
                   </div>
                 )}
-                <div className="border-t border-border pt-1.5 flex justify-between font-bold text-sm text-foreground">
-                  <span>Total Amount:</span>
-                  <span className="font-mono text-base text-primary">
-                    {formatCurrencyCents(invoice.totalCents, invoice.currency)}
+
+                {/* Tax */}
+                {taxCents > 0 && (
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Estimated Tax (8%)</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {formatMoney(taxCents)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Final Total */}
+                <div className="flex justify-between items-center pt-3 border-t border-border text-sm font-bold text-foreground">
+                  <span>Total Amount</span>
+                  <span className="text-base sm:text-lg font-mono text-primary">
+                    {formatMoney(totalCents)}
                   </span>
                 </div>
               </div>
-            </CardFooter>
-          </Card>
-        </div>
+            </Card>
 
-        {/* Right: Actions */}
-        <div className="space-y-6">
-          <Card className="border-border bg-card shadow-sm overflow-hidden">
-            <CardHeader className="border-b border-border/80 bg-panel/50 pb-4">
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <CreditCard className="size-4 text-primary" />
-                <span>Invoice Action Center</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-5">
-              {isDraft && (
-                <div className="space-y-3">
-                  <Alert variant="warning" className="text-xs">
-                    <Clock className="size-4" />
-                    <AlertTitle>Draft State</AlertTitle>
-                    <AlertDescription>
-                      This invoice is currently in draft. Issue the invoice to
-                      deliver the bill to the customer and enable Stripe payment
-                      checkout.
-                    </AlertDescription>
-                  </Alert>
+            {/* Internal Notes / Customer Note */}
+            {invoice.notes && (
+              <Card className="border-border shadow-xs">
+                <CardHeader className="pb-2 border-b border-border">
+                  <CardTitle className="text-xs font-bold text-foreground">
+                    Invoice Notes &amp; Instructions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                    {invoice.notes}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
-                  <Button
-                    type="button"
-                    className="w-full justify-center gap-2 shadow-xs bg-primary hover:bg-primary/90 text-primary-foreground"
-                    disabled={sendMutation.isPending}
-                    onClick={() => sendMutation.mutate()}
-                  >
-                    {sendMutation.isPending ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Send className="size-4" />
-                    )}
-                    <span>Issue Invoice & Send to Customer</span>
-                  </Button>
+          {/* Sidebar Info & Action Controls (Right Col) */}
+          <div className="space-y-6">
+            {/* Status & Lifecycle Actions Card */}
+            <Card className="border-border shadow-xs">
+              <CardHeader className="pb-3 border-b border-border">
+                <CardTitle className="text-sm font-bold text-foreground">
+                  Invoice Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 space-y-4">
+                {isDraft && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      This draft invoice is not yet visible to the customer.
+                      Review the calculated amounts, edit if needed, and issue
+                      the invoice.
+                    </p>
+                    <div className="space-y-2 pt-1">
+                      <Button
+                        size="sm"
+                        onClick={() => setIsIssueDialogOpen(true)}
+                        disabled={isPendingAction}
+                        className="w-full gap-2 text-xs font-semibold shadow-xs"
+                      >
+                        <Send className="size-3.5" />
+                        <span>Issue Invoice</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditing(true)}
+                        disabled={isPendingAction}
+                        className="w-full gap-2 text-xs font-medium"
+                      >
+                        <Edit className="size-3.5" />
+                        <span>Edit Line Items</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsVoidDialogOpen(true)}
+                        disabled={isPendingAction}
+                        className="w-full gap-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <XCircle className="size-3.5" />
+                        <span>Void Invoice</span>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {isIssued && (
+                  <div className="space-y-3">
+                    <Alert className="bg-blue-500/10 border-blue-500/30 text-blue-900 dark:text-blue-200 text-xs py-2.5">
+                      <Clock className="size-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                      <AlertDescription>
+                        Issued to customer for payment. The customer can pay via
+                        online Stripe checkout.
+                      </AlertDescription>
+                    </Alert>
+                    <div className="pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsVoidDialogOpen(true)}
+                        disabled={isPendingAction}
+                        className="w-full gap-2 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <XCircle className="size-3.5" />
+                        <span>Void Invoice</span>
+                      </Button>
+                      <p className="text-[11px] text-muted-foreground text-center mt-2">
+                        Voiding an unpaid invoice cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {isPaid && (
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-2">
+                    <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-semibold text-xs">
+                      <CheckCircle2 className="size-4" />
+                      <span>Payment Completed</span>
+                    </div>
+                    <p className="text-xs text-emerald-700/90 dark:text-emerald-400/90 leading-relaxed">
+                      This invoice was paid in full on{" "}
+                      {invoice.paidAt
+                        ? safeFormatDateTime(invoice.paidAt)
+                        : "record"}
+                      .
+                    </p>
+                    {/* Note: Refund actions are implemented in the customer/stripe refunds prompt */}
+                  </div>
+                )}
+
+                {(isVoid || isCancelled || isRefunded) && (
+                  <div className="p-3 bg-muted/40 border border-border rounded-xl space-y-1 text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground block">
+                      Read-Only Record
+                    </span>
+                    <p>
+                      This invoice is closed in status {status} and cannot be
+                      modified.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Customer & Job Metadata Card */}
+            <Card className="border-border shadow-xs">
+              <CardHeader className="pb-3 border-b border-border">
+                <CardTitle className="text-xs font-bold text-foreground">
+                  Associated Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3.5 text-xs">
+                {/* Customer */}
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase font-semibold text-muted-foreground block">
+                    Customer
+                  </span>
+                  <div className="flex items-start gap-2">
+                    <User className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-foreground">
+                        {invoice.customer?.name || "Customer"}
+                      </p>
+                      {invoice.customer?.email && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {invoice.customer.email}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              {isIssued && (
-                <Alert variant="info" className="text-xs">
-                  <Send className="size-4 text-blue-600" />
-                  <AlertTitle>Invoice Issued</AlertTitle>
-                  <AlertDescription>
-                    Invoice sent on {formatSafeDate(invoice.issuedAt)}. Awaiting
-                    customer payment via Stripe.
-                  </AlertDescription>
-                </Alert>
-              )}
+                {/* Associated Work Order */}
+                {workOrderId && (
+                  <div className="space-y-1 pt-2 border-t border-border/60">
+                    <span className="text-[10px] uppercase font-semibold text-muted-foreground block">
+                      Work Order
+                    </span>
+                    <Link
+                      href={`/admin/work-orders/${workOrderId}`}
+                      className="inline-flex items-center gap-1.5 font-mono text-primary font-semibold hover:underline"
+                    >
+                      <span>
+                        WO #
+                        {invoice.workOrder?.workOrderNumber ||
+                          workOrderId.slice(0, 8)}
+                      </span>
+                      <ExternalLink className="size-3" />
+                    </Link>
+                  </div>
+                )}
 
-              {isPaid && (
-                <Alert variant="success" className="text-xs">
-                  <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
-                  <AlertTitle>Paid in Full</AlertTitle>
-                  <AlertDescription>
-                    Payment of{" "}
-                    {formatCurrencyCents(invoice.totalCents, invoice.currency)}{" "}
-                    was settled successfully.
-                  </AlertDescription>
-                </Alert>
-              )}
+                {/* Dates Information */}
+                <div className="space-y-2 pt-2 border-t border-border/60 text-xs">
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Created Date:</span>
+                    <span className="font-medium text-foreground">
+                      {safeFormatDate(invoice.createdAt)}
+                    </span>
+                  </div>
 
-              {isVoid && (
-                <Alert variant="destructive" className="text-xs">
-                  <ShieldAlert className="size-4" />
-                  <AlertTitle>Invoice Voided</AlertTitle>
-                  <AlertDescription>
-                    Reason: {invoice.voidReason || "Voided by admin."}
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Issued Date:</span>
+                    <span className="font-medium text-foreground">
+                      {invoice.issuedAt
+                        ? safeFormatDate(invoice.issuedAt)
+                        : "—"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Due Date:</span>
+                    <span className="font-medium text-foreground">
+                      {invoice.dueDate ? safeFormatDate(invoice.dueDate) : "—"}
+                    </span>
+                  </div>
+
+                  {invoice.paidAt && (
+                    <div className="flex justify-between items-center text-muted-foreground">
+                      <span>Paid Date:</span>
+                      <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                        {safeFormatDate(invoice.paidAt)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* AlertDialog: Issue Invoice Confirmation */}
+      <AlertDialog
+        open={isIssueDialogOpen}
+        onOpenChange={(val) => {
+          if (!issueMutation.isPending) setIsIssueDialogOpen(val);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Issue this invoice to the customer?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The invoice status will change to ISSUED and the customer will be
+              notified by email. They will be able to view and pay the invoice
+              online.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={issueMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                issueMutation.mutate();
+              }}
+              disabled={issueMutation.isPending}
+              className="gap-2 font-semibold"
+            >
+              {issueMutation.isPending ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Issuing...</span>
+                </>
+              ) : (
+                <span>Confirm &amp; Issue</span>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog: Void Invoice Reason */}
+      <Dialog
+        open={isVoidDialogOpen}
+        onOpenChange={(val) => {
+          if (!voidMutation.isPending) {
+            setIsVoidDialogOpen(val);
+            if (!val) setVoidReason("");
+          }
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-md"
+          showCloseButton={!voidMutation.isPending}
+        >
+          <DialogHeader className="space-y-1.5">
+            <DialogTitle className="text-base sm:text-lg font-bold flex items-center gap-2 text-destructive">
+              <ShieldAlert className="size-5 text-destructive shrink-0" />
+              <span>Void Invoice</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Please provide an audit reason for voiding this invoice (min 5,
+              max 300 characters).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-xs">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="void-reason" className="text-xs font-semibold">
+                  Reason for Voiding <span className="text-destructive">*</span>
+                </Label>
+                <span className="text-[10px] text-muted-foreground">
+                  {voidReason.trim().length} / 300
+                </span>
+              </div>
+              <Textarea
+                id="void-reason"
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="e.g. Job canceled prior to technician arrival; billing adjustment required."
+                rows={3}
+                maxLength={300}
+                disabled={voidMutation.isPending}
+                className="text-xs resize-none"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsVoidDialogOpen(false)}
+              disabled={voidMutation.isPending}
+              className="text-xs"
+            >
+              Keep Invoice
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => voidMutation.mutate(voidReason.trim())}
+              disabled={
+                voidMutation.isPending ||
+                voidReason.trim().length < 5 ||
+                voidReason.trim().length > 300
+              }
+              className="gap-2 text-xs font-semibold"
+            >
+              {voidMutation.isPending ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Voiding...</span>
+                </>
+              ) : (
+                <span>Confirm Void</span>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
