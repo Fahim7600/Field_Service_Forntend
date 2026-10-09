@@ -73,3 +73,32 @@ export const NEXT_STATUS = {
   SCHEDULED: "ARRIVED",
   ARRIVED: "IN_PROGRESS",
 } as const;
+
+/**
+ * Resolves the user-facing display status for a customer service request:
+ * Returns the work order execution status if a work order exists,
+ * otherwise returns the request status (e.g. SUBMITTED or REJECTED).
+ */
+export function getDisplayStatus(
+  item:
+    | {
+        status?: string | null;
+        workOrder?: { status?: WorkOrderStatus | string | null } | null;
+      }
+    | null
+    | undefined,
+): string {
+  if (!item) return "SUBMITTED";
+  if (item.workOrder?.status) {
+    return String(item.workOrder.status);
+  }
+  return item.status ? String(item.status) : "SUBMITTED";
+}
+
+/**
+ * Customer requests can only be edited or deleted while in the SUBMITTED status (prior to admin review/approval).
+ */
+export function isRequestEditable(status: string | null | undefined): boolean {
+  if (!status) return false;
+  return String(status).toUpperCase() === "SUBMITTED";
+}

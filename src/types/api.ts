@@ -1,3 +1,5 @@
+import type { WorkOrderStatus } from "./work-order";
+
 export interface PaginationMeta {
   page: number;
   limit: number;
@@ -74,53 +76,89 @@ export type RequestStatus =
 
 export type RequestPriority = "NORMAL" | "HIGH";
 
-export interface ServiceRequestListItem {
+export interface CustomerRequestListItem {
   id: string;
-  requestNumber: string;
+  requestNumber?: string;
   title: string;
+  description?: string;
   status: RequestStatus | string;
   priority?: RequestPriority | string;
-  preferredDate?: string;
-  preferredAt?: string;
-  category?: { id: string; name: string } | null;
   createdAt: string;
+  preferredAt?: string;
+  preferredDate?: string;
+  address?: string;
+  category?: { id: string; name: string } | null;
+  workOrder?: {
+    id: string;
+    workOrderNumber?: string;
+    status: WorkOrderStatus;
+  } | null;
 }
 
-export interface ServiceRequestDetail {
+export interface CustomerRequestDetail {
   id: string;
-  requestNumber: string;
+  requestNumber?: string;
   title: string;
   description: string;
   status: RequestStatus | string;
-  priority: RequestPriority | string;
-  preferredDate?: string;
+  priority?: RequestPriority | string;
+  createdAt: string;
+  updatedAt?: string;
   preferredAt?: string;
-  address?: string;
-  category?: { id: string; name: string; skillId?: string } | null;
+  preferredDate?: string;
+  address: string;
+  reviewDueAt?: string | null;
+  rejectionReason?: string | null;
+  category?: {
+    id: string;
+    name: string;
+    skillId?: string;
+    basePriceCents?: number;
+  } | null;
   categoryId?: string;
+  attachments?: Array<
+    { id?: string; fileUrl?: string; url?: string; fileName?: string } | string
+  >;
+  workOrder?: {
+    id: string;
+    workOrderNumber?: string;
+    status: WorkOrderStatus;
+    assignedTechnicianId?: string | null;
+    visitStart?: string | null;
+    visitEnd?: string | null;
+    technician?: {
+      id: string;
+      name?: string;
+      user?: {
+        name: string;
+        email?: string;
+        phone?: string;
+      };
+    } | null;
+    hasReport?: boolean;
+    serviceReport?: {
+      id?: string;
+      workDone?: string;
+      hoursSpent?: number;
+      partsUsed?: string;
+      photos?: Array<string | { url: string }>;
+    } | null;
+    invoiceId?: string | null;
+  } | null;
+}
+
+export interface ServiceRequestListItem extends CustomerRequestListItem {}
+
+export interface ServiceRequestDetail extends CustomerRequestDetail {
   customer?: {
     id?: string;
     name: string;
     email?: string;
     phone?: string;
   } | null;
-  attachments?: Array<
-    { id?: string; fileUrl?: string; url?: string; fileName?: string } | string
-  >;
   isReviewOverdue?: boolean;
-  reviewDueAt?: string;
-  rejectionReason?: string | null;
   reviewedAt?: string | null;
-  workOrder?: {
-    id: string;
-    status: string;
-    technicianId?: string | null;
-    visitStart?: string | null;
-    visitEnd?: string | null;
-  } | null;
   workOrderId?: string;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface ServiceRequestQueryParams {

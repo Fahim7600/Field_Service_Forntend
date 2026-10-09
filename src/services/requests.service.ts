@@ -2,18 +2,19 @@ import {
   apiDelete,
   apiGet,
   apiGetPaginated,
+  apiPatch,
   apiPost,
   apiPostForm,
 } from "@/lib/api-client";
 import { appendFiles } from "@/lib/uploads";
 import type {
   CreateServiceRequestPayload,
+  CustomerRequestDetail,
+  CustomerRequestListItem,
   PaginatedResponse,
   ServiceCategory,
   ServiceRequestAttachment,
   ServiceRequestCreated,
-  ServiceRequestDetail,
-  ServiceRequestListItem,
   ServiceRequestQueryParams,
 } from "@/types/api";
 
@@ -30,17 +31,36 @@ export const requestsService = {
    */
   async fetchMyRequests(
     params?: ServiceRequestQueryParams,
-  ): Promise<PaginatedResponse<ServiceRequestListItem>> {
-    return apiGetPaginated<ServiceRequestListItem>("/service-requests", {
+  ): Promise<PaginatedResponse<CustomerRequestListItem>> {
+    return apiGetPaginated<CustomerRequestListItem>("/service-requests", {
       params,
     });
   },
 
   /**
-   * Retrieves single service request details by ID.
+   * Searches customer service requests by text query.
    */
-  async fetchRequestById(id: string): Promise<ServiceRequestDetail> {
-    return apiGet<ServiceRequestDetail>(`/service-requests/${id}`);
+  async searchMyRequests(
+    q: string,
+    params?: { page?: number; limit?: number },
+  ): Promise<PaginatedResponse<CustomerRequestListItem>> {
+    return apiGetPaginated<CustomerRequestListItem>(
+      "/service-requests/search",
+      {
+        params: {
+          q,
+          page: params?.page || 1,
+          limit: params?.limit || 10,
+        },
+      },
+    );
+  },
+
+  /**
+   * Retrieves full service request details by ID.
+   */
+  async fetchRequestById(id: string): Promise<CustomerRequestDetail> {
+    return apiGet<CustomerRequestDetail>(`/service-requests/${id}`);
   },
 
   /**
@@ -56,10 +76,30 @@ export const requestsService = {
   },
 
   /**
-   * Cancels/deletes a pending service request.
+   * Updates an editable SUBMITTED service request.
+   */
+  async updateRequest(
+    id: string,
+    payload: Partial<CreateServiceRequestPayload>,
+  ): Promise<{ id: string }> {
+    return apiPatch<{ id: string }, Partial<CreateServiceRequestPayload>>(
+      `/service-requests/${id}`,
+      payload,
+    );
+  },
+
+  /**
+   * Deletes / cancels a pending service request (allowed only for SUBMITTED).
+   */
+  async deleteRequest(id: string): Promise<null> {
+    return apiDelete<null>(`/service-requests/${id}`);
+  },
+
+  /**
+   * Alias for deleteRequest for backwards compatibility.
    */
   async cancelServiceRequest(id: string): Promise<null> {
-    return apiDelete<null>(`/service-requests/${id}`);
+    return this.deleteRequest(id);
   },
 
   /**
