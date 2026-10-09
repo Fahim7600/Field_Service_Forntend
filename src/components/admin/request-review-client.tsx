@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
@@ -64,6 +64,9 @@ interface RequestReviewClientProps {
 
 export function RequestReviewClient({ id }: RequestReviewClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextParam = searchParams.get("next");
+  const hasRedirectedRef = React.useRef(false);
   const queryClient = useQueryClient();
   const [rejectModalOpen, setRejectModalOpen] = React.useState(false);
   const [approveDialogOpen, setApproveDialogOpen] = React.useState(false);
@@ -94,6 +97,19 @@ export function RequestReviewClient({ id }: RequestReviewClientProps) {
       return failureCount < 2;
     },
   });
+
+  React.useEffect(() => {
+    if (hasRedirectedRef.current) return;
+    if (
+      request?.status === "APPROVED" &&
+      (request.workOrder?.id || request.workOrderId) &&
+      nextParam === "work-order"
+    ) {
+      hasRedirectedRef.current = true;
+      const targetWorkOrderId = request.workOrder?.id || request.workOrderId;
+      router.replace(`/admin/work-orders/${targetWorkOrderId}`);
+    }
+  }, [request, nextParam, router]);
 
   const approveMutation = useMutation({
     mutationFn: async () => {

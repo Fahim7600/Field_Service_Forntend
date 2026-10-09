@@ -186,7 +186,7 @@ export function DispatchQueueClient() {
             </Link>
           ) : (
             <Link
-              href={`/admin/dispatch/${item.id}`}
+              href={`/admin/dispatch/${item.id}?next=work-order`}
               className={cn(
                 buttonVariants({ variant: "default", size: "sm" }),
                 "h-8 px-3 font-semibold",
@@ -425,7 +425,11 @@ export function DispatchQueueClient() {
                       />
                     </div>
                     <Link
-                      href={`/admin/dispatch/${item.id}`}
+                      href={
+                        currentType === "REQUEST_REVIEW"
+                          ? `/admin/dispatch/${item.id}`
+                          : `/admin/dispatch/${item.id}?next=work-order`
+                      }
                       className={cn(
                         buttonVariants({ variant: "default", size: "sm" }),
                         "h-8 px-3 font-semibold",
