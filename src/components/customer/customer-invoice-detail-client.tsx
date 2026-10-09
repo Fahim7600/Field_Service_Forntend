@@ -1,27 +1,28 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
-  Clock,
   CreditCard,
+  ExternalLink,
+  HelpCircle,
   Loader2,
   Lock,
-  Receipt,
   ShieldCheck,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { toast } from "sonner";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { InvoiceBreakdown } from "@/components/shared/invoice-breakdown";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -29,11 +30,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getErrorMessage } from "@/lib/api-client";
-import { formatCurrencyCents } from "@/lib/format-currency";
-import { formatSafeDate, formatSafeDateTime } from "@/lib/format-date";
+import { formatMoney, safeFormatDate, safeFormatDateTime } from "@/lib/format";
+import { isSafeCheckoutUrl, redirectToCheckout } from "@/lib/stripe-redirect";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
-import type { InvoiceDetail, InvoiceItem } from "@/types/api";
+import type { Invoice } from "@/types/api";
 
 interface CustomerInvoiceDetailClientProps {
   id: string;
@@ -42,6 +43,7 @@ interface CustomerInvoiceDetailClientProps {
 export function CustomerInvoiceDetailClient({
   id,
 }: CustomerInvoiceDetailClientProps) {
+  const queryClient = useQueryClient();
   const [isRedirecting, setIsRedirecting] = React.useState(false);
 
   const {
@@ -50,30 +52,56 @@ export function CustomerInvoiceDetailClient({
     isError,
     error,
     refetch,
-  } = useQuery<InvoiceDetail>({
-    queryKey: ["customer-invoice", id],
+  } = useQuery<Invoice>({
+    queryKey: ["customer", "invoices", id],
     queryFn: () => financeService.fetchInvoiceById(id),
     staleTime: 10000,
   });
 
-  const payMutation = useMutation({
-    mutationFn: async () => financeService.initiatePayment({ invoiceId: id }),
-    onMutate: () => {
-      setIsRedirecting(true);
-    },
-    onSuccess: (res) => {
-      const redirectUrl = res.url || res.checkoutUrl || res.paymentUrl;
-      if (redirectUrl) {
-        toast.info("Redirecting to secure Stripe Checkout...");
-        window.location.href = redirectUrl;
-      } else {
+  // Re-enable payment button if user returns via browser Back button
+  React.useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
         setIsRedirecting(false);
-        toast.error("Checkout URL was not returned by the payment server.");
       }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, []);
+
+  // Initiate Stripe Payment Mutation
+  const payMutation = useMutation({
+    mutationFn: async () => {
+      setIsRedirecting(true);
+      return financeService.initiatePayment(id);
     },
-    onError: (err) => {
+    onSuccess: (data) => {
+      const targetUrl = data.checkoutUrl || data.url;
+
+      if (!targetUrl || !isSafeCheckoutUrl(targetUrl)) {
+        setIsRedirecting(false);
+        toast.error("Could not start checkout", {
+          description: "Payment link was invalid. Please try again.",
+        });
+        return;
+      }
+
+      // Safely transition window to verified Stripe Checkout domain
+      redirectToCheckout(targetUrl);
+    },
+    onError: (err: unknown) => {
       setIsRedirecting(false);
-      toast.error(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      toast.error("Payment initiation failed", {
+        description: msg,
+      });
+      // Refetch invoice in case status changed (e.g., already paid or voided)
+      queryClient.invalidateQueries({
+        queryKey: ["customer", "invoices", id],
+      });
     },
   });
 
@@ -89,10 +117,10 @@ export function CustomerInvoiceDetailClient({
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Skeleton className="h-64 w-full rounded-xl" />
+            <Skeleton className="h-72 w-full rounded-xl" />
           </div>
           <div className="space-y-6">
-            <Skeleton className="h-80 w-full rounded-xl" />
+            <Skeleton className="h-64 w-full rounded-xl" />
           </div>
         </div>
       </div>
@@ -101,315 +129,268 @@ export function CustomerInvoiceDetailClient({
 
   if (isError || !invoice) {
     return (
-      <Card className="border-destructive/40 bg-destructive/5 p-6 text-center">
-        <CardContent className="space-y-3 p-0">
-          <AlertCircle className="size-8 text-destructive mx-auto" />
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-destructive">
-              Failed to load invoice details
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {error instanceof Error
-                ? error.message
-                : "The invoice could not be found."}
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <Link
-              href="/customer/invoices"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "gap-1.5",
-              )}
-            >
-              <ArrowLeft className="size-4" />
-              <span>Back to Invoices</span>
-            </Link>
-            <Button size="sm" onClick={() => refetch()}>
-              Retry
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="max-w-md mx-auto py-12 text-center space-y-4">
+        <Card className="border-destructive/30 bg-destructive/5 p-6 space-y-4">
+          <CardContent className="space-y-3 p-0">
+            <AlertCircle className="size-8 text-destructive mx-auto" />
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-destructive">
+                Invoice Not Found
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {error
+                  ? getErrorMessage(error)
+                  : "We could not find the requested invoice or you do not have permission to view it."}
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Link
+                href="/customer/invoices"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "gap-1.5 text-xs font-semibold",
+                )}
+              >
+                <ArrowLeft className="size-3.5" />
+                <span>Back to Invoices</span>
+              </Link>
+              <Button
+                size="sm"
+                onClick={() => refetch()}
+                className="gap-1.5 text-xs font-semibold"
+              >
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  const isDraft = invoice.status === "DRAFT";
-  const isIssued = invoice.status === "ISSUED";
-  const isPaid = invoice.status === "PAID";
-  const isVoid = invoice.status === "VOID";
+  const status = String(invoice.status).toUpperCase();
+  const isUnpaid = status === "ISSUED";
+  const isPaid = status === "PAID";
+  const isVoid = status === "VOID";
+  const isCancelled = status === "CANCELLED";
+
+  const isBusy = payMutation.isPending || isRedirecting;
+
+  const workOrderId =
+    invoice.workOrderId ||
+    invoice.workOrder?.id ||
+    invoice.workOrder?.serviceRequestId;
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border pb-4">
-        <div className="flex items-center gap-3">
+      {/* Navigation Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
           <Link
             href="/customer/invoices"
-            className={cn(
-              buttonVariants({ variant: "outline", size: "icon-sm" }),
-              "rounded-lg",
-            )}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="size-4" />
-            <span className="sr-only">Back to Invoices</span>
+            <ArrowLeft className="size-3.5" />
+            <span>Back to Invoices</span>
           </Link>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="font-heading text-lg font-bold text-foreground">
-                Invoice #{invoice.invoiceNumber || invoice.id.slice(0, 8)}
-              </h1>
-              <StatusBadge status={invoice.status} />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Issued{" "}
-              {invoice.issuedAt ? formatSafeDate(invoice.issuedAt) : "Pending"}{" "}
-              • Linked Work Order #{invoice.workOrder?.id?.slice(0, 8)}
-            </p>
+          <div className="flex items-center gap-3 pt-1">
+            <h1 className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-foreground font-heading">
+              {invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8)}`}
+            </h1>
+            <StatusBadge
+              status={invoice.status}
+              label={invoice.status === "ISSUED" ? "Unpaid" : undefined}
+            />
           </div>
         </div>
+
+        <Link
+          href="/contact"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <HelpCircle className="size-3.5" />
+          <span>Need help? Contact support</span>
+        </Link>
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left: Line items breakdown */}
+      {/* Main Two-Column View */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column (2 Cols): Line Items Breakdown */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border bg-card shadow-xs overflow-hidden">
-            <CardHeader className="pb-3 border-b border-border/60 bg-panel/40">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Receipt className="size-4 text-primary" />
-                <span>Service Breakdown & Items</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-border bg-muted/40 text-charcoal-600">
-                    <tr>
-                      <th className="px-4 py-2.5 font-semibold">Type</th>
-                      <th className="px-4 py-2.5 font-semibold">Description</th>
-                      <th className="px-4 py-2.5 font-semibold text-right">
-                        Qty
-                      </th>
-                      <th className="px-4 py-2.5 font-semibold text-right">
-                        Unit Price
-                      </th>
-                      <th className="px-4 py-2.5 font-semibold text-right">
-                        Amount
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/60">
-                    {(invoice.items || []).map(
-                      (item: InvoiceItem, idx: number) => (
-                        <tr
-                          key={item.id || item.description + idx}
-                          className="hover:bg-muted/20"
-                        >
-                          <td className="px-4 py-2.5">
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] uppercase font-mono"
-                            >
-                              {item.type}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-2.5 font-medium text-foreground">
-                            {item.description}
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">
-                            {item.quantity}
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">
-                            {formatCurrencyCents(
-                              item.unitAmountCents,
-                              invoice.currency,
-                            )}
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-semibold font-mono text-foreground">
-                            {formatCurrencyCents(
-                              item.amountCents ??
-                                item.quantity * item.unitAmountCents,
-                              invoice.currency,
-                            )}
-                          </td>
-                        </tr>
-                      ),
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
+          <InvoiceBreakdown invoice={invoice} />
 
-            {/* Financial Summary */}
-            <CardFooter className="border-t border-border bg-panel/50 p-4 flex flex-col items-end gap-1.5 text-xs">
-              <div className="w-full sm:w-64 space-y-1.5">
-                {(invoice.laborCents ?? 0) > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Labor Charges:</span>
-                    <span className="font-mono">
-                      {formatCurrencyCents(
-                        invoice.laborCents ?? 0,
-                        invoice.currency,
-                      )}
-                    </span>
-                  </div>
-                )}
-                {(invoice.partsCents ?? 0) > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Parts & Materials:</span>
-                    <span className="font-mono">
-                      {formatCurrencyCents(
-                        invoice.partsCents ?? 0,
-                        invoice.currency,
-                      )}
-                    </span>
-                  </div>
-                )}
-                {(invoice.extraCents ?? 0) > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Extra Fees:</span>
-                    <span className="font-mono">
-                      {formatCurrencyCents(
-                        invoice.extraCents ?? 0,
-                        invoice.currency,
-                      )}
-                    </span>
-                  </div>
-                )}
-                {invoice.discountCents > 0 && (
-                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
-                    <span>Premium Discount:</span>
-                    <span className="font-mono">
-                      -
-                      {formatCurrencyCents(
-                        invoice.discountCents,
-                        invoice.currency,
-                      )}
-                    </span>
-                  </div>
-                )}
-                {invoice.taxCents > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Tax:</span>
-                    <span className="font-mono">
-                      {formatCurrencyCents(invoice.taxCents, invoice.currency)}
-                    </span>
-                  </div>
-                )}
-                <div className="border-t border-border pt-1.5 flex justify-between font-bold text-sm text-foreground">
-                  <span>Total Due:</span>
-                  <span className="font-mono text-base text-primary">
-                    {formatCurrencyCents(invoice.totalCents, invoice.currency)}
-                  </span>
-                </div>
-              </div>
-            </CardFooter>
-          </Card>
+          {/* Notes if provided */}
+          {invoice.notes && (
+            <Card className="border-border shadow-xs">
+              <CardHeader className="pb-2 border-b border-border">
+                <CardTitle className="text-xs font-bold text-foreground">
+                  Invoice Remarks
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                  {invoice.notes}
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* Right: Payment Card */}
+        {/* Right Column: Payment Actions & Metadata */}
         <div className="space-y-6">
-          <Card className="border-border bg-card shadow-sm overflow-hidden">
-            <CardHeader className="border-b border-border/80 bg-panel/50 pb-4">
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <CreditCard className="size-4 text-primary" />
-                <span>Payment & Settlement</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-5">
-              {isPaid && (
-                <div className="space-y-4 text-center">
-                  <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="size-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Invoice Paid
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Settled on {formatSafeDateTime(invoice.paidAt)}
+          {/* Payment Action Card */}
+          {isUnpaid && (
+            <Card className="border-border shadow-md ring-1 ring-primary/10 overflow-hidden">
+              <div className="h-1.5 bg-brand-500 w-full" />
+              <CardHeader className="pb-3 border-b border-border">
+                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <CreditCard className="size-4 text-brand-600 shrink-0" />
+                  <span>Settle Balance</span>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Review invoice total and pay securely via Stripe.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="p-5 space-y-4 text-xs">
+                <div className="p-4 bg-muted/40 rounded-xl border border-border/80 text-center space-y-1">
+                  <span className="text-[11px] uppercase font-semibold text-muted-foreground block">
+                    Amount Due
+                  </span>
+                  <p className="text-2xl sm:text-3xl font-bold font-mono text-foreground">
+                    {formatMoney(invoice.totalCents)}
+                  </p>
+                  {invoice.dueDate && (
+                    <p className="text-[11px] text-muted-foreground pt-1">
+                      Due by {safeFormatDate(invoice.dueDate)}
                     </p>
-                  </div>
-                  <Alert variant="success" className="text-xs text-left">
-                    <ShieldCheck className="size-4" />
-                    <AlertTitle>Secure Transaction</AlertTitle>
-                    <AlertDescription>
-                      This invoice was settled safely. Thank you for your
-                      business!
-                    </AlertDescription>
-                  </Alert>
+                  )}
                 </div>
-              )}
 
-              {isIssued && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-foreground">
-                        Amount Due
-                      </span>
-                      <span className="text-lg font-mono font-bold text-foreground">
-                        {formatCurrencyCents(
-                          invoice.totalCents,
-                          invoice.currency,
-                        )}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <Lock className="size-3" />
-                      Encrypted and processed securely by Stripe
-                    </p>
-                  </div>
-
+                <div className="space-y-2">
                   <Button
-                    type="button"
-                    className="w-full justify-center gap-2 shadow-sm font-semibold text-sm h-11 bg-primary hover:bg-primary/90 text-primary-foreground"
-                    disabled={payMutation.isPending || isRedirecting}
+                    variant="cta"
+                    size="lg"
                     onClick={() => payMutation.mutate()}
+                    disabled={isBusy}
+                    className="w-full gap-2 text-sm font-bold shadow-sm h-11"
                   >
-                    {payMutation.isPending || isRedirecting ? (
+                    {isBusy ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        <span>Connecting to Stripe Checkout...</span>
+                        <span>Redirecting to secure checkout...</span>
                       </>
                     ) : (
                       <>
-                        <CreditCard className="size-4" />
-                        <span>
-                          Pay with Stripe (
-                          {formatCurrencyCents(
-                            invoice.totalCents,
-                            invoice.currency,
-                          )}
-                          )
-                        </span>
+                        <Lock className="size-4" />
+                        <span>Pay {formatMoney(invoice.totalCents)}</span>
                       </>
                     )}
                   </Button>
+
+                  <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                    You will be redirected to Stripe&apos;s secure checkout.
+                    <br />
+                    <span className="font-mono text-[10px]">
+                      Test mode: use card 4242 4242 4242 4242
+                    </span>
+                  </p>
+                </div>
+              </CardContent>
+
+              <CardFooter className="bg-muted/20 border-t border-border px-5 py-3 text-[11px] text-muted-foreground flex items-center justify-center gap-1.5">
+                <ShieldCheck className="size-3.5 text-emerald-600 shrink-0" />
+                <span>256-bit encrypted SSL checkout</span>
+              </CardFooter>
+            </Card>
+          )}
+
+          {isPaid && (
+            <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-xs">
+              <CardContent className="p-5 space-y-3 text-xs">
+                <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
+                  <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />
+                  <span>Invoice Paid in Full</span>
+                </div>
+                <p className="text-emerald-700/90 dark:text-emerald-400/90 leading-relaxed">
+                  Thank you! This invoice was successfully settled on{" "}
+                  <span className="font-semibold">
+                    {invoice.paidAt
+                      ? safeFormatDateTime(invoice.paidAt)
+                      : "record"}
+                  </span>
+                  .
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {(isVoid || isCancelled) && (
+            <Card className="border-border bg-muted/40 shadow-xs">
+              <CardContent className="p-5 space-y-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-foreground font-semibold text-xs">
+                  <XCircle className="size-4 text-destructive shrink-0" />
+                  <span>Invoice {status}</span>
+                </div>
+                <p>
+                  This invoice is closed and no longer requires payment. If you
+                  have questions, please reach out to customer support.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Details & References Card */}
+          <Card className="border-border shadow-xs">
+            <CardHeader className="pb-3 border-b border-border">
+              <CardTitle className="text-xs font-bold text-foreground">
+                Job &amp; Billing Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-3 text-xs">
+              {workOrderId && (
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase font-semibold text-muted-foreground block">
+                    Associated Service Job
+                  </span>
+                  <Link
+                    href={`/customer/requests/${workOrderId}`}
+                    className="inline-flex items-center gap-1.5 font-mono text-primary font-semibold hover:underline"
+                  >
+                    <span>
+                      WO #
+                      {invoice.workOrder?.workOrderNumber ||
+                        workOrderId.slice(0, 8)}
+                    </span>
+                    <ExternalLink className="size-3" />
+                  </Link>
                 </div>
               )}
 
-              {isDraft && (
-                <Alert variant="warning" className="text-xs">
-                  <Clock className="size-4" />
-                  <AlertTitle>Draft Pending</AlertTitle>
-                  <AlertDescription>
-                    This invoice is currently being reviewed by our billing
-                    team. You will be notified once it is issued for payment.
-                  </AlertDescription>
-                </Alert>
-              )}
+              <div className="space-y-2 pt-2 border-t border-border/60">
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Issued Date:</span>
+                  <span className="font-medium text-foreground">
+                    {safeFormatDate(invoice.issuedAt || invoice.createdAt)}
+                  </span>
+                </div>
 
-              {isVoid && (
-                <Alert variant="destructive" className="text-xs">
-                  <AlertCircle className="size-4" />
-                  <AlertTitle>Voided</AlertTitle>
-                  <AlertDescription>
-                    This invoice has been voided. No payment is required.
-                  </AlertDescription>
-                </Alert>
-              )}
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Due Date:</span>
+                  <span className="font-medium text-foreground">
+                    {invoice.dueDate ? safeFormatDate(invoice.dueDate) : "—"}
+                  </span>
+                </div>
+
+                {invoice.paidAt && (
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Paid Date:</span>
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                      {safeFormatDate(invoice.paidAt)}
+                    </span>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
