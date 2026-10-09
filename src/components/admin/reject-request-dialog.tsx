@@ -67,9 +67,14 @@ export function RejectRequestDialog({
 
   React.useEffect(() => {
     if (!open) {
-      reset();
+      reset({ reason: "" });
     }
   }, [open, reset]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (isSubmitting) return;
+    onOpenChange(newOpen);
+  };
 
   const onSubmit = async (values: RejectFormValues) => {
     try {
@@ -79,7 +84,10 @@ export function RejectRequestDialog({
         reason: values.reason.trim(),
       });
 
-      toast.success("Service request has been rejected.");
+      toast.success("Request rejected", {
+        description: "The customer will be notified.",
+      });
+
       await queryClient.invalidateQueries({
         queryKey: ["admin", "dispatch-queue"],
       });
@@ -97,8 +105,8 @@ export function RejectRequestDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md" showCloseButton={!isSubmitting}>
         <DialogHeader>
           <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="size-5" />
@@ -137,7 +145,7 @@ export function RejectRequestDialog({
 
             <Textarea
               id="reject-reason"
-              placeholder="e.g., We currently do not service this model, or the request lacks necessary access details..."
+              placeholder="e.g., We currently do not service this appliance model, or the request lacks necessary access details..."
               rows={4}
               disabled={isSubmitting}
               {...register("reason")}
