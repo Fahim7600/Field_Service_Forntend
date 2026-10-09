@@ -8,6 +8,7 @@ import {
   History,
   LayoutDashboard,
   Sparkles,
+  UserCog,
   Users,
 } from "lucide-react";
 import type { Role } from "@/types/auth";
@@ -44,6 +45,11 @@ export const CUSTOMER_LINKS: DashboardLink[] = [
     href: "/customer/history",
     icon: History,
   },
+  {
+    label: "Profile",
+    href: "/customer/profile",
+    icon: UserCog,
+  },
 ];
 
 export const TECHNICIAN_LINKS: DashboardLink[] = [
@@ -61,6 +67,11 @@ export const TECHNICIAN_LINKS: DashboardLink[] = [
     label: "Schedule",
     href: "/technician/schedule",
     icon: Calendar,
+  },
+  {
+    label: "Profile",
+    href: "/technician/profile",
+    icon: UserCog,
   },
 ];
 
@@ -89,6 +100,11 @@ export const ADMIN_LINKS: DashboardLink[] = [
     label: "Users",
     href: "/admin/users",
     icon: Users,
+  },
+  {
+    label: "Profile",
+    href: "/admin/profile",
+    icon: UserCog,
   },
 ];
 

@@ -87,7 +87,10 @@ export function UserMenu() {
         />
         <DropdownMenuItem
           render={
-            <Link href="/profile" className="w-full flex items-center gap-2">
+            <Link
+              href={`${dashboardHref}/profile`}
+              className="w-full flex items-center gap-2"
+            >
               <UserIcon className="size-4 text-charcoal-600" />
               <span>Profile</span>
             </Link>
