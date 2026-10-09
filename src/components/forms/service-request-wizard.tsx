@@ -1,8 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
+  AlertCircle,
+  AlertTriangle,
   Calendar as CalendarIcon,
   Check,
   ChevronLeft,
@@ -13,20 +15,19 @@ import {
   Loader2,
   MapPin,
   Plus,
-  Trash2,
-  UploadCloud,
+  RefreshCw,
 } from "lucide-react";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { Controller, useForm } from "react-hook-form";
+import { ImagePicker, type PickedImage } from "@/components/forms/image-picker";
+import { UploadProgress } from "@/components/forms/upload-progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { uploadImageToCloudinary } from "@/lib/cloudinary";
+import { useCreateRequest } from "@/hooks/use-create-request";
 import { extractArray } from "@/lib/extract-data";
 import { cn } from "@/lib/utils";
 import {
@@ -35,7 +36,7 @@ import {
   TIME_SLOT_OPTIONS,
 } from "@/lib/validations/request";
 import { requestsService } from "@/services/requests.service";
-import type { CreateServiceRequestPayload, ServiceCategory } from "@/types/api";
+import type { ServiceCategory } from "@/types/api";
 
 const FALLBACK_CATEGORIES: ServiceCategory[] = [
   {
@@ -86,9 +87,7 @@ const STEPS = [
 ] as const;
 
 export function ServiceRequestWizard() {
-  const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [isUploading, setIsUploading] = useState(false);
 
   // Fetch Categories
   const {
@@ -103,6 +102,17 @@ export function ServiceRequestWizard() {
   const categoriesList = extractArray<ServiceCategory>(categories);
   const availableCategories =
     categoriesList.length > 0 ? categoriesList : FALLBACK_CATEGORIES;
+
+  const {
+    state: createStatus,
+    createdRequestId,
+    errorMessage: creationError,
+    uploadProgress,
+    isBusy,
+    submitRequest,
+    retryAttachments,
+    skipAttachments,
+  } = useCreateRequest();
 
   const form = useForm<ServiceRequestFormValues>({
     resolver: zodResolver(serviceRequestSchema),
@@ -121,29 +131,13 @@ export function ServiceRequestWizard() {
   const {
     register,
     handleSubmit,
-    watch,
-    setValue,
+    control,
     trigger,
+    watch,
     formState: { errors },
   } = form;
 
   const watchedAttachments = watch("attachments") || [];
-
-  // Create Request Mutation
-  const createMutation = useMutation({
-    mutationFn: (payload: CreateServiceRequestPayload) =>
-      requestsService.createServiceRequest(payload),
-    onSuccess: (data) => {
-      toast.success(
-        `Service request #${data.requestNumber || ""} created successfully!`,
-      );
-      router.push("/customer");
-      router.refresh();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to create service request.");
-    },
-  });
 
   const handleNext = async () => {
     if (step === 1) {
@@ -165,81 +159,10 @@ export function ServiceRequestWizard() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    if (watchedAttachments.length + files.length > 5) {
-      toast.error("You can upload a maximum of 5 images.");
-      return;
-    }
-
-    setIsUploading(true);
-    const newUrls: string[] = [];
-
-    try {
-      for (const file of Array.from(files)) {
-        if (!file.type.startsWith("image/")) {
-          toast.error(`File "${file.name}" is not an image.`);
-          continue;
-        }
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`File "${file.name}" exceeds 5MB limit.`);
-          continue;
-        }
-
-        const url = await uploadImageToCloudinary(file);
-        newUrls.push(url);
-      }
-
-      if (newUrls.length > 0) {
-        setValue("attachments", [...watchedAttachments, ...newUrls], {
-          shouldValidate: true,
-        });
-        toast.success(`Uploaded ${newUrls.length} photo(s).`);
-      }
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to upload image.";
-      toast.error(message);
-    } finally {
-      setIsUploading(false);
-      e.target.value = "";
-    }
+  const onSubmit = async (values: ServiceRequestFormValues) => {
+    await submitRequest(values);
   };
 
-  const handleRemoveAttachment = (indexToRemove: number) => {
-    setValue(
-      "attachments",
-      watchedAttachments.filter((_, idx) => idx !== indexToRemove),
-      { shouldValidate: true },
-    );
-  };
-
-  const onSubmit = (values: ServiceRequestFormValues) => {
-    // Construct ISO preferredAt timestamp
-    let preferredAt: string;
-    try {
-      const datePart = values.preferredDate;
-      const timePart = values.preferredTime || "09:00:00";
-      preferredAt = new Date(`${datePart}T${timePart}`).toISOString();
-    } catch {
-      preferredAt = new Date().toISOString();
-    }
-
-    const payload: CreateServiceRequestPayload = {
-      categoryId: values.categoryId,
-      title: values.title,
-      description: values.description,
-      address: values.address,
-      preferredAt,
-      attachments: values.attachments,
-    };
-
-    createMutation.mutate(payload);
-  };
-
-  // Get today's date formatted as YYYY-MM-DD for min date attribute
   const todayStr = new Date().toISOString().split("T")[0];
 
   return (
@@ -302,6 +225,56 @@ export function ServiceRequestWizard() {
         </div>
       </div>
 
+      {/* Partial failure notice if request was created but attachments failed */}
+      {createStatus === "error-attachments" && (
+        <Alert className="border-amber-500/30 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200">
+          <AlertTriangle className="size-5 text-amber-600 dark:text-amber-400" />
+          <AlertTitle className="font-bold text-sm">
+            Request Created — Photo Upload Failed
+          </AlertTitle>
+          <AlertDescription className="text-xs pt-1 space-y-3">
+            <p>
+              Your request was created successfully, but the photos could not be
+              uploaded: {creationError || "Attachment upload error."}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="default"
+                onClick={() =>
+                  retryAttachments((watchedAttachments as PickedImage[]) || [])
+                }
+              >
+                <RefreshCw className="size-3.5 mr-1.5" />
+                Retry photo upload
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={skipAttachments}
+              >
+                Skip photos and continue
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Step 1 Error Alert if initial create failed */}
+      {createStatus === "error-create" && creationError && (
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertTitle className="font-bold text-sm">
+            Failed to submit request
+          </AlertTitle>
+          <AlertDescription className="text-xs pt-1">
+            {creationError}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Main Step Form Container */}
       <Card className="border border-border bg-card shadow-xs">
         <CardContent className="p-6 sm:p-8">
@@ -333,7 +306,7 @@ export function ServiceRequestWizard() {
                   ) : (
                     <select
                       id="categoryId"
-                      disabled={createMutation.isPending}
+                      disabled={isBusy}
                       className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none transition-colors"
                       aria-invalid={Boolean(errors.categoryId)}
                       aria-describedby={
@@ -371,7 +344,7 @@ export function ServiceRequestWizard() {
                     id="title"
                     placeholder="e.g. AC unit blowing warm air"
                     autoComplete="off"
-                    disabled={createMutation.isPending}
+                    disabled={isBusy}
                     aria-invalid={Boolean(errors.title)}
                     aria-describedby={errors.title ? "title-error" : undefined}
                     {...register("title")}
@@ -396,7 +369,7 @@ export function ServiceRequestWizard() {
                     id="description"
                     rows={4}
                     placeholder="Please explain the issue in detail (symptoms, when it started, any error codes)..."
-                    disabled={createMutation.isPending}
+                    disabled={isBusy}
                     className="w-full rounded-lg border border-input bg-transparent p-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none resize-none transition-colors"
                     aria-invalid={Boolean(errors.description)}
                     aria-describedby={
@@ -442,7 +415,7 @@ export function ServiceRequestWizard() {
                       id="preferredDate"
                       type="date"
                       min={todayStr}
-                      disabled={createMutation.isPending}
+                      disabled={isBusy}
                       aria-invalid={Boolean(errors.preferredDate)}
                       aria-describedby={
                         errors.preferredDate ? "date-error" : undefined
@@ -470,7 +443,7 @@ export function ServiceRequestWizard() {
                     <div className="relative">
                       <select
                         id="preferredTime"
-                        disabled={createMutation.isPending}
+                        disabled={isBusy}
                         className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none transition-colors"
                         aria-invalid={Boolean(errors.preferredTime)}
                         aria-describedby={
@@ -508,7 +481,7 @@ export function ServiceRequestWizard() {
                       rows={2}
                       placeholder="e.g. 123 Main St, Apt 4B, New York, NY 10001"
                       autoComplete="street-address"
-                      disabled={createMutation.isPending}
+                      disabled={isBusy}
                       className="w-full rounded-lg border border-input bg-transparent p-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none resize-none transition-colors"
                       aria-invalid={Boolean(errors.address)}
                       aria-describedby={
@@ -543,76 +516,28 @@ export function ServiceRequestWizard() {
                   </p>
                 </div>
 
-                {/* Upload Area */}
-                <div className="space-y-3">
-                  <div className="relative border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-brand-500 hover:bg-brand-50/20 transition-colors">
-                    <input
-                      type="file"
-                      id="file-upload"
-                      multiple
-                      accept="image/*"
-                      disabled={
-                        isUploading ||
-                        createMutation.isPending ||
-                        watchedAttachments.length >= 5
-                      }
-                      onChange={handleFileUpload}
-                      className="absolute inset-0 size-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                {/* Local ImagePicker */}
+                <Controller
+                  control={control}
+                  name="attachments"
+                  render={({ field }) => (
+                    <ImagePicker
+                      value={(field.value as PickedImage[]) || []}
+                      onChange={(images) => field.onChange(images)}
+                      disabled={isBusy}
+                      label="Photos (Optional)"
+                      maxFiles={5}
                     />
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <div className="size-10 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center">
-                        {isUploading ? (
-                          <Loader2 className="size-5 animate-spin" />
-                        ) : (
-                          <UploadCloud className="size-5" />
-                        )}
-                      </div>
-                      <div className="text-xs text-charcoal-700">
-                        <span className="font-semibold text-brand-600">
-                          Click to upload
-                        </span>{" "}
-                        or drag and drop photos
-                      </div>
-                      <p className="text-[11px] text-charcoal-500">
-                        PNG, JPG, or WEBP (Max 5MB each, up to 5 photos)
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Thumbnail Previews */}
-                  {watchedAttachments.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-xs text-charcoal-700 font-semibold">
-                        Uploaded Photos ({watchedAttachments.length}/5)
-                      </Label>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                        {watchedAttachments.map((url, idx) => (
-                          <div
-                            key={url}
-                            className="relative group rounded-lg overflow-hidden border border-border bg-panel aspect-square"
-                          >
-                            <Image
-                              src={url}
-                              alt={`Attachment ${idx + 1}`}
-                              fill
-                              unoptimized
-                              className="object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveAttachment(idx)}
-                              disabled={createMutation.isPending}
-                              className="absolute top-1 right-1 size-6 rounded-full bg-charcoal-900/80 text-white flex items-center justify-center opacity-90 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-destructive transition-all"
-                              aria-label="Remove image"
-                            >
-                              <Trash2 className="size-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
                   )}
-                </div>
+                />
+
+                {/* Upload Progress during step 2 upload */}
+                {createStatus === "uploading-attachments" && (
+                  <UploadProgress
+                    progress={uploadProgress}
+                    label="Uploading photo attachments to your request..."
+                  />
+                )}
 
                 {/* Summary Box */}
                 <div className="rounded-xl border border-border bg-panel p-4 space-y-2 text-xs text-charcoal-700">
@@ -661,7 +586,7 @@ export function ServiceRequestWizard() {
                   variant="outline"
                   size="sm"
                   onClick={handleBack}
-                  disabled={createMutation.isPending || isUploading}
+                  disabled={isBusy}
                 >
                   <ChevronLeft className="size-4 mr-1" />
                   Back
@@ -676,7 +601,7 @@ export function ServiceRequestWizard() {
                   variant="default"
                   size="sm"
                   onClick={handleNext}
-                  disabled={isLoadingCategories || isUploading}
+                  disabled={isLoadingCategories || isBusy}
                 >
                   Next Step
                   <ChevronRight className="size-4 ml-1" />
@@ -686,17 +611,19 @@ export function ServiceRequestWizard() {
                   type="submit"
                   variant="cta"
                   size="sm"
-                  disabled={createMutation.isPending || isUploading}
+                  disabled={isBusy || Boolean(createdRequestId)}
                 >
-                  {createMutation.isPending ? (
+                  {isBusy ? (
                     <>
                       <Loader2 className="size-4 mr-2 animate-spin" />
-                      Submitting...
+                      {createStatus === "uploading-attachments"
+                        ? "Uploading photos..."
+                        : "Submitting request..."}
                     </>
                   ) : (
                     <>
                       <Plus className="size-4 mr-1.5" />
-                      Submit Request
+                      Book Service Request
                     </>
                   )}
                 </Button>

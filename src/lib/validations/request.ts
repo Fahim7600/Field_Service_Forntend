@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { PickedImage } from "@/components/forms/image-picker";
 
 export const step1Schema = z.object({
   categoryId: z.string().min(1, "Please select a service category"),
@@ -26,7 +27,15 @@ export const step2Schema = z.object({
 
 export const step3Schema = z.object({
   attachments: z
-    .array(z.string().url("Invalid attachment URL"))
+    .array(
+      z.custom<PickedImage>(
+        (val): val is PickedImage =>
+          typeof val === "object" &&
+          val !== null &&
+          "file" in (val as Record<string, unknown>),
+        { message: "Invalid photo attachment" },
+      ),
+    )
     .max(5, "Maximum 5 attachments allowed"),
 });
 

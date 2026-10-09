@@ -1,4 +1,11 @@
-import { apiDelete, apiGet, apiGetPaginated, apiPost } from "@/lib/api-client";
+import {
+  apiDelete,
+  apiGet,
+  apiGetPaginated,
+  apiPost,
+  apiPostForm,
+} from "@/lib/api-client";
+import { appendFiles } from "@/lib/uploads";
 import type {
   CreateServiceRequestPayload,
   PaginatedResponse,
@@ -37,7 +44,7 @@ export const requestsService = {
   },
 
   /**
-   * Creates a new customer service request.
+   * Creates a new customer service request (pure JSON payload).
    */
   async createServiceRequest(
     payload: CreateServiceRequestPayload,
@@ -56,20 +63,37 @@ export const requestsService = {
   },
 
   /**
-   * Uploads attachments for an existing service request.
+   * Uploads binary attachments for an existing service request as multipart/form-data.
+   * Field name in OpenAPI: "files".
    */
   async uploadAttachments(
     id: string,
-    formData: FormData,
+    filesOrFormData: (File | Blob)[] | FormData,
+    onProgress?: (percent: number) => void,
   ): Promise<ServiceRequestAttachment[]> {
-    return apiPost<ServiceRequestAttachment[], FormData>(
+    let formData: FormData;
+    if (filesOrFormData instanceof FormData) {
+      formData = filesOrFormData;
+    } else {
+      formData = new FormData();
+      appendFiles(formData, "files", filesOrFormData);
+    }
+
+    return apiPostForm<ServiceRequestAttachment[]>(
       `/service-requests/${id}/attachments`,
       formData,
       {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        onUploadProgress: onProgress,
       },
+    );
+  },
+
+  /**
+   * Deletes a single attachment from a service request.
+   */
+  async deleteAttachment(id: string, attachmentId: string): Promise<null> {
+    return apiDelete<null>(
+      `/service-requests/${id}/attachments/${attachmentId}`,
     );
   },
 };
