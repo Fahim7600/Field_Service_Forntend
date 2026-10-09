@@ -326,7 +326,12 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
    - **Reject**: Opens a locked modal to input a validated reason (10-500 chars) and calls `PATCH /admin/service-requests/{id}/review` with `{ decision: "REJECT", reason }`.
 3. **Work Order Management (`/admin/work-orders`)**: Full list of generated work orders with single-status filters, sorting (createdAt, visitStart, status), and responsive data tables.
 4. **Work Order Inspection (`/admin/work-orders/[id]`)**: Full view of customer details, linked service request, assigned technician, visit window, dispatch actions guidance, and chronological status transition history.
-5. **Next Step**: Technician assignment and visit scheduling forms on `/admin/work-orders/[id]`.
+
+### Dispatch Rules & Conflict Handling
+- **Step 1: Work order APPROVED**: Admin chooses a visit window exclusively to query active, free technicians qualified with the required skill (`GET /admin/technicians/available`). Admin then calls `POST /work-orders/{id}/assign` with `{ technicianId }` ONLY (status becomes `ASSIGNED`).
+- **Step 2: Technician Acceptance**: The assigned technician receives the job and accepts or rejects. If rejected, the job returns to `APPROVED` and re-enters the "Needs technician" queue with a logged reason.
+- **Step 3: Scheduling Visit**: After technician acceptance, Admin schedules the visit window via `POST /work-orders/{id}/schedule` with `{ visitStart, visitEnd }` (ISO UTC format).
+- **Concurrency & 409 Conflict Safety**: If multiple Admins act concurrently on the same work order, or if an overlapping visit occurs, the system surfaces inline destructive conflict alerts, refetches fresh state, and avoids stale overwrites.
 
 ---
 

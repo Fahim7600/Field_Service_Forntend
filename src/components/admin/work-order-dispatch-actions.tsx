@@ -1,12 +1,20 @@
+"use client";
+
 import {
   AlertCircle,
+  ArrowRight,
   Calendar,
   CheckCircle2,
-  Clock,
+  FileText,
   Info,
-  UserCheck,
+  User,
+  Wrench,
 } from "lucide-react";
+import Link from "next/link";
 
+import { AssignTechnicianCard } from "@/components/admin/assign-technician-card";
+import { ScheduleVisitCard } from "@/components/admin/schedule-visit-card";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -14,133 +22,217 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { WorkOrder } from "@/types/work-order";
+import { safeFormatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import type { ServiceRequestDetail } from "@/types/api";
+import type { WorkOrder, WorkOrderStatusHistoryItem } from "@/types/work-order";
 
-// Replaced with the assign and schedule forms in the next prompt
 interface WorkOrderDispatchActionsProps {
   workOrder: WorkOrder;
+  request?: ServiceRequestDetail | null;
+  history?: WorkOrderStatusHistoryItem[] | null;
+  onSuccess?: () => void;
 }
 
 export function WorkOrderDispatchActions({
   workOrder,
+  request,
+  history,
+  onSuccess,
 }: WorkOrderDispatchActionsProps) {
   const status = String(workOrder.status || "").toUpperCase();
 
-  const renderGuidance = () => {
-    switch (status) {
-      case "APPROVED":
-        return (
-          <div className="flex items-start gap-2.5 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-900 dark:text-blue-200">
-            <UserCheck className="size-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-semibold">Ready for technician assignment</p>
-              <p className="text-muted-foreground">
-                This work order has been approved. Assign an eligible technician
-                and schedule the service visit window.
-              </p>
-            </div>
-          </div>
-        );
+  // Status-driven dispatch flow orchestration
+  switch (status) {
+    case "APPROVED":
+      return (
+        <AssignTechnicianCard
+          workOrder={workOrder}
+          request={request}
+          history={history}
+          onSuccess={onSuccess}
+        />
+      );
 
-      case "ASSIGNED":
-        return (
-          <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200">
-            <Clock className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-semibold">
-                Waiting for the technician to accept
-              </p>
-              <p className="text-muted-foreground">
-                Technician assignment is pending acceptance by the assigned
-                field technician.
-              </p>
-            </div>
-          </div>
-        );
+    case "ASSIGNED":
+      return (
+        <ScheduleVisitCard
+          workOrder={workOrder}
+          request={request}
+          onSuccess={onSuccess}
+        />
+      );
 
-      case "SCHEDULED":
-        return (
-          <div className="flex items-start gap-2.5 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-900 dark:text-emerald-200">
-            <Calendar className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-semibold">Visit scheduled</p>
-              <p className="text-muted-foreground">
-                The technician has accepted and the visit window is confirmed on
-                the field schedule.
-              </p>
+    case "SCHEDULED":
+      return (
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="pb-3 border-b border-border/60">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+              <Calendar className="size-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Visit Confirmed & Scheduled</span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              The service appointment is locked on the schedule.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3 text-xs">
+            <div className="space-y-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 dark:text-emerald-200">
+              <div className="flex items-center gap-1.5 font-semibold">
+                <User className="size-3.5" />
+                <span>
+                  Technician: {workOrder.technician?.name || "Assigned"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Calendar className="size-3.5 shrink-0" />
+                <span>
+                  Window:{" "}
+                  {workOrder.visitStart
+                    ? safeFormatDateTime(workOrder.visitStart)
+                    : "Not set"}{" "}
+                  {workOrder.visitEnd
+                    ? `- ${safeFormatDateTime(workOrder.visitEnd)}`
+                    : ""}
+                </span>
+              </div>
             </div>
-          </div>
-        );
-
-      case "IN_PROGRESS":
-      case "ARRIVED":
-        return (
-          <div className="flex items-start gap-2.5 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-900 dark:text-indigo-200">
-            <CheckCircle2 className="size-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-semibold">Work is underway</p>
-              <p className="text-muted-foreground">
-                The technician is currently on-site performing the service.
-              </p>
-            </div>
-          </div>
-        );
-
-      case "COMPLETED":
-      case "INVOICED":
-      case "PAID":
-      case "CLOSED":
-        return (
-          <div className="flex items-start gap-2.5 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-900 dark:text-emerald-200">
-            <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-semibold">Work completed</p>
-              <p className="text-muted-foreground">
-                This work order has been fulfilled.
-              </p>
-            </div>
-          </div>
-        );
-
-      case "CANCELLED":
-        return (
-          <div className="flex items-start gap-2.5 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
-            <AlertCircle className="size-4 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-semibold">Work order cancelled</p>
-              <p className="text-muted-foreground">
-                {workOrder.cancelReason
-                  ? `Reason: ${workOrder.cancelReason}`
-                  : "No further dispatch action required."}
-              </p>
-            </div>
-          </div>
-        );
-
-      default:
-        return (
-          <div className="flex items-start gap-2.5 p-3 rounded-lg bg-muted/40 border border-border text-xs text-muted-foreground">
-            <Info className="size-4 shrink-0 mt-0.5" />
-            <p>
-              Status: {workOrder.status}. No immediate dispatch action required.
+            <p className="text-[11px] text-muted-foreground">
+              Visit is scheduled. The technician will update progress upon
+              arrival.
             </p>
-          </div>
-        );
-    }
-  };
+          </CardContent>
+        </Card>
+      );
 
-  return (
-    <Card className="border-border bg-card shadow-xs">
-      <CardHeader className="pb-3 border-b border-border/60">
-        <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-          <Clock className="size-4 text-primary" />
-          <span>Dispatch Status & Next Steps</span>
-        </CardTitle>
-        <CardDescription className="text-xs">
-          Current status guidance and dispatch workflow progression.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-4 space-y-3">{renderGuidance()}</CardContent>
-    </Card>
-  );
+    case "ARRIVED":
+    case "IN_PROGRESS":
+      return (
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="pb-3 border-b border-border/60">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+              <Wrench className="size-4 text-primary" />
+              <span>Work in Progress</span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Field technician is on-site performing service.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3 text-xs">
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 space-y-1.5">
+              <p className="font-semibold text-foreground">
+                Technician: {workOrder.technician?.name || "Field Tech"}
+              </p>
+              {workOrder.visitStart && (
+                <p className="text-muted-foreground">
+                  Started: {safeFormatDateTime(workOrder.visitStart)}
+                </p>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Real-time work order status is active.
+            </p>
+          </CardContent>
+        </Card>
+      );
+
+    case "COMPLETED":
+      return (
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="pb-3 border-b border-border/60">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Work Completed</span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Service has been fulfilled by technician. Ready for billing.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Work completed. Ready for invoicing.
+            </p>
+            <Link
+              href="/admin/invoices"
+              className={cn(
+                buttonVariants({ variant: "default", size: "sm" }),
+                "w-full justify-center gap-1.5 text-xs font-semibold",
+              )}
+            >
+              <FileText className="size-3.5" />
+              <span>Go to Admin Invoices</span>
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </CardContent>
+        </Card>
+      );
+
+    case "INVOICED":
+    case "PAID":
+    case "CLOSED":
+      return (
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="pb-3 border-b border-border/60">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+              <CheckCircle2 className="size-4 text-primary" />
+              <span>Status: {status}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 text-xs text-muted-foreground space-y-2">
+            <p>
+              This work order has completed its operational dispatch lifecycle.
+            </p>
+            <Link
+              href="/admin/invoices"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "w-full justify-center gap-1.5 text-xs",
+              )}
+            >
+              <span>View Billing & Invoices</span>
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </CardContent>
+        </Card>
+      );
+
+    case "CANCELLED":
+      return (
+        <Card className="border-destructive/30 bg-destructive/5 shadow-xs">
+          <CardHeader className="pb-3 border-b border-destructive/20">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-destructive">
+              <AlertCircle className="size-4" />
+              <span>Work Order Cancelled</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 text-xs space-y-1.5">
+            <p className="font-medium text-charcoal-800 dark:text-charcoal-200">
+              {workOrder.cancelReason
+                ? `Reason: ${workOrder.cancelReason}`
+                : "This work order was cancelled. No dispatch actions required."}
+            </p>
+            {workOrder.cancelledAt && (
+              <p className="text-[11px] text-muted-foreground">
+                Cancelled on {safeFormatDateTime(workOrder.cancelledAt)}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      );
+
+    default:
+      return (
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="pb-3 border-b border-border/60">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+              <Info className="size-4 text-primary" />
+              <span>Status: {workOrder.status}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 text-xs text-muted-foreground">
+            No active dispatch actions required for status &quot;
+            {workOrder.status}&quot;.
+          </CardContent>
+        </Card>
+      );
+  }
 }

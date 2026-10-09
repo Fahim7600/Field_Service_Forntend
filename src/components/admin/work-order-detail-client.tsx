@@ -33,7 +33,9 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { getErrorMessage } from "@/lib/api-client";
 import { safeFormatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { requestsService } from "@/services/requests.service";
 import { workOrdersService } from "@/services/work-orders.service";
+import type { ServiceRequestDetail } from "@/types/api";
 import type { WorkOrder, WorkOrderStatusHistoryItem } from "@/types/work-order";
 
 interface WorkOrderDetailClientProps {
@@ -68,6 +70,19 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
     },
   });
 
+  const requestId =
+    workOrder?.serviceRequestId ||
+    workOrder?.requestId ||
+    workOrder?.request?.id;
+
+  // Linked service request query (for detailed category skillId, preferred time, etc.)
+  const { data: request } = useQuery<ServiceRequestDetail>({
+    queryKey: ["requests", requestId],
+    queryFn: () => requestsService.fetchRequestById(requestId as string),
+    staleTime: 15000,
+    enabled: Boolean(requestId),
+  });
+
   // History query (failures must not break the page)
   const {
     data: history,
@@ -80,6 +95,11 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
     staleTime: 10000,
     enabled: Boolean(workOrder),
   });
+
+  const handleActionSuccess = async () => {
+    await refetch();
+    await refetchHistory();
+  };
 
   if (isLoading) {
     return (
@@ -185,9 +205,6 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
       </Card>
     );
   }
-
-  const requestId =
-    workOrder.serviceRequestId || workOrder.requestId || workOrder.request?.id;
 
   return (
     <div className="space-y-6">
@@ -402,8 +419,13 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
 
         {/* Right Column (Dispatch Guidance & History Timeline) */}
         <div className="space-y-6">
-          {/* Dispatch Guidance Card */}
-          <WorkOrderDispatchActions workOrder={workOrder} />
+          {/* Dispatch Guidance & Actions Orchestrator */}
+          <WorkOrderDispatchActions
+            workOrder={workOrder}
+            request={request}
+            history={history}
+            onSuccess={handleActionSuccess}
+          />
 
           {/* Status Timeline History Card */}
           <Card className="border-border bg-card shadow-xs">
