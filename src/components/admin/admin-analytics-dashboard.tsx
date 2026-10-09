@@ -41,7 +41,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrencyCents } from "@/lib/format-currency";
+import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { adminService } from "@/services/admin.service";
 import type { DashboardStats, DashboardTrendItem } from "@/types/api";
@@ -218,7 +218,7 @@ export function AdminAnalyticsDashboard() {
           </CardHeader>
           <CardContent className="p-4 pt-1">
             <div className="text-2xl font-bold font-heading text-foreground">
-              {formatCurrencyCents(totalRevenue)}
+              {formatMoney(totalRevenue)}
             </div>
             <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1 font-medium">
               <TrendingUp className="size-3" />

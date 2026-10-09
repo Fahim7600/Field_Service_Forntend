@@ -29,8 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { getErrorMessage } from "@/lib/api-client";
 import { extractArray } from "@/lib/extract-data";
-import { formatCurrencyCents } from "@/lib/format-currency";
-import { formatSafeDate } from "@/lib/format-date";
+import { formatMoney, safeFormatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
 import type { SubscriptionPlan } from "@/types/api";
@@ -173,7 +172,7 @@ export function PremiumPricingClient() {
                   <p className="text-xs text-charcoal-600 dark:text-charcoal-400 pt-1">
                     Current period renews on:{" "}
                     <span className="font-medium text-foreground">
-                      {formatSafeDate(mySubscription.currentPeriodEnd)}
+                      {safeFormatDate(mySubscription.currentPeriodEnd)}
                     </span>
                   </p>
                 )}
@@ -244,7 +243,7 @@ export function PremiumPricingClient() {
                 {/* Price Display */}
                 <div className="pt-4 flex items-baseline gap-1.5">
                   <span className="font-heading text-3xl sm:text-4xl font-extrabold text-foreground">
-                    {formatCurrencyCents(plan.priceCents)}
+                    {formatMoney(plan.priceCents)}
                   </span>
                   <span className="text-xs text-muted-foreground font-medium">
                     /{isYearly ? "year" : "month"}
