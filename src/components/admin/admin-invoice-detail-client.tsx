@@ -11,7 +11,6 @@ import {
   Loader2,
   Send,
   ShieldAlert,
-  Sparkles,
   User,
   XCircle,
 } from "lucide-react";
@@ -20,6 +19,7 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import { EditInvoiceForm } from "@/components/admin/edit-invoice-form";
+import { InvoiceBreakdown } from "@/components/shared/invoice-breakdown";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -31,15 +31,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -53,7 +46,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/api-client";
-import { formatMoney, safeFormatDate, safeFormatDateTime } from "@/lib/format";
+import { safeFormatDate, safeFormatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
 import type { Invoice } from "@/types/api";
@@ -197,39 +190,6 @@ export function AdminInvoiceDetailClient({
 
   const isPendingAction = issueMutation.isPending || voidMutation.isPending;
 
-  // Calculate breakdown if not directly provided on root invoice
-  const subtotalCents = invoice.subtotalCents ?? 0;
-  const discountCents = invoice.discountCents ?? 0;
-  const taxCents = invoice.taxCents ?? 0;
-  const totalCents = invoice.totalCents ?? 0;
-
-  const laborCents =
-    invoice.laborCents ??
-    (invoice.items || [])
-      .filter((it) => it.type === "LABOR")
-      .reduce(
-        (sum, it) => sum + (it.totalCents || it.quantity * it.unitAmountCents),
-        0,
-      );
-
-  const partsCents =
-    invoice.partsCents ??
-    (invoice.items || [])
-      .filter((it) => it.type === "PARTS")
-      .reduce(
-        (sum, it) => sum + (it.totalCents || it.quantity * it.unitAmountCents),
-        0,
-      );
-
-  const extraCents =
-    invoice.extraCents ??
-    (invoice.items || [])
-      .filter((it) => it.type === "EXTRA")
-      .reduce(
-        (sum, it) => sum + (it.totalCents || it.quantity * it.unitAmountCents),
-        0,
-      );
-
   const workOrderId =
     invoice.workOrderId ||
     invoice.workOrder?.id ||
@@ -309,147 +269,7 @@ export function AdminInvoiceDetailClient({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Details (Left 2 Cols) */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Line Items Card */}
-            <Card className="border-border shadow-xs overflow-hidden">
-              <CardHeader className="pb-3 border-b border-border">
-                <CardTitle className="text-sm font-bold text-foreground">
-                  Line Items Breakdown
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Detailed labor, parts, and extra charges recorded for this
-                  job.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                {invoice.items && invoice.items.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/40 text-muted-foreground font-semibold">
-                          <th className="py-2.5 px-4">
-                            Item &amp; Description
-                          </th>
-                          <th className="py-2.5 px-3">Type</th>
-                          <th className="py-2.5 px-3 text-right">Qty</th>
-                          <th className="py-2.5 px-3 text-right">Unit Price</th>
-                          <th className="py-2.5 px-4 text-right">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/60">
-                        {invoice.items.map((item, idx) => {
-                          const itemTotal =
-                            item.totalCents !== undefined
-                              ? item.totalCents
-                              : item.quantity * item.unitAmountCents;
-                          return (
-                            <tr
-                              key={item.id || `line-${idx}`}
-                              className="hover:bg-muted/20 transition-colors"
-                            >
-                              <td className="py-3 px-4 font-medium text-foreground">
-                                {item.description || "Service Charge"}
-                              </td>
-                              <td className="py-3 px-3">
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px] uppercase font-semibold px-2 py-0.5"
-                                >
-                                  {item.type}
-                                </Badge>
-                              </td>
-                              <td className="py-3 px-3 text-right font-mono text-muted-foreground">
-                                {item.quantity}
-                              </td>
-                              <td className="py-3 px-3 text-right font-mono text-muted-foreground">
-                                {formatMoney(item.unitAmountCents)}
-                              </td>
-                              <td className="py-3 px-4 text-right font-mono font-semibold text-foreground">
-                                {formatMoney(itemTotal)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="p-6 text-center text-xs text-muted-foreground">
-                    No detailed line items listed. Aggregate charges are
-                    summarized below.
-                  </div>
-                )}
-              </CardContent>
-
-              {/* Totals Summary Block */}
-              <div className="p-6 bg-muted/20 border-t border-border space-y-2.5 text-xs">
-                {laborCents > 0 && (
-                  <div className="flex justify-between items-center text-muted-foreground">
-                    <span>Labor Charges</span>
-                    <span className="font-mono font-medium text-foreground">
-                      {formatMoney(laborCents)}
-                    </span>
-                  </div>
-                )}
-
-                {partsCents > 0 && (
-                  <div className="flex justify-between items-center text-muted-foreground">
-                    <span>Parts &amp; Materials</span>
-                    <span className="font-mono font-medium text-foreground">
-                      {formatMoney(partsCents)}
-                    </span>
-                  </div>
-                )}
-
-                {extraCents > 0 && (
-                  <div className="flex justify-between items-center text-muted-foreground">
-                    <span>Extra / Disposal Charges</span>
-                    <span className="font-mono font-medium text-foreground">
-                      {formatMoney(extraCents)}
-                    </span>
-                  </div>
-                )}
-
-                {subtotalCents > 0 && (
-                  <div className="flex justify-between items-center pt-1 border-t border-border/60 text-muted-foreground">
-                    <span>Subtotal</span>
-                    <span className="font-mono font-medium text-foreground">
-                      {formatMoney(subtotalCents)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Premium Member Discount */}
-                {discountCents > 0 && (
-                  <div className="flex justify-between items-center text-emerald-700 dark:text-emerald-400 font-medium">
-                    <span className="flex items-center gap-1">
-                      <Sparkles className="size-3.5" />
-                      <span>Premium Member Discount</span>
-                    </span>
-                    <span className="font-mono font-semibold">
-                      -{formatMoney(discountCents)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Tax */}
-                {taxCents > 0 && (
-                  <div className="flex justify-between items-center text-muted-foreground">
-                    <span>Estimated Tax (8%)</span>
-                    <span className="font-mono font-medium text-foreground">
-                      {formatMoney(taxCents)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Final Total */}
-                <div className="flex justify-between items-center pt-3 border-t border-border text-sm font-bold text-foreground">
-                  <span>Total Amount</span>
-                  <span className="text-base sm:text-lg font-mono text-primary">
-                    {formatMoney(totalCents)}
-                  </span>
-                </div>
-              </div>
-            </Card>
+            <InvoiceBreakdown invoice={invoice} />
 
             {/* Internal Notes / Customer Note */}
             {invoice.notes && (
