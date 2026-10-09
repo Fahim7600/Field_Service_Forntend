@@ -452,6 +452,15 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
    - **Voiding Invoices**: Unpaid draft or issued invoices can be voided with a mandatory audit reason (5–300 characters).
    - **Fallback Creation**: If a draft invoice does not exist for a completed work order, admins can create one manually using the fallback dialog with conflict protection.
 
+6. **Payments & Stripe Checkout (Customer)**:
+   - **Pay Flow**: Customers can view unpaid invoices (`ISSUED`) and click **Pay Now** to initiate a secure Stripe Checkout Session. The backend returns a validated checkout URL (or re-issues the open session without duplication errors).
+   - **Return Interception & Redirects**: Stripe returns the customer's browser to `${PUBLIC_API_URL}/api/v1/payments/success?session_id=...` or `/cancel`. Because the backend returns raw JSON without redirecting, Next.js filesystem route handlers intercept these return paths and redirect the browser to `/payment/success` or `/payment/cancel`.
+   - **Verification & Polling**: The success page polls the real payment verification status via `/api/payment-status?session_id=...` every 2 seconds, declaring success only when the backend confirms `SUCCEEDED`.
+   - **Stripe Test Configuration**:
+     - Render/Backend environment variables: `PUBLIC_API_URL` and `FRONTEND_URL` must point to the frontend origin (`http://localhost:3000` locally, production Vercel URL in production).
+     - Stripe Webhook endpoint: `https://field-service-d24g.onrender.com/api/v1/payments/webhook`.
+     - Test card number: `4242 4242 4242 4242`.
+
 - [x] **Phase 8: Technician Mobile-Optimized Dashboard**
   - [x] Real-time task queue with single-status URL-synced chips (`All`, `Assigned`, `Scheduled`, `Arrived`, `In progress`, `Completed`, `Cancelled`)
   - [x] Job assignment acceptance & decline modal with validated reason (10-500 chars)
