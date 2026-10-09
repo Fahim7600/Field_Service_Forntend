@@ -4,9 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
   ArrowRight,
+  ClipboardCheck,
   Filter,
   Inbox,
   RefreshCw,
+  UserCheck,
 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
@@ -36,16 +38,28 @@ const PRIORITY_OPTIONS = [
   { label: "Normal", value: "NORMAL" },
 ] as const;
 
+type QueueType = "REQUEST_REVIEW" | "NEEDS_TECHNICIAN";
+
 export function DispatchQueueClient() {
   const { filters, updateFilters } = useUrlFilters();
+
+  const currentType: QueueType =
+    (filters.type as string) === "NEEDS_TECHNICIAN"
+      ? "NEEDS_TECHNICIAN"
+      : "REQUEST_REVIEW";
 
   const priorityFilter = (filters.priority as string) || "";
   const page = filters.page || 1;
   const limit = filters.limit || 10;
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ["admin", "dispatch-queue", { page, limit }],
-    queryFn: () => adminService.fetchDispatchQueue({ page, limit }),
+    queryKey: ["admin", "dispatch-queue", { type: currentType, page, limit }],
+    queryFn: () =>
+      adminService.fetchDispatchQueue({
+        type: currentType,
+        page,
+        limit,
+      }),
     placeholderData: (previousData) => previousData,
     staleTime: 15000,
   });
@@ -79,10 +93,18 @@ export function DispatchQueueClient() {
     }).length;
   }, [rawItems]);
 
+  const handleTabChange = (newType: QueueType) => {
+    if (newType === currentType) return;
+    updateFilters({
+      type: newType === "REQUEST_REVIEW" ? undefined : newType,
+      page: 1,
+    });
+  };
+
   const columns: ColumnDef<DispatchQueueItem>[] = [
     {
       id: "requestNumber",
-      header: "Request #",
+      header: currentType === "REQUEST_REVIEW" ? "Request #" : "Reference #",
       cell: (item) => (
         <div className="flex flex-col gap-0.5">
           <span className="font-mono font-bold text-charcoal-900 dark:text-charcoal-100">
@@ -137,9 +159,12 @@ export function DispatchQueueClient() {
     },
     {
       id: "due",
-      header: "Review Due",
+      header: currentType === "REQUEST_REVIEW" ? "Review Due" : "Due Date",
       cell: (item) => (
-        <DueBadge reviewDueAt={item.reviewDueAt} status="SUBMITTED" />
+        <DueBadge
+          reviewDueAt={item.reviewDueAt}
+          status={currentType === "REQUEST_REVIEW" ? "SUBMITTED" : "APPROVED"}
+        />
       ),
     },
     {
@@ -148,16 +173,29 @@ export function DispatchQueueClient() {
       className: "text-right",
       cell: (item) => (
         <div className="flex justify-end">
-          <Link
-            href={`/admin/dispatch/${item.id}`}
-            className={cn(
-              buttonVariants({ variant: "default", size: "sm" }),
-              "h-8 px-3 font-semibold",
-            )}
-          >
-            Review
-            <ArrowRight className="ml-1.5 size-3.5" />
-          </Link>
+          {currentType === "REQUEST_REVIEW" ? (
+            <Link
+              href={`/admin/dispatch/${item.id}`}
+              className={cn(
+                buttonVariants({ variant: "default", size: "sm" }),
+                "h-8 px-3 font-semibold",
+              )}
+            >
+              Review
+              <ArrowRight className="ml-1.5 size-3.5" />
+            </Link>
+          ) : (
+            <Link
+              href={`/admin/dispatch/${item.id}`}
+              className={cn(
+                buttonVariants({ variant: "default", size: "sm" }),
+                "h-8 px-3 font-semibold",
+              )}
+            >
+              Open work order
+              <ArrowRight className="ml-1.5 size-3.5" />
+            </Link>
+          )}
         </div>
       ),
     },
@@ -165,6 +203,37 @@ export function DispatchQueueClient() {
 
   return (
     <div className="space-y-6">
+      {/* Tabs Navigation */}
+      <div className="flex border-b border-border space-x-2">
+        <button
+          type="button"
+          onClick={() => handleTabChange("REQUEST_REVIEW")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors cursor-pointer",
+            currentType === "REQUEST_REVIEW"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30",
+          )}
+        >
+          <ClipboardCheck className="size-4" />
+          <span>Needs review</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange("NEEDS_TECHNICIAN")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors cursor-pointer",
+            currentType === "NEEDS_TECHNICIAN"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30",
+          )}
+        >
+          <UserCheck className="size-4" />
+          <span>Needs technician</span>
+        </button>
+      </div>
+
       {/* Controls Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-panel border border-border p-4 rounded-xl shadow-xs">
         {/* Count summary */}
@@ -274,11 +343,17 @@ export function DispatchQueueClient() {
       ) : items.length === 0 ? (
         <EmptyState
           icon={Inbox}
-          title="Queue is clear"
+          title={
+            currentType === "REQUEST_REVIEW"
+              ? "Queue is clear"
+              : "No work orders are waiting for a technician"
+          }
           description={
             priorityFilter
-              ? "No service requests match the selected priority filter."
-              : "There are no service requests currently waiting for review or dispatch."
+              ? "No items match the selected priority filter."
+              : currentType === "REQUEST_REVIEW"
+                ? "There are no service requests currently waiting for review."
+                : "All approved requests have been assigned to technicians."
           }
           action={
             priorityFilter ? (
@@ -336,11 +411,17 @@ export function DispatchQueueClient() {
                   <div className="flex items-center justify-between pt-1 border-t border-border/50">
                     <div>
                       <span className="block text-[10px] uppercase tracking-wider font-semibold text-charcoal-500">
-                        Review Due
+                        {currentType === "REQUEST_REVIEW"
+                          ? "Review Due"
+                          : "Due Date"}
                       </span>
                       <DueBadge
                         reviewDueAt={item.reviewDueAt}
-                        status="SUBMITTED"
+                        status={
+                          currentType === "REQUEST_REVIEW"
+                            ? "SUBMITTED"
+                            : "APPROVED"
+                        }
                       />
                     </div>
                     <Link
@@ -350,7 +431,9 @@ export function DispatchQueueClient() {
                         "h-8 px-3 font-semibold",
                       )}
                     >
-                      Review
+                      {currentType === "REQUEST_REVIEW"
+                        ? "Review"
+                        : "Open work order"}
                       <ArrowRight className="ml-1.5 size-3.5" />
                     </Link>
                   </div>
