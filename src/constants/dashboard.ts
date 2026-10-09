@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Calendar,
   CalendarCheck,
+  ClipboardCheck,
   ClipboardList,
   FileText,
   History,
@@ -73,6 +74,11 @@ export const ADMIN_LINKS: DashboardLink[] = [
     label: "Dispatch",
     href: "/admin/dispatch",
     icon: CalendarCheck,
+  },
+  {
+    label: "Work Orders",
+    href: "/admin/work-orders",
+    icon: ClipboardCheck,
   },
   {
     label: "Invoices",
