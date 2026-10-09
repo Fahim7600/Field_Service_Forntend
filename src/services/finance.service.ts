@@ -9,6 +9,8 @@ import type {
   InvoiceUpdatePayload,
   MySubscriptionResponse,
   PaginatedResponse,
+  Payment,
+  PaymentsQueryParams,
   SubscriptionCheckoutPayload,
   SubscriptionCheckoutResponse,
   SubscriptionPlan,
@@ -85,14 +87,45 @@ export const financeService = {
 
   /**
    * Initiates a Stripe checkout payment session for an issued invoice.
+   * Accepts an invoice ID string or an InitiatePaymentPayload object.
    */
   async initiatePayment(
-    payload: InitiatePaymentPayload,
+    input: string | InitiatePaymentPayload,
   ): Promise<InitiatePaymentResponse> {
-    return apiPost<InitiatePaymentResponse, InitiatePaymentPayload>(
+    const payload: InitiatePaymentPayload =
+      typeof input === "string" ? { invoiceId: input } : input;
+
+    const res = await apiPost<InitiatePaymentResponse, InitiatePaymentPayload>(
       "/payments/initiate",
       payload,
     );
+
+    // Normalize URL field across potential response variations
+    const checkoutUrl = res.checkoutUrl || res.url;
+    return {
+      paymentId: res.paymentId,
+      checkoutUrl,
+      url: checkoutUrl,
+      sessionId: res.sessionId,
+    };
+  },
+
+  /**
+   * Retrieves paginated payment transactions.
+   */
+  async fetchPayments(
+    params?: PaymentsQueryParams,
+  ): Promise<PaginatedResponse<Payment>> {
+    return apiGetPaginated<Payment>("/payments", {
+      params,
+    });
+  },
+
+  /**
+   * Retrieves specific payment details by ID.
+   */
+  async fetchPaymentById(id: string): Promise<Payment> {
+    return apiGet<Payment>(`/payments/${id}`);
   },
 
   /**

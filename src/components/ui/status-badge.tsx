@@ -88,6 +88,20 @@ const STATUS_CONFIGS: Record<string, { label: string; className: string }> = {
     label: "Rejected",
     className: "bg-destructive/15 text-destructive border-destructive/30",
   },
+  PENDING: {
+    label: "Pending",
+    className:
+      "bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30",
+  },
+  SUCCEEDED: {
+    label: "Succeeded",
+    className:
+      "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30",
+  },
+  FAILED: {
+    label: "Failed",
+    className: "bg-destructive/15 text-destructive border-destructive/30",
+  },
   CANCELLED: {
     label: "Cancelled",
     className: "bg-destructive/15 text-destructive border-destructive/30",

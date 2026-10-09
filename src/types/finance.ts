@@ -6,6 +6,9 @@ export type InvoiceStatus =
   | "REFUNDED"
   | "CANCELLED";
 
+export type CustomerInvoiceStatus = InvoiceStatus;
+export type AdminInvoiceStatus = InvoiceStatus;
+
 export type InvoiceItemType = "LABOR" | "PARTS" | "EXTRA";
 
 export interface InvoiceItem {
@@ -109,4 +112,50 @@ export interface VoidInvoicePayload {
 export interface VoidInvoiceResponse {
   id: string;
   status: "VOID" | string;
+}
+
+export type PaymentStatus =
+  | "PENDING"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "CANCELLED"
+  | "REFUNDED";
+
+export interface Payment {
+  id: string;
+  amountCents: number;
+  status: PaymentStatus;
+  invoiceId?: string;
+  stripePaymentIntentId?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PaymentsQueryParams {
+  page?: number;
+  limit?: number;
+  status?: PaymentStatus | string;
+  sortBy?: "createdAt" | "amountCents" | "status" | string;
+  order?: "asc" | "desc";
+}
+
+export interface PaymentSessionStatus {
+  paid?: boolean;
+  status?: PaymentStatus | string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  amountCents?: number;
+  paymentId?: string;
+  message?: string;
+}
+
+export interface InitiatePaymentPayload {
+  invoiceId: string;
+}
+
+export interface InitiatePaymentResponse {
+  paymentId?: string;
+  checkoutUrl?: string;
+  url?: string;
+  sessionId?: string;
 }
