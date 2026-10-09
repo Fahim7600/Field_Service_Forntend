@@ -134,87 +134,25 @@ export interface ServiceRequestQueryParams {
   order?: "asc" | "desc";
 }
 
-export interface DispatchQueueItem {
-  type?: "REQUEST_REVIEW" | "NEEDS_TECHNICIAN";
-  id: string;
-  requestId?: string;
-  requestNumber: string;
-  title?: string;
-  priority: RequestPriority | string;
-  isPremium?: boolean;
-  isLate?: boolean;
-  reviewDueAt?: string;
-  createdAt: string;
-  customer?: {
-    id?: string;
-    name: string;
-    email?: string;
-    phone?: string;
-  } | null;
-  category?: {
-    id: string;
-    name: string;
-    skillId?: string;
-  } | null;
-  returned?: {
-    reason: string | null;
-    technician: {
-      id: string;
-      name: string;
-    };
-    at: string;
-  } | null;
-}
+export * from "./work-order";
 
-export interface DispatchQueueQueryParams {
-  page?: number;
-  limit?: number;
-  type?: "REQUEST_REVIEW" | "NEEDS_TECHNICIAN";
-}
-
-export interface ReviewRequestPayload {
-  status?: "APPROVED" | "REJECTED";
+// Backward-compatibility aliases for legacy naming
+export type ReviewRequestPayload = {
   decision?: "APPROVE" | "REJECT";
+  status?: "APPROVED" | "REJECTED";
   reason?: string;
-}
-
-export interface ReviewRequestResponse {
-  request: {
-    id: string;
-    requestNumber: string;
-    status: string;
-  };
-  workOrder: {
-    id: string;
-    status: string;
-  } | null;
-}
-
-export interface AvailableTechnician {
+};
+export type ReviewRequestResponse = {
   id: string;
-  name: string;
-  serviceArea?: string | null;
-  yearsOfExperience?: number;
-  skills: Array<{ id: string; name: string } | string>;
-  activeJobCount?: number;
-}
-
-export interface AvailableTechniciansQueryParams {
-  skillId: string;
-  start: string;
-  end: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface ScheduleWorkOrderPayload {
+  status: string;
+};
+export type ScheduleWorkOrderPayload = {
   visitStart: string;
   visitEnd: string;
-}
-
-export interface AssignWorkOrderPayload {
+};
+export type AssignWorkOrderPayload = {
   technicianId: string;
-}
+};
 
 export interface WorkOrderSummary {
   id: string;

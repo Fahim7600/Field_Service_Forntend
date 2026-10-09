@@ -6,16 +6,16 @@ import {
   apiPost,
 } from "@/lib/api-client";
 import type {
-  AssignWorkOrderPayload,
+  AssignTechnicianPayload,
   AvailableTechnician,
   AvailableTechniciansQueryParams,
   DashboardStats,
   DispatchQueueItem,
   DispatchQueueQueryParams,
   PaginatedResponse,
-  ReviewRequestPayload,
-  ReviewRequestResponse,
-  ScheduleWorkOrderPayload,
+  ReviewServiceRequestPayload,
+  ReviewServiceRequestResponse,
+  ScheduleVisitPayload,
   UpdateUserRolePayload,
   UpdateUserStatusPayload,
   UserListItem,
@@ -43,22 +43,19 @@ export const adminService = {
 
   /**
    * Reviews a submitted service request (Approves to create Work Order or Rejects with reason).
+   * Exact OpenAPI schema: { decision: "APPROVE" | "REJECT", reason?: string }
    */
   async reviewRequest(
     id: string,
-    payload: ReviewRequestPayload,
-  ): Promise<ReviewRequestResponse> {
-    const decision =
-      payload.decision ??
-      (payload.status === "APPROVED" ? "APPROVE" : "REJECT");
-
-    return apiPatch<
-      ReviewRequestResponse,
-      { decision: "APPROVE" | "REJECT"; reason?: string }
-    >(`/admin/service-requests/${id}/review`, {
-      decision,
-      ...(payload.reason ? { reason: payload.reason } : {}),
-    });
+    payload: ReviewServiceRequestPayload,
+  ): Promise<ReviewServiceRequestResponse> {
+    return apiPatch<ReviewServiceRequestResponse, ReviewServiceRequestPayload>(
+      `/admin/service-requests/${id}/review`,
+      {
+        decision: payload.decision,
+        ...(payload.reason ? { reason: payload.reason } : {}),
+      },
+    );
   },
 
   /**
@@ -76,29 +73,44 @@ export const adminService = {
   },
 
   /**
-   * Schedules a visit window for a work order.
+   * Assigns an available technician to a work order.
    */
-  async scheduleWorkOrder(
+  async assignTechnician(
     id: string,
-    payload: ScheduleWorkOrderPayload,
-  ): Promise<{ workOrder: unknown }> {
-    return apiPost<{ workOrder: unknown }, ScheduleWorkOrderPayload>(
-      `/work-orders/${id}/schedule`,
+    payload: AssignTechnicianPayload,
+  ): Promise<{ id: string; status: string }> {
+    return apiPost<{ id: string; status: string }, AssignTechnicianPayload>(
+      `/work-orders/${id}/assign`,
       payload,
     );
   },
 
   /**
-   * Assigns an available technician to a work order.
+   * Schedules a visit window for a work order.
    */
-  async assignWorkOrder(
+  async scheduleVisit(
     id: string,
-    payload: AssignWorkOrderPayload,
-  ): Promise<{ workOrder: unknown }> {
-    return apiPost<{ workOrder: unknown }, AssignWorkOrderPayload>(
-      `/work-orders/${id}/assign`,
+    payload: ScheduleVisitPayload,
+  ): Promise<{ id: string; status: string }> {
+    return apiPost<{ id: string; status: string }, ScheduleVisitPayload>(
+      `/work-orders/${id}/schedule`,
       payload,
     );
+  },
+
+  // Backward-compatibility aliases
+  async assignWorkOrder(
+    id: string,
+    payload: AssignTechnicianPayload,
+  ): Promise<{ id: string; status: string }> {
+    return this.assignTechnician(id, payload);
+  },
+
+  async scheduleWorkOrder(
+    id: string,
+    payload: ScheduleVisitPayload,
+  ): Promise<{ id: string; status: string }> {
+    return this.scheduleVisit(id, payload);
   },
 
   /**
@@ -118,30 +130,30 @@ export const adminService = {
   async updateUserRole(
     id: string,
     payload: UpdateUserRolePayload,
-  ): Promise<UserListItem> {
-    return apiPatch<UserListItem, UpdateUserRolePayload>(
-      `/admin/users/${id}/role`,
-      payload,
-    );
+  ): Promise<{ id: string; name?: string; role: string }> {
+    return apiPatch<
+      { id: string; name?: string; role: string },
+      UpdateUserRolePayload
+    >(`/admin/users/${id}/role`, payload);
   },
 
   /**
-   * Changes a user's status (ACTIVE | SUSPENDED).
+   * Modifies a user's account status (ACTIVE | SUSPENDED).
    */
   async updateUserStatus(
     id: string,
     payload: UpdateUserStatusPayload,
-  ): Promise<UserListItem> {
-    return apiPatch<UserListItem, UpdateUserStatusPayload>(
-      `/admin/users/${id}/status`,
-      payload,
-    );
+  ): Promise<{ id: string; name?: string; status: string }> {
+    return apiPatch<
+      { id: string; name?: string; status: string },
+      UpdateUserStatusPayload
+    >(`/admin/users/${id}/status`, payload);
   },
 
   /**
-   * Deletes a user account.
+   * Deletes a user account (Admin cannot delete themselves).
    */
-  async deleteUser(id: string): Promise<unknown> {
-    return apiDelete<unknown>(`/admin/users/${id}`);
+  async deleteUser(id: string): Promise<null> {
+    return apiDelete<null>(`/admin/users/${id}`);
   },
 };
