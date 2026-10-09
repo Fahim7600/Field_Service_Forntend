@@ -404,10 +404,42 @@ All file uploads are streamed directly to the backend API as `multipart/form-dat
   - [x] Authenticated `<UserMenu />` dropdown with initials fallback and profile/dashboard links
   - [x] Dashboard navigation constants for Admin, Technician, and Customer roles
   - [x] Fixed sidebar shell, sticky topbar with notifications and mobile slide-out drawer
-- [x] **Phase 7: Customer Portal & Booking Wizard**
+- [x] **Phase 7: Customer Portal & Service Request Lifecycle**
   - [x] Multi-step service booking wizard with local photo picker & two-step submission
+  - [x] URL-synced request list with debounced search, status chips, priority, date range, and sort order
+  - [x] Request detail view with milestone progress stepper, active polling, job card, and service report preview
+  - [x] Photo management on submitted requests (delete and upload with progress bar)
+  - [x] Dedicated request edit page with prefill, diff submissions, and status guards
+  - [x] Deletion of submitted requests with accessible `AlertDialog` confirmations
   - [x] Live work order tracker with timeline visualization
   - [x] Customer billing history and online checkout
+
+---
+
+## 🛠️ Customer Request Flow
+
+The customer portal provides a dedicated end-to-end service request lifecycle management flow:
+
+1. **Request List (`/customer/requests`)**:
+   - URL-synced search toolbar with 400ms debounce (`q`), status chips (`All`, `Submitted`, `Approved`, `Rejected`), priority filter (`All`, `High`, `Normal`), date range picker (`dateFrom`, `dateTo`), and sort order selector.
+   - Automatically handles endpoint parameter constraints (disabling incompatible filter queries during active text search as per API specification).
+   - Shows composite status with `getDisplayStatus()` (prioritizing active Work Order status over initial Request status).
+   - "Book Service" action prominently displayed using the orange `cta` variant.
+   - Responsive cards for mobile viewports (zero horizontal overflow at 375px) and structured table for desktop.
+
+2. **Request Detail (`/customer/requests/[id]`)**:
+   - Two-column responsive layout with independent queries for service request details, work order progress, and status timeline.
+   - Dynamic `WorkProgressStepper` driven by live work order progression, with active polling (30s interval while active status and tab visible).
+   - For `SUBMITTED` requests: "Waiting for review" banner (with priority review SLA countdown if applicable), edit link, and delete action with `AlertDialog` confirmation.
+   - Editable photo gallery while in `SUBMITTED` status: delete individual attachments or upload additional photos (up to 5 total) with multipart/form-data progress indicator.
+   - Job assignment details, technician information, service report summary, and direct link to customer invoices.
+
+3. **Request Editing (`/customer/requests/[id]/edit`)**:
+   - Dedicated single-page editing form available exclusively for requests in `SUBMITTED` status.
+   - Prefills form values using shared validation schema and time parsing helper `splitPreferredAt()`.
+   - Sends only modified fields via `PATCH /api/v1/service-requests/{id}`.
+   - Handles backend conflict rejection (e.g., if status transitioned to `APPROVED`) with instant feedback and redirection.
+   - Browser navigation guard (`beforeunload`) prevents accidental loss of unsaved changes.
 - [x] **Phase 8: Technician Mobile-Optimized Dashboard**
   - [x] Real-time task queue with single-status URL-synced chips (`All`, `Assigned`, `Scheduled`, `Arrived`, `In progress`, `Completed`, `Cancelled`)
   - [x] Job assignment acceptance & decline modal with validated reason (10-500 chars)
