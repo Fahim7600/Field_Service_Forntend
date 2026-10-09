@@ -9,9 +9,11 @@ import {
   Edit,
   ExternalLink,
   Loader2,
+  RotateCcw,
   Send,
   ShieldAlert,
   User,
+  Wallet,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -367,7 +369,7 @@ export function AdminInvoiceDetailClient({
                 )}
 
                 {isPaid && (
-                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-2">
+                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-3">
                     <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-semibold text-xs">
                       <CheckCircle2 className="size-4" />
                       <span>Payment Completed</span>
@@ -379,11 +381,47 @@ export function AdminInvoiceDetailClient({
                         : "record"}
                       .
                     </p>
-                    {/* Note: Refund actions are implemented in the customer/stripe refunds prompt */}
+                    <div className="pt-1 border-t border-emerald-500/20">
+                      <Link
+                        href="/admin/payments"
+                        className={cn(
+                          buttonVariants({ variant: "outline", size: "sm" }),
+                          "w-full gap-1.5 text-xs font-semibold bg-background/80 hover:bg-background",
+                        )}
+                      >
+                        <Wallet className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>View Payments &amp; Refunds</span>
+                      </Link>
+                    </div>
                   </div>
                 )}
 
-                {(isVoid || isCancelled || isRefunded) && (
+                {isRefunded && (
+                  <div className="p-3.5 bg-purple-500/10 border border-purple-500/30 rounded-xl space-y-2 text-xs">
+                    <div className="flex items-center gap-2 text-purple-800 dark:text-purple-300 font-semibold">
+                      <RotateCcw className="size-4" />
+                      <span>Payment Refunded</span>
+                    </div>
+                    <p className="text-purple-700/90 dark:text-purple-400/90 leading-relaxed">
+                      The payment transaction for this invoice has been refunded
+                      to the customer.
+                    </p>
+                    <div className="pt-1 border-t border-purple-500/20">
+                      <Link
+                        href="/admin/payments"
+                        className={cn(
+                          buttonVariants({ variant: "outline", size: "sm" }),
+                          "w-full gap-1.5 text-xs font-semibold bg-background/80 hover:bg-background",
+                        )}
+                      >
+                        <Wallet className="size-3.5 text-purple-600 dark:text-purple-400" />
+                        <span>View Payment Records</span>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {(isVoid || isCancelled) && (
                   <div className="p-3 bg-muted/40 border border-border rounded-xl space-y-1 text-xs text-muted-foreground">
                     <span className="font-semibold text-foreground block">
                       Read-Only Record

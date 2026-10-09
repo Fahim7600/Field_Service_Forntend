@@ -10,6 +10,8 @@ import {
   HelpCircle,
   Loader2,
   Lock,
+  Receipt,
+  RotateCcw,
   ShieldCheck,
   XCircle,
 } from "lucide-react";
@@ -79,7 +81,7 @@ export function CustomerInvoiceDetailClient({
       return financeService.initiatePayment(id);
     },
     onSuccess: (data) => {
-      const targetUrl = data.checkoutUrl || data.url;
+      const targetUrl = data.url;
 
       if (!targetUrl || !isSafeCheckoutUrl(targetUrl)) {
         setIsRedirecting(false);
@@ -173,6 +175,7 @@ export function CustomerInvoiceDetailClient({
   const isPaid = status === "PAID";
   const isVoid = status === "VOID";
   const isCancelled = status === "CANCELLED";
+  const isRefunded = status === "REFUNDED";
 
   const isBusy = payMutation.isPending || isRedirecting;
 
@@ -307,7 +310,7 @@ export function CustomerInvoiceDetailClient({
 
           {isPaid && (
             <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-xs">
-              <CardContent className="p-5 space-y-3 text-xs">
+              <CardContent className="p-5 space-y-3.5 text-xs">
                 <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
                   <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />
                   <span>Invoice Paid in Full</span>
@@ -321,6 +324,62 @@ export function CustomerInvoiceDetailClient({
                   </span>
                   .
                 </p>
+
+                {/* Receipt block */}
+                <div className="p-3 bg-background/80 rounded-lg border border-emerald-500/20 space-y-1.5">
+                  <div className="flex justify-between items-center text-muted-foreground text-[11px]">
+                    <span>Amount Paid:</span>
+                    <span className="font-mono font-bold text-foreground">
+                      {formatMoney(invoice.totalCents)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-muted-foreground text-[11px]">
+                    <span>Receipt:</span>
+                    <span className="font-mono text-foreground">
+                      {invoice.invoiceNumber || invoice.id.slice(0, 8)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <Link
+                    href="/customer/payments"
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "sm" }),
+                      "w-full gap-1.5 text-xs font-semibold bg-background hover:bg-muted",
+                    )}
+                  >
+                    <Receipt className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>View in Payment History</span>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {isRefunded && (
+            <Card className="border-purple-500/30 bg-purple-500/5 shadow-xs">
+              <CardContent className="p-5 space-y-3 text-xs">
+                <div className="flex items-center gap-2 text-purple-800 dark:text-purple-300 font-bold text-sm">
+                  <RotateCcw className="size-5 text-purple-600 shrink-0" />
+                  <span>Payment Refunded</span>
+                </div>
+                <p className="text-purple-700/90 dark:text-purple-400/90 leading-relaxed">
+                  The payment for this invoice was refunded to your original
+                  payment method.
+                </p>
+                <div className="pt-1">
+                  <Link
+                    href="/customer/payments"
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "sm" }),
+                      "w-full gap-1.5 text-xs font-semibold bg-background hover:bg-muted",
+                    )}
+                  >
+                    <Receipt className="size-3.5 text-purple-600 dark:text-purple-400" />
+                    <span>View Payment History</span>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           )}
