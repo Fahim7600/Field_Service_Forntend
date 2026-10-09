@@ -52,6 +52,7 @@ import {
 } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getErrorMessage } from "@/lib/api-client";
+import { getAttachmentUrl } from "@/lib/attachments";
 import { safeFormatDate, safeFormatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { adminService } from "@/services/admin.service";
@@ -277,16 +278,23 @@ export function RequestReviewClient({ id }: RequestReviewClientProps) {
   const requiredSkill = request.category?.skillId;
 
   // Normalize attachments
-  const attachments = (request.attachments || []).map((att, idx) => {
-    if (typeof att === "string") {
-      return { id: `att-${idx}`, url: att, fileName: `Attachment ${idx + 1}` };
-    }
-    return {
-      id: att.id || `att-${idx}`,
-      url: att.url || att.fileUrl || "",
-      fileName: att.fileName || `Attachment ${idx + 1}`,
-    };
-  });
+  const attachments = (request.attachments || [])
+    .map((att, idx) => {
+      const url = getAttachmentUrl(att);
+      if (!url) return null;
+      const fileName =
+        typeof att === "object" && att !== null && "fileName" in att
+          ? String((att as { fileName?: string }).fileName)
+          : `Attachment ${idx + 1}`;
+      const id =
+        typeof att === "object" && att !== null && "id" in att
+          ? String((att as { id?: string }).id)
+          : `att-${idx}`;
+      return { id, url, fileName };
+    })
+    .filter((item): item is { id: string; url: string; fileName: string } =>
+      Boolean(item),
+    );
 
   return (
     <div className="space-y-6">

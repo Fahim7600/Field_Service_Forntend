@@ -25,21 +25,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { getAttachmentUrl } from "@/lib/attachments";
 import { formatSafeDateTime } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import { requestsService } from "@/services/requests.service";
 
 export interface RequestDetailClientProps {
   id: string;
-}
-
-function getAttachmentUrl(att: unknown): string | null {
-  if (typeof att === "string") return att;
-  if (typeof att === "object" && att !== null) {
-    const obj = att as { fileUrl?: string; url?: string };
-    return obj.fileUrl || obj.url || null;
-  }
-  return null;
 }
 
 export function RequestDetailClient({ id }: RequestDetailClientProps) {

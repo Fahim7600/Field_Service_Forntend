@@ -51,6 +51,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useTaskActions } from "@/hooks/use-task-actions";
 import { getErrorMessage } from "@/lib/api-client";
+import { getAttachmentUrl } from "@/lib/attachments";
 import { safeFormatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getTechnicianActions } from "@/lib/work-order-rules";
@@ -257,16 +258,23 @@ export function TaskDetailClient({ id }: TaskDetailClientProps) {
 
   // Normalize attachments
   const rawAttachments = requestDetail?.attachments || [];
-  const attachments = rawAttachments.map((att, idx: number) => {
-    if (typeof att === "string") {
-      return { id: `att-${idx}`, url: att, fileName: `Photo ${idx + 1}` };
-    }
-    return {
-      id: att?.id || `att-${idx}`,
-      url: att?.url || att?.fileUrl || "",
-      fileName: att?.fileName || `Photo ${idx + 1}`,
-    };
-  });
+  const attachments = rawAttachments
+    .map((att, idx: number) => {
+      const url = getAttachmentUrl(att);
+      if (!url) return null;
+      const fileName =
+        typeof att === "object" && att !== null && "fileName" in att
+          ? String((att as { fileName?: string }).fileName)
+          : `Photo ${idx + 1}`;
+      const id =
+        typeof att === "object" && att !== null && "id" in att
+          ? String((att as { id?: string }).id)
+          : `att-${idx}`;
+      return { id, url, fileName };
+    })
+    .filter((item): item is { id: string; url: string; fileName: string } =>
+      Boolean(item),
+    );
 
   return (
     <div className="space-y-6">
@@ -539,29 +547,32 @@ export function TaskDetailClient({ id }: TaskDetailClientProps) {
                         Completion Photos ({task.serviceReport.photos.length})
                       </span>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {task.serviceReport.photos.map((p, pIdx) => {
-                          const pUrl = typeof p === "string" ? p : p.url;
-                          return (
-                            <a
-                              key={pUrl || pIdx}
-                              href={pUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="group relative block aspect-square overflow-hidden rounded-lg border border-border bg-muted/40 hover:ring-2 hover:ring-primary/50"
-                            >
-                              <Image
-                                src={pUrl}
-                                alt={`Completion Photo ${pIdx + 1}`}
-                                fill
-                                unoptimized
-                                className="object-cover transition-transform duration-200 group-hover:scale-105"
-                              />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center">
-                                <ExternalLink className="size-4 text-white" />
-                              </div>
-                            </a>
-                          );
-                        })}
+                        {task.serviceReport.photos
+                          .map((p, pIdx) => {
+                            const pUrl = getAttachmentUrl(p);
+                            if (!pUrl) return null;
+                            return (
+                              <a
+                                key={pUrl || pIdx}
+                                href={pUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group relative block aspect-square overflow-hidden rounded-lg border border-border bg-muted/40 hover:ring-2 hover:ring-primary/50"
+                              >
+                                <Image
+                                  src={pUrl}
+                                  alt={`Completion Photo ${pIdx + 1}`}
+                                  fill
+                                  unoptimized
+                                  className="object-cover transition-transform duration-200 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center">
+                                  <ExternalLink className="size-4 text-white" />
+                                </div>
+                              </a>
+                            );
+                          })
+                          .filter(Boolean)}
                       </div>
                     </div>
                   )}
