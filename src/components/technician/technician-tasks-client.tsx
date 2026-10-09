@@ -1,20 +1,19 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { isToday as isTodayDateFns } from "date-fns";
 import {
   AlertCircle,
   ArrowRight,
-  Briefcase,
+  ArrowUpDown,
   Calendar,
-  Clock,
-  History,
-  Inbox,
-  PlayCircle,
-  Star,
-  Wrench,
+  ClipboardList,
+  MapPin,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import * as React from "react";
+import type * as React from "react";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { PaginationControls } from "@/components/shared/pagination-controls";
@@ -27,145 +26,178 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUrlFilters } from "@/hooks/use-url-filters";
 import { extractArray } from "@/lib/extract-data";
-import { formatSafeDate, formatSafeDateTime } from "@/lib/format-date";
+import { parseSafeDate, safeFormatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { getTechnicianActions } from "@/lib/work-order-rules";
 import { technicianService } from "@/services/technician.service";
-import type { WorkOrderSummary } from "@/types/api";
+import type { TechnicianTask, WorkOrderStatus } from "@/types/work-order";
+
+const STATUS_CHIPS: Array<{
+  label: string;
+  value: WorkOrderStatus | "";
+}> = [
+  { label: "All", value: "" },
+  { label: "Assigned", value: "ASSIGNED" },
+  { label: "Scheduled", value: "SCHEDULED" },
+  { label: "Arrived", value: "ARRIVED" },
+  { label: "In progress", value: "IN_PROGRESS" },
+  { label: "Completed", value: "COMPLETED" },
+  { label: "Cancelled", value: "CANCELLED" },
+];
+
+const VALID_STATUSES = new Set(
+  STATUS_CHIPS.map((c) => c.value).filter(Boolean),
+);
+
+const SORT_OPTIONS: {
+  label: string;
+  sortBy: "createdAt" | "visitStart" | "status";
+  order: "asc" | "desc";
+}[] = [
+  { label: "Newest first", sortBy: "createdAt", order: "desc" },
+  { label: "Oldest first", sortBy: "createdAt", order: "asc" },
+  { label: "Visit date (Soonest)", sortBy: "visitStart", order: "asc" },
+  { label: "Visit date (Latest)", sortBy: "visitStart", order: "desc" },
+];
 
 export function TechnicianTasksClient() {
   const { filters, updateFilters } = useUrlFilters();
 
-  const activeTab = (filters.tab as string) || "active";
+  const rawStatus = (filters.status as string) || "";
+  const status: WorkOrderStatus | undefined = VALID_STATUSES.has(
+    rawStatus as WorkOrderStatus,
+  )
+    ? (rawStatus as WorkOrderStatus)
+    : undefined;
+
+  const sortBy =
+    (filters.sortBy as "createdAt" | "visitStart" | "status") || "createdAt";
+  const order = (filters.order as "asc" | "desc") || "desc";
   const page = filters.page || 1;
   const limit = filters.limit || 10;
 
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["technician", "tasks", { tab: activeTab, page, limit }],
-    queryFn: async () => {
-      if (activeTab === "pending") {
-        return technicianService.fetchWorkOrders({
-          status: "ASSIGNED",
-          page,
-          limit,
-        });
-      }
-      if (activeTab === "history") {
-        return technicianService.fetchWorkOrders({
-          status: "COMPLETED",
-          page,
-          limit,
-        });
-      }
-      // "active" tab: tasks currently underway or scheduled
-      return technicianService.fetchMyAssignedTasks({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ["technician", "tasks", { page, limit, status, sortBy, order }],
+    queryFn: () =>
+      technicianService.fetchMyTasks({
         page,
         limit,
-      });
-    },
+        status,
+        sortBy,
+        order,
+      }),
     placeholderData: (previousData) => previousData,
     staleTime: 15000,
   });
 
-  const rawItems = extractArray<WorkOrderSummary>(data);
-  // If in active tab, filter out ASSIGNED since they belong in Pending tab
-  const items = React.useMemo(() => {
-    if (activeTab === "active") {
-      return rawItems.filter((item) => item.status !== "ASSIGNED");
-    }
-    return rawItems;
-  }, [rawItems, activeTab]);
-
+  const items = extractArray<TechnicianTask>(data);
   const pagination = data?.pagination;
 
-  const columns: ColumnDef<WorkOrderSummary>[] = [
+  const currentSortValue = `${sortBy}-${order}`;
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const [selectedSortBy, selectedOrder] = e.target.value.split("-") as [
+      "createdAt" | "visitStart" | "status",
+      "asc" | "desc",
+    ];
+    updateFilters({
+      sortBy:
+        selectedSortBy === "createdAt" && selectedOrder === "desc"
+          ? undefined
+          : selectedSortBy,
+      order:
+        selectedSortBy === "createdAt" && selectedOrder === "desc"
+          ? undefined
+          : selectedOrder,
+      page: 1,
+    });
+  };
+
+  const isVisitToday = (dateValue?: string | null): boolean => {
+    if (!dateValue) return false;
+    const d = parseSafeDate(dateValue);
+    return d ? isTodayDateFns(d) : false;
+  };
+
+  const columns: ColumnDef<TechnicianTask>[] = [
     {
-      id: "workOrder",
-      header: "Job / Request #",
+      id: "job",
+      header: "Job / Work Order #",
       cell: (item) => {
-        const isHighPriority = item.request?.priority === "HIGH";
+        const needsResponse = getTechnicianActions(item) === "RESPOND";
+        const today = isVisitToday(item.visitStart);
 
         return (
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-mono font-bold text-charcoal-900 dark:text-charcoal-100">
-                #{item.id.slice(0, 8)}
+                {item.workOrderNumber || `#${item.id.slice(0, 8)}`}
               </span>
-              {isHighPriority && (
+              {needsResponse && (
                 <Badge
                   variant="outline"
                   className="gap-1 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold px-1.5 py-0 text-[10px]"
                 >
-                  <Star className="size-2.5 fill-amber-500 text-amber-500" />
-                  HIGH
+                  <Sparkles className="size-2.5 text-amber-500" />
+                  <span>Needs your response</span>
+                </Badge>
+              )}
+              {today && (
+                <Badge
+                  variant="outline"
+                  className="gap-1 border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold px-1.5 py-0 text-[10px]"
+                >
+                  <Calendar className="size-2.5 text-blue-500" />
+                  <span>Today</span>
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span className="font-mono text-[11px] opacity-80">
-                {item.request?.requestNumber || "SR-Pending"}
+            {item.request?.title && (
+              <span className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">
+                {item.request.title}
               </span>
-              {item.request?.title && (
-                <>
-                  <span>•</span>
-                  <span className="line-clamp-1 max-w-[180px]">
-                    {item.request.title}
-                  </span>
-                </>
-              )}
-            </div>
+            )}
           </div>
         );
       },
     },
     {
-      id: "category",
-      header: "Category",
+      id: "service",
+      header: "Service",
       cell: (item) => (
-        <Badge variant="secondary" className="font-medium text-xs gap-1">
-          <Wrench className="size-3 text-primary" />
+        <Badge variant="secondary" className="font-medium text-xs">
           {item.request?.category?.name || "General Service"}
         </Badge>
       ),
     },
     {
-      id: "schedule",
-      header: "Visit Window",
-      cell: (item) => {
-        if (!item.visitStart) {
-          return (
-            <span className="text-xs text-muted-foreground italic">
-              Not scheduled yet
-            </span>
-          );
-        }
-
-        return (
-          <div className="flex flex-col text-xs text-muted-foreground">
-            <span className="font-medium text-charcoal-900 dark:text-charcoal-100 flex items-center gap-1">
-              <Calendar className="size-3 text-primary" />
-              {formatSafeDate(item.visitStart)}
-            </span>
-            <span className="text-[11px]">
-              {formatSafeDateTime(item.visitStart, "h:mm a")} -{" "}
-              {item.visitEnd
-                ? formatSafeDateTime(item.visitEnd, "h:mm a")
-                : "TBD"}
-            </span>
-          </div>
-        );
-      },
+      id: "area",
+      header: "Area",
+      cell: (item) => (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground max-w-[180px]">
+          <MapPin className="size-3 shrink-0 text-muted-foreground/70" />
+          <span className="truncate">
+            {item.request?.address || "Address not provided"}
+          </span>
+        </div>
+      ),
     },
     {
-      id: "customer",
-      header: "Customer",
+      id: "visit",
+      header: "Visit Window",
       cell: (item) => (
-        <div className="flex flex-col text-xs">
-          <span className="font-medium text-charcoal-900 dark:text-charcoal-100">
-            {item.customer?.name || "Customer"}
-          </span>
+        <div className="text-xs">
+          {item.visitStart ? (
+            <span className="text-foreground whitespace-nowrap">
+              {safeFormatDateTime(item.visitStart)}
+            </span>
+          ) : (
+            <span className="text-muted-foreground italic">
+              Not scheduled yet
+            </span>
+          )}
         </div>
       ),
     },
@@ -175,33 +207,27 @@ export function TechnicianTasksClient() {
       cell: (item) => <StatusBadge status={item.status} />,
     },
     {
-      id: "actions",
-      header: "Actions",
+      id: "action",
+      header: "Action",
       className: "text-right",
       cell: (item) => {
-        const isPending = item.status === "ASSIGNED";
-        const isInProgress = item.status === "IN_PROGRESS";
-
+        const needsResponse = getTechnicianActions(item) === "RESPOND";
         return (
-          <Link
-            href={`/technician/tasks/${item.id}`}
-            className={cn(
-              buttonVariants({
-                size: "sm",
-                variant: isPending || isInProgress ? "default" : "outline",
-              }),
-              "text-xs h-8 gap-1.5 shadow-2xs",
-            )}
-          >
-            <span>
-              {isPending
-                ? "Review Job"
-                : isInProgress
-                  ? "Resume Work"
-                  : "View Task"}
-            </span>
-            <ArrowRight className="size-3.5" />
-          </Link>
+          <div className="flex justify-end">
+            <Link
+              href={`/technician/tasks/${item.id}`}
+              className={cn(
+                buttonVariants({
+                  variant: needsResponse ? "default" : "outline",
+                  size: "sm",
+                }),
+                "h-8 px-3 font-semibold text-xs gap-1.5",
+              )}
+            >
+              <span>{needsResponse ? "Respond" : "View"}</span>
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
         );
       },
     },
@@ -209,177 +235,244 @@ export function TechnicianTasksClient() {
 
   return (
     <div className="space-y-6">
-      {/* Tabbed Navigation Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
-        <Tabs
-          value={activeTab}
-          onValueChange={(val: unknown) =>
-            updateFilters({ tab: String(val ?? "active"), page: 1 })
-          }
-        >
-          <TabsList className="bg-muted/60 p-1 border border-border">
-            <TabsTrigger value="active" className="gap-1.5">
-              <PlayCircle className="size-3.5" />
-              <span>Active Tasks</span>
-            </TabsTrigger>
-            <TabsTrigger value="pending" className="gap-1.5">
-              <Briefcase className="size-3.5" />
-              <span>Pending Acceptance</span>
-            </TabsTrigger>
-            <TabsTrigger value="history" className="gap-1.5">
-              <History className="size-3.5" />
-              <span>Completed History</span>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      {/* Horizontal Status Chips Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-border">
+        {STATUS_CHIPS.map((chip) => {
+          const isSelected =
+            chip.value === "" ? !status : status === chip.value;
 
-        <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Clock className="size-3.5" />
-          <span>Real-time assigned dispatch queue</span>
+          return (
+            <button
+              key={chip.label}
+              type="button"
+              onClick={() =>
+                updateFilters({
+                  status: chip.value || undefined,
+                  page: 1,
+                })
+              }
+              className={cn(
+                "px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer select-none",
+                isSelected
+                  ? "bg-charcoal-900 text-white dark:bg-charcoal-100 dark:text-charcoal-900 shadow-xs"
+                  : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {chip.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Controls Bar: Count, Sort, Refresh */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-panel border border-border p-4 rounded-xl shadow-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-charcoal-900 dark:text-charcoal-100">
+            Assigned Tasks:
+          </span>
+          <Badge
+            variant="outline"
+            className="font-semibold text-xs px-2.5 py-0.5"
+          >
+            {pagination?.total ?? items.length}
+          </Badge>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Sort Selector */}
+          <div className="flex items-center gap-1.5 bg-background border border-input rounded-lg px-2.5 py-1">
+            <ArrowUpDown className="size-3.5 text-muted-foreground" />
+            <select
+              value={currentSortValue}
+              onChange={handleSortChange}
+              aria-label="Sort tasks"
+              className="bg-transparent text-xs font-medium text-foreground focus:outline-hidden cursor-pointer"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option
+                  key={`${opt.sortBy}-${opt.order}`}
+                  value={`${opt.sortBy}-${opt.order}`}
+                >
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="h-8 gap-1.5 text-xs"
+          >
+            <RefreshCw
+              className={cn("size-3.5", isFetching && "animate-spin")}
+            />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
         </div>
       </div>
 
-      {/* Loading Skeletons */}
-      {isLoading && !data && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-6 w-36" />
-            <Skeleton className="h-6 w-24" />
-          </div>
-          <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        </div>
-      )}
-
-      {/* Error State */}
-      {isError && (
-        <Card className="border-destructive/30 bg-destructive/5 p-6 text-center">
-          <CardContent className="space-y-3 p-0">
-            <AlertCircle className="size-8 text-destructive mx-auto" />
+      {/* Main List / Skeletons / Error / Empty View */}
+      {isLoading ? (
+        <Card className="border-border shadow-xs">
+          <CardContent className="p-6 space-y-4">
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton
+                  // biome-ignore lint/suspicious/noArrayIndexKey: Skeletons
+                  key={i}
+                  className="h-14 w-full rounded-lg"
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : isError ? (
+        <Card className="border-destructive/30 bg-destructive/5 shadow-xs">
+          <CardContent className="p-8 text-center space-y-4">
+            <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
+              <AlertCircle className="size-6" />
+            </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-destructive">
+              <h3 className="text-base font-bold text-destructive">
                 Failed to load assigned tasks
               </h3>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
                 {error instanceof Error
                   ? error.message
-                  : "An error occurred fetching your jobs."}
+                  : "An unexpected error occurred while communicating with the server."}
               </p>
             </div>
             <Button
-              size="sm"
               variant="outline"
-              onClick={() => window.location.reload()}
+              size="sm"
+              onClick={() => refetch()}
+              className="border-destructive/30 text-destructive hover:bg-destructive/10"
             >
-              Retry
+              <RefreshCw className="size-3.5 mr-1.5" />
+              Try Again
             </Button>
           </CardContent>
         </Card>
-      )}
-
-      {/* Data List */}
-      {!isLoading && !isError && (
-        <>
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={ClipboardList}
+          title={
+            status
+              ? `No ${status.toLowerCase()} tasks found`
+              : "No jobs assigned to you yet"
+          }
+          description={
+            status
+              ? `You currently have no tasks matching the "${status}" status.`
+              : "When the dispatch team assigns a new work order to you, it will appear here."
+          }
+          action={
+            status ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => updateFilters({ status: undefined, page: 1 })}
+              >
+                Clear Filter
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="space-y-4">
           <ResponsiveDataList
             items={items}
             keyExtractor={(item) => item.id}
             columns={columns}
-            emptyState={
-              <EmptyState
-                icon={Inbox}
-                title={
-                  activeTab === "pending"
-                    ? "No Pending Assignments"
-                    : activeTab === "history"
-                      ? "No Completed History"
-                      : "No Active Tasks Right Now"
-                }
-                description={
-                  activeTab === "pending"
-                    ? "You do not have any incoming work orders waiting for acceptance."
-                    : activeTab === "history"
-                      ? "Completed work orders and service reports will appear here."
-                      : "You have no active visits currently scheduled. Check back once dispatched."
-                }
-              />
-            }
             mobileCardRender={(item) => {
-              const isPending = item.status === "ASSIGNED";
-              const isHighPriority = item.request?.priority === "HIGH";
+              const needsResponse = getTechnicianActions(item) === "RESPOND";
+              const today = isVisitToday(item.visitStart);
 
               return (
-                <Card
-                  className={`p-4 border shadow-2xs space-y-3 ${
-                    isPending
-                      ? "border-primary/40 bg-primary/[0.02]"
-                      : "border-border bg-card"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono text-xs font-bold text-charcoal-900 dark:text-charcoal-100">
-                          #{item.id.slice(0, 8)}
-                        </span>
-                        {isHighPriority && (
-                          <Badge
-                            variant="outline"
-                            className="gap-1 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold px-1.5 py-0 text-[10px]"
-                          >
-                            <Star className="size-2.5 fill-amber-500 text-amber-500" />
-                            HIGH
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs font-semibold text-charcoal-800 dark:text-charcoal-200">
-                        {item.request?.title || "Service Work Order"}
-                      </p>
+                <Card className="border border-border bg-card p-4 shadow-2xs space-y-3">
+                  <CardContent className="p-0 space-y-3 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono font-bold text-sm text-charcoal-900 dark:text-charcoal-100">
+                        {item.workOrderNumber || `#${item.id.slice(0, 8)}`}
+                      </span>
+                      <StatusBadge status={item.status} />
                     </div>
-                    <StatusBadge status={item.status} />
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs border-y border-border/50 py-2">
-                    <div>
-                      <span className="text-muted-foreground block text-[10px] uppercase">
-                        Customer
-                      </span>
-                      <span className="font-medium text-charcoal-900 dark:text-charcoal-100">
-                        {item.customer?.name || "Customer"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block text-[10px] uppercase">
-                        Scheduled Visit
-                      </span>
-                      <span className="font-medium text-charcoal-900 dark:text-charcoal-100">
-                        {item.visitStart
-                          ? formatSafeDate(item.visitStart)
-                          : "Unscheduled"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 pt-1">
-                    <span className="text-[11px] text-muted-foreground">
-                      Created {formatSafeDate(item.createdAt)}
-                    </span>
-                    <Link
-                      href={`/technician/tasks/${item.id}`}
-                      className={cn(
-                        buttonVariants({
-                          size: "sm",
-                          variant: isPending ? "default" : "outline",
-                        }),
-                        "text-xs h-8 gap-1.5",
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {needsResponse && (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 font-semibold px-1.5 py-0 text-[10px]"
+                        >
+                          <Sparkles className="size-2.5 text-amber-500" />
+                          <span>Needs your response</span>
+                        </Badge>
                       )}
-                    >
-                      <span>{isPending ? "Accept / Review" : "Open Task"}</span>
-                      <ArrowRight className="size-3.5" />
-                    </Link>
-                  </div>
+                      {today && (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold px-1.5 py-0 text-[10px]"
+                        >
+                          <Calendar className="size-2.5 text-blue-500" />
+                          <span>Today</span>
+                        </Badge>
+                      )}
+                    </div>
+
+                    {item.request?.title && (
+                      <p className="font-medium text-charcoal-800 dark:text-charcoal-200">
+                        {item.request.title}
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 text-muted-foreground pt-1 border-t border-border/50">
+                      <div>
+                        <span className="block text-[10px] uppercase tracking-wider font-semibold text-charcoal-500">
+                          Customer
+                        </span>
+                        <span className="font-medium text-charcoal-900 dark:text-charcoal-100">
+                          {item.customer?.name || "Customer"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] uppercase tracking-wider font-semibold text-charcoal-500">
+                          Service
+                        </span>
+                        <span className="font-medium text-charcoal-900 dark:text-charcoal-100">
+                          {item.request?.category?.name || "General"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                      <div>
+                        <span className="block text-[10px] uppercase tracking-wider font-semibold text-charcoal-500">
+                          Visit Window
+                        </span>
+                        <span className="text-xs text-foreground">
+                          {item.visitStart
+                            ? safeFormatDateTime(item.visitStart)
+                            : "Not scheduled yet"}
+                        </span>
+                      </div>
+                      <Link
+                        href={`/technician/tasks/${item.id}`}
+                        className={cn(
+                          buttonVariants({
+                            variant: needsResponse ? "default" : "outline",
+                            size: "sm",
+                          }),
+                          "h-8 px-3 font-semibold",
+                        )}
+                      >
+                        {needsResponse ? "Respond" : "View"}
+                        <ArrowRight className="ml-1.5 size-3.5" />
+                      </Link>
+                    </div>
+                  </CardContent>
                 </Card>
               );
             }}
@@ -393,7 +486,7 @@ export function TechnicianTasksClient() {
               />
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
