@@ -55,10 +55,29 @@ const STATUS_CONFIGS: Record<string, { label: string; className: string }> = {
     className:
       "bg-teal-500/15 text-teal-800 dark:text-teal-300 border-teal-500/30",
   },
+  DRAFT: {
+    label: "Draft",
+    className:
+      "bg-muted text-charcoal-700 dark:text-charcoal-300 border-border",
+  },
+  ISSUED: {
+    label: "Issued",
+    className:
+      "bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/30",
+  },
   PAID: {
     label: "Paid",
     className:
       "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30",
+  },
+  VOID: {
+    label: "Void",
+    className: "bg-destructive/15 text-destructive border-destructive/30",
+  },
+  REFUNDED: {
+    label: "Refunded",
+    className:
+      "bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/30",
   },
   CLOSED: {
     label: "Closed",

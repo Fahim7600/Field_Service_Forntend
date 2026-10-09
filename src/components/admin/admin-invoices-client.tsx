@@ -1,7 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, ExternalLink, FilePlus, Inbox } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowUpDown,
+  Eye,
+  Plus,
+  Receipt,
+  RefreshCw,
+} from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
@@ -14,47 +21,115 @@ import {
 } from "@/components/shared/responsive-data-list";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useUrlFilters } from "@/hooks/use-url-filters";
 import { extractArray } from "@/lib/extract-data";
-import { formatCurrencyCents } from "@/lib/format-currency";
-import { formatSafeDate } from "@/lib/format-date";
+import { formatMoney, safeFormatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
-import type { InvoiceStatus, InvoiceSummary } from "@/types/api";
+import type { InvoiceListItem, InvoiceStatus } from "@/types/api";
+
+const STATUS_CHIPS: Array<{ label: string; value: InvoiceStatus | "ALL" }> = [
+  { label: "All Invoices", value: "ALL" },
+  { label: "Draft", value: "DRAFT" },
+  { label: "Issued", value: "ISSUED" },
+  { label: "Paid", value: "PAID" },
+  { label: "Void", value: "VOID" },
+  { label: "Refunded", value: "REFUNDED" },
+  { label: "Cancelled", value: "CANCELLED" },
+];
 
 export function AdminInvoicesClient() {
-  const { filters, updateFilters } = useUrlFilters();
+  const { filters, updateFilters, resetFilters } = useUrlFilters({
+    page: 1,
+    limit: 10,
+    sortBy: "createdAt",
+    order: "desc",
+  });
   const [createModalOpen, setCreateModalOpen] = React.useState(false);
 
-  const statusFilter = (filters.status as InvoiceStatus) || undefined;
+  const rawStatus = filters.status ? String(filters.status).toUpperCase() : "";
+  const statusFilter =
+    rawStatus && rawStatus !== "ALL" ? (rawStatus as InvoiceStatus) : undefined;
   const page = filters.page || 1;
   const limit = filters.limit || 10;
+  const sortBy = filters.sortBy || "createdAt";
+  const order = filters.order || "desc";
 
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["invoices", { status: statusFilter, page, limit }],
+  const sortValue =
+    sortBy === "totalCents" && order === "desc"
+      ? "highest_total"
+      : sortBy === "createdAt" && order === "asc"
+        ? "oldest"
+        : "newest";
+
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: [
+      "invoices",
+      { status: statusFilter, page, limit, sortBy, order },
+    ],
     queryFn: () =>
-      financeService.fetchInvoices({ status: statusFilter, page, limit }),
-    placeholderData: (previousData) => previousData,
+      financeService.fetchInvoices({
+        status: statusFilter,
+        page,
+        limit,
+        sortBy,
+        order,
+      }),
     staleTime: 15000,
   });
 
-  const items = extractArray<InvoiceSummary>(data);
+  const items = extractArray<InvoiceListItem>(data);
   const pagination = data?.pagination;
 
-  const columns: ColumnDef<InvoiceSummary>[] = [
+  const handleSortChange = (value: string) => {
+    if (value === "highest_total") {
+      updateFilters({ sortBy: "totalCents", order: "desc", page: 1 });
+    } else if (value === "oldest") {
+      updateFilters({ sortBy: "createdAt", order: "asc", page: 1 });
+    } else {
+      updateFilters({ sortBy: "createdAt", order: "desc", page: 1 });
+    }
+  };
+
+  const handleStatusChange = (statusVal: InvoiceStatus | "ALL") => {
+    updateFilters({
+      status: statusVal === "ALL" ? undefined : statusVal,
+      page: 1,
+    });
+  };
+
+  const isFiltered = Boolean(statusFilter);
+
+  const columns: ColumnDef<InvoiceListItem>[] = [
     {
       id: "invoiceNumber",
       header: "Invoice #",
       cell: (item) => (
         <div className="flex flex-col">
-          <span className="font-mono font-bold text-charcoal-900 dark:text-charcoal-100">
-            {item.invoiceNumber || item.id.slice(0, 8)}
-          </span>
-          <span className="text-[11px] text-muted-foreground font-mono">
-            WO #{item.workOrder?.id?.slice(0, 8) || "—"}
-          </span>
+          <Link
+            href={`/admin/invoices/${item.id}`}
+            className="font-mono font-bold text-foreground hover:underline inline-flex items-center gap-1"
+          >
+            <span>{item.invoiceNumber || item.id.slice(0, 8)}</span>
+          </Link>
+          {item.workOrder?.id && (
+            <Link
+              href={`/admin/work-orders/${item.workOrder.id}`}
+              className="text-[11px] text-muted-foreground hover:text-foreground font-mono transition-colors"
+            >
+              WO #
+              {item.workOrder.workOrderNumber || item.workOrder.id.slice(0, 8)}
+            </Link>
+          )}
         </div>
       ),
     },
@@ -63,11 +138,11 @@ export function AdminInvoicesClient() {
       header: "Customer",
       cell: (item) => (
         <div className="flex flex-col">
-          <span className="font-medium text-charcoal-900 dark:text-charcoal-100">
+          <span className="font-medium text-foreground">
             {item.customer?.name || "Customer"}
           </span>
           {item.customer?.email && (
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[11px] text-muted-foreground truncate max-w-[180px]">
               {item.customer.email}
             </span>
           )}
@@ -76,10 +151,10 @@ export function AdminInvoicesClient() {
     },
     {
       id: "total",
-      header: "Total Amount",
+      header: "Total",
       cell: (item) => (
-        <span className="font-semibold text-charcoal-900 dark:text-charcoal-100">
-          {formatCurrencyCents(item.totalCents, item.currency)}
+        <span className="font-semibold text-foreground">
+          {formatMoney(item.totalCents)}
         </span>
       ),
     },
@@ -90,111 +165,183 @@ export function AdminInvoicesClient() {
     },
     {
       id: "date",
-      header: "Created Date",
+      header: "Created",
       cell: (item) => (
         <span className="text-xs text-muted-foreground">
-          {formatSafeDate(item.createdAt)}
+          {safeFormatDate(item.createdAt)}
         </span>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "Action",
       className: "text-right",
       cell: (item) => (
         <Link
           href={`/admin/invoices/${item.id}`}
           className={cn(
-            buttonVariants({
-              size: "sm",
-              variant: item.status === "DRAFT" ? "default" : "outline",
-            }),
-            "text-xs h-8 gap-1.5 shadow-2xs",
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "h-8 px-2.5 text-xs gap-1.5 font-medium",
           )}
         >
-          <span>{item.status === "DRAFT" ? "Review & Issue" : "View"}</span>
-          <ExternalLink className="size-3.5" />
+          <Eye className="size-3.5" />
+          <span>View</span>
         </Link>
       ),
     },
   ];
 
+  const renderMobileCard = (item: InvoiceListItem) => (
+    <Card className="border-border shadow-xs hover:border-border/80 transition-colors">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5">
+            <Link
+              href={`/admin/invoices/${item.id}`}
+              className="font-mono font-bold text-sm text-foreground hover:underline"
+            >
+              {item.invoiceNumber || item.id.slice(0, 8)}
+            </Link>
+            {item.workOrder?.id && (
+              <p className="text-[11px] text-muted-foreground font-mono">
+                WO #
+                {item.workOrder.workOrderNumber ||
+                  item.workOrder.id.slice(0, 8)}
+              </p>
+            )}
+          </div>
+          <StatusBadge status={item.status} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs py-1 border-y border-border/50">
+          <div>
+            <span className="text-[10px] uppercase font-semibold text-muted-foreground block">
+              Customer
+            </span>
+            <span className="font-medium text-foreground truncate block">
+              {item.customer?.name || "Customer"}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] uppercase font-semibold text-muted-foreground block">
+              Total Amount
+            </span>
+            <span className="font-bold text-foreground">
+              {formatMoney(item.totalCents)}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-xs pt-1">
+          <span className="text-muted-foreground text-[11px]">
+            Created {safeFormatDate(item.createdAt)}
+          </span>
+          <Link
+            href={`/admin/invoices/${item.id}`}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "h-7 text-xs gap-1.5",
+            )}
+          >
+            <Eye className="size-3.5" />
+            <span>View</span>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
-      {/* Top Filter Bar & Create Button */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
-        <div className="flex items-center gap-1.5 bg-muted/50 p-1 rounded-xl border border-border flex-wrap">
-          <Button
-            size="sm"
-            variant={statusFilter === undefined ? "default" : "ghost"}
-            className="text-xs h-8 rounded-lg"
-            onClick={() => updateFilters({ status: undefined, page: 1 })}
-          >
-            All
-          </Button>
-          <Button
-            size="sm"
-            variant={statusFilter === "DRAFT" ? "default" : "ghost"}
-            className="text-xs h-8 rounded-lg"
-            onClick={() => updateFilters({ status: "DRAFT", page: 1 })}
-          >
-            Draft
-          </Button>
-          <Button
-            size="sm"
-            variant={statusFilter === "ISSUED" ? "default" : "ghost"}
-            className="text-xs h-8 rounded-lg"
-            onClick={() => updateFilters({ status: "ISSUED", page: 1 })}
-          >
-            Issued
-          </Button>
-          <Button
-            size="sm"
-            variant={statusFilter === "PAID" ? "default" : "ghost"}
-            className="text-xs h-8 rounded-lg"
-            onClick={() => updateFilters({ status: "PAID", page: 1 })}
-          >
-            Paid
-          </Button>
-          <Button
-            size="sm"
-            variant={statusFilter === "VOID" ? "default" : "ghost"}
-            className="text-xs h-8 rounded-lg"
-            onClick={() => updateFilters({ status: "VOID", page: 1 })}
-          >
-            Void
-          </Button>
+      {/* Top Controls Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Status Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          {STATUS_CHIPS.map((chip) => {
+            const isSelected =
+              chip.value === "ALL"
+                ? !statusFilter
+                : statusFilter === chip.value;
+            return (
+              <button
+                key={chip.value}
+                type="button"
+                onClick={() => handleStatusChange(chip.value)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border shrink-0",
+                  isSelected
+                    ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                    : "bg-card text-muted-foreground border-border hover:bg-accent/50 hover:text-foreground",
+                )}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
         </div>
 
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => setCreateModalOpen(true)}
-          className="gap-1.5 shadow-2xs text-xs h-8"
-        >
-          <FilePlus className="size-3.5" />
-          <span>Create Invoice</span>
-        </Button>
+        {/* Action Buttons & Sort */}
+        <div className="flex items-center justify-between md:justify-end gap-2.5 shrink-0">
+          <div className="flex items-center gap-2">
+            <Select
+              value={sortValue}
+              onValueChange={(val) => {
+                if (val) handleSortChange(val);
+              }}
+            >
+              <SelectTrigger className="h-9 w-[150px] text-xs gap-1.5">
+                <ArrowUpDown className="size-3.5 text-muted-foreground shrink-0" />
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest" className="text-xs">
+                  Newest First
+                </SelectItem>
+                <SelectItem value="oldest" className="text-xs">
+                  Oldest First
+                </SelectItem>
+                <SelectItem value="highest_total" className="text-xs">
+                  Highest Total
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="h-9 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+              aria-label="Refresh invoices"
+            >
+              <RefreshCw
+                className={cn("size-3.5", isFetching && "animate-spin")}
+              />
+            </Button>
+          </div>
+
+          <Button
+            size="sm"
+            onClick={() => setCreateModalOpen(true)}
+            className="h-9 gap-1.5 text-xs font-semibold shadow-xs"
+          >
+            <Plus className="size-4" />
+            <span>Create Invoice</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Loading Skeletons */}
-      {isLoading && !data && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-6 w-36" />
-            <Skeleton className="h-6 w-24" />
-          </div>
-          <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
+      {/* Main Data Content */}
+      {isLoading ? (
+        <div className="border border-border rounded-xl p-4 space-y-3 bg-card">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
         </div>
-      )}
-
-      {/* Error State */}
-      {isError && (
-        <Card className="border-destructive/30 bg-destructive/5 p-6 text-center">
+      ) : isError ? (
+        <Card className="border-destructive/30 bg-destructive/5 text-center p-6 space-y-3">
           <CardContent className="space-y-3 p-0">
             <AlertCircle className="size-8 text-destructive mx-auto" />
             <div className="space-y-1">
@@ -202,109 +349,71 @@ export function AdminInvoicesClient() {
                 Failed to load invoices
               </h3>
               <p className="text-xs text-muted-foreground">
-                {error instanceof Error
-                  ? error.message
-                  : "An error occurred fetching invoices."}
+                {error
+                  ? (error as Error).message
+                  : "Unable to retrieve billing records."}
               </p>
             </div>
             <Button
               size="sm"
-              variant="outline"
-              onClick={() => window.location.reload()}
+              onClick={() => refetch()}
+              className="gap-1.5 text-xs font-semibold"
             >
-              Retry
+              <RefreshCw className="size-3.5" />
+              <span>Retry</span>
             </Button>
           </CardContent>
         </Card>
-      )}
-
-      {/* Invoices List */}
-      {!isLoading && !isError && (
-        <>
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={Receipt}
+          title={
+            isFiltered ? "No matching invoices" : "No invoices created yet"
+          }
+          description={
+            isFiltered
+              ? "No invoices match the selected status filter. Try selecting another status or clearing filters."
+              : "Draft invoices are generated automatically when technicians submit service reports, or you can create one manually."
+          }
+          action={
+            isFiltered ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => resetFilters()}
+                className="gap-1.5 text-xs font-semibold"
+              >
+                <span>Clear Filters</span>
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => setCreateModalOpen(true)}
+                className="gap-1.5 text-xs font-semibold"
+              >
+                <Plus className="size-4" />
+                <span>Create Invoice</span>
+              </Button>
+            )
+          }
+        />
+      ) : (
+        <div className="space-y-4">
           <ResponsiveDataList
             items={items}
-            keyExtractor={(item) => item.id}
             columns={columns}
-            emptyState={
-              <EmptyState
-                icon={Inbox}
-                title="No Invoices Found"
-                description={
-                  statusFilter
-                    ? "No invoices found for the selected status filter."
-                    : "No invoices have been generated yet. Click 'Create Invoice' to bill a completed work order."
-                }
-              />
-            }
-            mobileCardRender={(item) => (
-              <Card className="p-4 border border-border bg-card shadow-2xs space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <span className="font-mono text-xs font-bold text-charcoal-900 dark:text-charcoal-100">
-                      {item.invoiceNumber || item.id.slice(0, 8)}
-                    </span>
-                    <p className="text-xs text-muted-foreground">
-                      Customer: {item.customer?.name || "Customer"}
-                    </p>
-                  </div>
-                  <StatusBadge status={item.status} />
-                </div>
-
-                <div className="flex items-center justify-between border-y border-border/50 py-2 text-xs">
-                  <div>
-                    <span className="text-muted-foreground block text-[10px] uppercase">
-                      Total Amount
-                    </span>
-                    <span className="font-bold text-charcoal-900 dark:text-charcoal-100 text-sm">
-                      {formatCurrencyCents(item.totalCents, item.currency)}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-muted-foreground block text-[10px] uppercase">
-                      Created
-                    </span>
-                    <span className="text-charcoal-800 dark:text-charcoal-200">
-                      {formatSafeDate(item.createdAt)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end pt-1">
-                  <Link
-                    href={`/admin/invoices/${item.id}`}
-                    className={cn(
-                      buttonVariants({
-                        size: "sm",
-                        variant:
-                          item.status === "DRAFT" ? "default" : "outline",
-                      }),
-                      "text-xs h-8 gap-1.5",
-                    )}
-                  >
-                    <span>
-                      {item.status === "DRAFT"
-                        ? "Review & Issue"
-                        : "View Invoice"}
-                    </span>
-                    <ExternalLink className="size-3.5" />
-                  </Link>
-                </div>
-              </Card>
-            )}
+            keyExtractor={(item) => item.id}
+            mobileCardRender={renderMobileCard}
           />
 
-          {pagination && pagination.totalPages > 1 && (
-            <div className="pt-2">
-              <PaginationControls
-                meta={pagination}
-                onPageChange={(p) => updateFilters({ page: p })}
-              />
-            </div>
-          )}
-        </>
+          <PaginationControls
+            meta={pagination}
+            onPageChange={(p) => updateFilters({ page: p })}
+          />
+        </div>
       )}
 
-      {/* Create Invoice Dialog Modal */}
+      {/* Fallback Manual Create Invoice Modal */}
       <CreateInvoiceDialog
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
