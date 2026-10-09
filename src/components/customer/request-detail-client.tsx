@@ -5,7 +5,9 @@ import {
   AlertTriangle,
   ArrowLeft,
   Calendar,
+  ChevronDown,
   Clock,
+  Crown,
   ExternalLink,
   FileCheck2,
   FileText,
@@ -27,6 +29,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
+import { CancelJobDialog } from "@/components/customer/cancel-job-dialog";
+import { RescheduleJobDialog } from "@/components/customer/reschedule-job-dialog";
 import { ImagePicker, type PickedImage } from "@/components/forms/image-picker";
 import { UploadProgress } from "@/components/forms/upload-progress";
 import { PriorityBadge } from "@/components/shared/priority-badge";
@@ -56,6 +60,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useActivePolling } from "@/hooks/use-active-polling";
+import { usePremiumStatus } from "@/hooks/use-premium-status";
 import { getErrorMessage } from "@/lib/api-client";
 import { getAttachmentUrl } from "@/lib/attachments";
 import { formatRelative, safeFormatDateTime } from "@/lib/format";
@@ -73,6 +78,12 @@ export interface RequestDetailClientProps {
 export function RequestDetailClient({ id }: RequestDetailClientProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { isPremium } = usePremiumStatus();
+
+  // Dialog state for cancelling/rescheduling the work order
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = React.useState(false);
+  const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] =
+    React.useState(false);
 
   // Selected new photos for upload while in SUBMITTED status
   const [newPhotos, setNewPhotos] = React.useState<PickedImage[]>([]);
@@ -264,7 +275,27 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
   const isRejected = String(request.status).toUpperCase() === "REJECTED";
   const isSubmitted = String(request.status).toUpperCase() === "SUBMITTED";
   const displayStatus = getDisplayStatus(request);
-  const activeWorkOrder = workOrder || request.workOrder;
+  const activeWorkOrder: WorkOrder | null = workOrder
+    ? workOrder
+    : request.workOrder
+      ? ({
+          id: request.workOrder.id,
+          workOrderNumber: request.workOrder.workOrderNumber,
+          serviceRequestId: id,
+          status: request.workOrder.status,
+          assignedTechnicianId: request.workOrder.assignedTechnicianId,
+          visitStart: request.workOrder.visitStart,
+          scheduledDate:
+            "scheduledDate" in request.workOrder
+              ? (request.workOrder as { scheduledDate?: string | null })
+                  .scheduledDate
+              : null,
+          technician: request.workOrder.technician,
+          invoiceId: request.workOrder.invoiceId,
+          createdAt: request.createdAt,
+          updatedAt: request.updatedAt,
+        } as WorkOrder)
+      : null;
 
   // Extract valid attachments
   const attachmentsList = (request.attachments || [])
@@ -344,8 +375,36 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
 
             {/* 2. Banner / Stepper based on state */}
             <CardContent className="pt-6 space-y-6">
-              {/* Stepper if work order exists */}
-              {activeWorkOrder ? (
+              {/* Stepper or Cancellation card if work order exists */}
+              {activeWorkOrder?.status === "CANCELLED" ? (
+                <div className="p-4 bg-muted/40 rounded-xl border border-border space-y-2">
+                  <div className="flex items-center gap-2 text-destructive font-bold text-sm">
+                    <XCircle className="size-4" />
+                    <span>This Job Was Cancelled</span>
+                  </div>
+                  {history?.find((h) => h.toStatus === "CANCELLED")
+                    ?.createdAt && (
+                    <p className="text-xs text-muted-foreground">
+                      Cancelled on{" "}
+                      {safeFormatDateTime(
+                        history.find((h) => h.toStatus === "CANCELLED")
+                          ?.createdAt,
+                      )}
+                    </p>
+                  )}
+                  {activeWorkOrder.cancelReason ||
+                  history?.find((h) => h.toStatus === "CANCELLED")?.reason ? (
+                    <p className="text-xs text-foreground bg-background p-2.5 rounded-lg border border-border/60">
+                      <span className="font-semibold text-muted-foreground">
+                        Reason:{" "}
+                      </span>
+                      {activeWorkOrder.cancelReason ||
+                        history?.find((h) => h.toStatus === "CANCELLED")
+                          ?.reason}
+                    </p>
+                  ) : null}
+                </div>
+              ) : activeWorkOrder ? (
                 <div className="space-y-2">
                   <span className="text-[11px] uppercase font-bold text-muted-foreground tracking-wider block">
                     Execution Milestone Tracker
@@ -802,7 +861,76 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 space-y-2.5">
-              {isEditable ? (
+              {/* If work order exists */}
+              {activeWorkOrder ? (
+                <>
+                  {activeWorkOrder.status === "SCHEDULED" && (
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsRescheduleDialogOpen(true)}
+                        className="w-full justify-center gap-1.5 text-xs font-semibold"
+                      >
+                        <RefreshCw className="size-3.5" />
+                        <span>Reschedule Visit</span>
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setIsCancelDialogOpen(true)}
+                        className="w-full justify-center gap-1.5 text-xs font-semibold"
+                      >
+                        <XCircle className="size-3.5" />
+                        <span>Cancel Job</span>
+                      </Button>
+                    </div>
+                  )}
+
+                  {(activeWorkOrder.status === "APPROVED" ||
+                    activeWorkOrder.status === "ASSIGNED") && (
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setIsCancelDialogOpen(true)}
+                        className="w-full justify-center gap-1.5 text-xs font-semibold"
+                      >
+                        <XCircle className="size-3.5" />
+                        <span>Cancel Job</span>
+                      </Button>
+                      <p className="text-[11px] text-muted-foreground italic text-center">
+                        Your visit has not been scheduled yet.
+                      </p>
+                    </div>
+                  )}
+
+                  {(activeWorkOrder.status === "ARRIVED" ||
+                    activeWorkOrder.status === "IN_PROGRESS") && (
+                    <p className="text-xs text-muted-foreground italic py-1">
+                      Work has started, so this job can no longer be changed or
+                      cancelled.
+                    </p>
+                  )}
+
+                  {isCompletedJob && (
+                    <p className="text-xs text-muted-foreground italic py-1">
+                      This service job has been completed.
+                    </p>
+                  )}
+
+                  {activeWorkOrder.status === "CANCELLED" && (
+                    <p className="text-xs text-muted-foreground italic py-1">
+                      This job was cancelled.
+                    </p>
+                  )}
+                </>
+              ) : isEditable ? (
+                /* SUBMITTED Request actions */
                 <>
                   <Link
                     href={`/customer/requests/${id}/edit`}
@@ -844,8 +972,67 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
               )}
             </CardContent>
           </Card>
+
+          {/* Collapsible Cancellation & Reschedule Policy */}
+          <details className="group border border-border/70 rounded-xl p-3 bg-muted/20 text-xs text-muted-foreground transition-all">
+            <summary className="font-semibold text-foreground cursor-pointer list-none flex items-center justify-between">
+              <span>Cancellation &amp; Reschedule Policy</span>
+              <ChevronDown className="size-3.5 transition-transform group-open:rotate-180 text-muted-foreground" />
+            </summary>
+            <div className="pt-2.5 space-y-1.5 border-t border-border/40 mt-2 text-[11px] leading-relaxed">
+              <p>
+                • <strong>Free for Premium:</strong> Active Premium members can
+                reschedule or cancel any time before technician arrival.
+              </p>
+              <p>
+                • <strong>Free Early Notice:</strong> Standard bookings are free
+                to modify if changed more than 24 hours prior to visit.
+              </p>
+              <p>
+                • <strong>Late Modification Fee:</strong> Changes within 24
+                hours incur an estimated $5.00 late fee billed via invoice.
+              </p>
+              <p>
+                • <strong>After Arrival:</strong> No modifications are allowed
+                once a technician arrives on site.
+              </p>
+              {isPremium !== true && (
+                <div className="pt-1">
+                  <Link
+                    href="/customer/premium"
+                    className="text-primary font-semibold hover:underline inline-flex items-center gap-1"
+                  >
+                    <Crown className="size-3 text-brand-600" />
+                    <span>Upgrade to Premium for free changes →</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </details>
         </div>
       </div>
+
+      {/* Cancel Job Dialog */}
+      {activeWorkOrder && (
+        <CancelJobDialog
+          open={isCancelDialogOpen}
+          onOpenChange={setIsCancelDialogOpen}
+          workOrder={activeWorkOrder}
+          isPremium={isPremium}
+          requestId={id}
+        />
+      )}
+
+      {/* Reschedule Job Dialog */}
+      {activeWorkOrder && (
+        <RescheduleJobDialog
+          open={isRescheduleDialogOpen}
+          onOpenChange={setIsRescheduleDialogOpen}
+          workOrder={activeWorkOrder}
+          isPremium={isPremium}
+          requestId={id}
+        />
+      )}
 
       {/* AlertDialog for Request Deletion */}
       <AlertDialog
