@@ -4,12 +4,14 @@ import {
   CalendarCheck,
   ClipboardCheck,
   ClipboardList,
+  CreditCard,
   FileText,
   History,
   LayoutDashboard,
   Sparkles,
   UserCog,
   Users,
+  Wallet,
 } from "lucide-react";
 import type { Role } from "@/types/auth";
 
@@ -34,6 +36,11 @@ export const CUSTOMER_LINKS: DashboardLink[] = [
     label: "Invoices",
     href: "/customer/invoices",
     icon: FileText,
+  },
+  {
+    label: "Payments",
+    href: "/customer/payments",
+    icon: CreditCard,
   },
   {
     label: "Premium",
@@ -95,6 +102,11 @@ export const ADMIN_LINKS: DashboardLink[] = [
     label: "Invoices",
     href: "/admin/invoices",
     icon: FileText,
+  },
+  {
+    label: "Payments",
+    href: "/admin/payments",
+    icon: Wallet,
   },
   {
     label: "Users",
