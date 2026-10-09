@@ -18,6 +18,16 @@ import { AccountDetailsForm } from "@/components/forms/account-details-form";
 import { SecurityCard } from "@/components/forms/security-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,12 +44,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/api-client";
+import { loadSkills, saveSkills } from "@/lib/skills-cache";
 import { cn } from "@/lib/utils";
 import {
   type TechnicianProfileFormValues,
   technicianProfileSchema,
 } from "@/lib/validations/profile";
 import { usersService } from "@/services/users.service";
+import { useAuthStore } from "@/stores/auth-store";
 
 const WEEKDAYS = [
   { key: "monday", label: "Monday" },
@@ -52,10 +64,29 @@ const WEEKDAYS = [
 ] as const;
 
 export function TechnicianProfileClient() {
+  const user = useAuthStore((s) => s.user);
+  const userId = user?.id || "";
+
   const [isSavingProfile, setIsSavingProfile] = React.useState(false);
   const [selectedSkillIds, setSelectedSkillIds] = React.useState<string[]>([]);
   const [initialSkillIds, setInitialSkillIds] = React.useState<string[]>([]);
+  const [hasSkillsCache, setHasSkillsCache] = React.useState(false);
   const [isSavingSkills, setIsSavingSkills] = React.useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
+
+  // Load skills cache on mount when user is ready
+  React.useEffect(() => {
+    if (userId) {
+      const cached = loadSkills(userId);
+      if (cached && Array.isArray(cached)) {
+        setSelectedSkillIds(cached);
+        setInitialSkillIds(cached);
+        setHasSkillsCache(true);
+      } else {
+        setHasSkillsCache(false);
+      }
+    }
+  }, [userId]);
 
   // 1. Fetch available skills catalog
   const {
@@ -127,20 +158,25 @@ export function TechnicianProfileClient() {
     }
   };
 
-  // 3. Skills Checkbox Toggle
+  // 3. Skills Checkbox Toggle (Max 10)
   const handleToggleSkill = (skillId: string) => {
-    setSelectedSkillIds((prev) =>
-      prev.includes(skillId)
-        ? prev.filter((id) => id !== skillId)
-        : [...prev, skillId],
-    );
+    setSelectedSkillIds((prev) => {
+      if (prev.includes(skillId)) {
+        return prev.filter((id) => id !== skillId);
+      }
+      if (prev.length >= 10) {
+        toast.warning("Maximum of 10 skills allowed.");
+        return prev;
+      }
+      return [...prev, skillId];
+    });
   };
 
   const isSkillsDirty =
     selectedSkillIds.length !== initialSkillIds.length ||
     selectedSkillIds.some((id) => !initialSkillIds.includes(id));
 
-  const onSaveSkills = async () => {
+  const executeSaveSkills = async () => {
     if (selectedSkillIds.length === 0) {
       toast.warning("Please select at least one skill.");
       return;
@@ -150,11 +186,16 @@ export function TechnicianProfileClient() {
       setIsSavingSkills(true);
       const res = await usersService.updateTechnicianSkills(selectedSkillIds);
       const updatedIds = res.skills?.map((s) => s.id) || selectedSkillIds;
+
       setSelectedSkillIds(updatedIds);
       setInitialSkillIds(updatedIds);
+      if (userId) {
+        saveSkills(userId, updatedIds);
+        setHasSkillsCache(true);
+      }
 
       toast.success("Skills updated", {
-        description: `Successfully assigned ${selectedSkillIds.length} service skills.`,
+        description: `Successfully assigned ${updatedIds.length} service skills.`,
       });
     } catch (err: unknown) {
       toast.error("Failed to update skills", {
@@ -162,6 +203,21 @@ export function TechnicianProfileClient() {
       });
     } finally {
       setIsSavingSkills(false);
+      setShowConfirmDialog(false);
+    }
+  };
+
+  const onSaveSkillsClick = () => {
+    if (selectedSkillIds.length === 0) {
+      toast.warning("Select at least one skill.");
+      return;
+    }
+
+    // If there is NO cache (unknown existing state), require confirmation
+    if (!hasSkillsCache) {
+      setShowConfirmDialog(true);
+    } else {
+      executeSaveSkills();
     }
   };
 
@@ -375,15 +431,31 @@ export function TechnicianProfileClient() {
                   Service Skills & Certifications
                 </CardTitle>
                 <Badge variant="outline" className="text-xs font-mono">
-                  {selectedSkillIds.length} Selected
+                  {selectedSkillIds.length}/10 Selected
                 </Badge>
               </div>
               <CardDescription>
-                Select the service categories you are qualified to execute.
+                Select the service categories you are qualified to execute (1-10
+                skills).
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4 text-xs">
+              {/* Unknown existing state warning */}
+              {!hasSkillsCache && (
+                <Alert className="border-amber-500/30 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200">
+                  <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <AlertTitle className="font-semibold text-xs">
+                    Skills Cache Not Found
+                  </AlertTitle>
+                  <AlertDescription className="text-[11px] pt-0.5 text-amber-800 dark:text-amber-300">
+                    We cannot load your current skills from the server. Saving
+                    replaces your whole skill list with exactly what you select
+                    here.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Alert if 0 skills selected */}
               {selectedSkillIds.length === 0 && (
                 <Alert className="border-amber-500/30 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200">
@@ -396,6 +468,29 @@ export function TechnicianProfileClient() {
                     appear when the dispatcher assigns jobs.
                   </AlertDescription>
                 </Alert>
+              )}
+
+              {/* Badges of current saved skills if cache exists */}
+              {hasSkillsCache && initialSkillIds.length > 0 && (
+                <div className="space-y-1.5 rounded-lg border border-border/80 bg-muted/20 p-3">
+                  <span className="text-[11px] font-semibold text-muted-foreground block">
+                    Your current active skills:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {initialSkillIds.map((id) => {
+                      const skillObj = availableSkills.find((s) => s.id === id);
+                      return (
+                        <Badge
+                          key={id}
+                          variant="secondary"
+                          className="text-[11px] font-medium"
+                        >
+                          {skillObj?.name || id}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
 
               {/* Skills Loading */}
@@ -482,7 +577,7 @@ export function TechnicianProfileClient() {
                 type="button"
                 variant="default"
                 size="sm"
-                onClick={onSaveSkills}
+                onClick={onSaveSkillsClick}
                 disabled={
                   !isSkillsDirty ||
                   isSavingSkills ||
@@ -506,6 +601,32 @@ export function TechnicianProfileClient() {
           </Card>
         </div>
       </div>
+
+      {/* Confirmation Dialog for Unknown Cache Skills Save */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace all technician skills?</AlertDialogTitle>
+            <AlertDialogDescription>
+              We cannot retrieve your prior skill assignments from the server.
+              Saving now will replace your entire skills list with the{" "}
+              <strong>{selectedSkillIds.length}</strong> selected skill
+              {selectedSkillIds.length === 1 ? "" : "s"}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSavingSkills}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeSaveSkills}
+              disabled={isSavingSkills}
+            >
+              {isSavingSkills ? "Replacing..." : "Yes, Replace Skills"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
