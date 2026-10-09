@@ -1,15 +1,7 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
-import { RequestDetailClient } from "@/components/customer/request-detail-client";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const metadata: Metadata = {
-  title: "Service Request Details",
-  description: "View status and details of your field service request.",
-};
-
-function RequestDetailSkeleton() {
+export default function RequestDetailLoading() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <Skeleton className="h-5 w-32" />
@@ -33,19 +25,5 @@ function RequestDetailSkeleton() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default async function CustomerRequestDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-
-  return (
-    <Suspense fallback={<RequestDetailSkeleton />}>
-      <RequestDetailClient id={id} />
-    </Suspense>
   );
 }
