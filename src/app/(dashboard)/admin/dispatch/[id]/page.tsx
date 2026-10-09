@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { DispatchDetailClient } from "@/components/admin/dispatch-detail-client";
+import { RequestReviewClient } from "@/components/admin/request-review-client";
 import { Container } from "@/components/shared/container";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -15,12 +15,11 @@ export async function generateMetadata({
   const { id } = await params;
   return {
     title: `Review Request #${id.slice(0, 8)} | Admin Dispatch`,
-    description:
-      "Review request details, approve work order, and assign technician.",
+    description: "Review request details, approve or reject service requests.",
   };
 }
 
-export default async function AdminDispatchDetailPage({ params }: PageProps) {
+export default async function AdminDispatchReviewPage({ params }: PageProps) {
   const { id } = await params;
 
   return (
@@ -36,7 +35,7 @@ export default async function AdminDispatchDetailPage({ params }: PageProps) {
           </div>
         }
       >
-        <DispatchDetailClient id={id} />
+        <RequestReviewClient id={id} />
       </Suspense>
     </Container>
   );
