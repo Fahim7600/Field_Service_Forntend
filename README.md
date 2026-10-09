@@ -444,12 +444,14 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
    - Handles backend conflict rejection (e.g., if status transitioned to `APPROVED`) with instant feedback and redirection.
    - Browser navigation guard (`beforeunload`) prevents accidental loss of unsaved changes.
 
-4. **Cancellation & Reschedule Rules**:
-   - **Allowed State Window**: Changes are permitted strictly before the technician arrives on site (`APPROVED`, `ASSIGNED`, `SCHEDULED`). Once marked `ARRIVED`, modifications are locked.
-   - **Rescheduling**: Requires a confirmed visit time (`SCHEDULED` only) and preserves the original appointment duration.
-   - **Active Premium Members**: Customers with an `ACTIVE` subscription enjoy unlimited free cancellations and reschedules at any time prior to arrival.
-   - **Standard Bookings**: Modifications are completely free if made more than 24 hours before the scheduled appointment. If changed within 24 hours, an estimated $5.00 late fee is calculated and billed via online invoice.
-   - **Conflict Handling**: The reschedule modal detects technician scheduling overlaps (409 / conflict responses) and maintains user inputs while displaying actionable inline alerts.
+5. **Invoices & Billing (Admin)**:
+   - **Automated Draft Generation**: When a technician submits a completed service report, the backend automatically generates a `DRAFT` invoice with labor, parts, and diagnostic items.
+   - **Server-Side Calculations**: All currency amounts are represented as integer cents. Subtotals, tax (e.g. 8%), and active customer premium discounts are calculated and verified authoritatively by the server.
+   - **Adjusting Draft Charges**: Admins can add, edit, or remove line items (labor, parts, extra charges) and modify internal notes prior to issuance.
+   - **Issuing Invoices**: Issuing a draft transitions status to `ISSUED` and triggers customer notification for online Stripe payment.
+   - **Voiding Invoices**: Unpaid draft or issued invoices can be voided with a mandatory audit reason (5–300 characters).
+   - **Fallback Creation**: If a draft invoice does not exist for a completed work order, admins can create one manually using the fallback dialog with conflict protection.
+
 - [x] **Phase 8: Technician Mobile-Optimized Dashboard**
   - [x] Real-time task queue with single-status URL-synced chips (`All`, `Assigned`, `Scheduled`, `Arrived`, `In progress`, `Completed`, `Cancelled`)
   - [x] Job assignment acceptance & decline modal with validated reason (10-500 chars)
@@ -465,7 +467,8 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
   - [x] Work orders list with status filters, sorting, and pagination
   - [x] Work order detail view with customer context, dispatch guidance, and status timeline
   - [x] Interactive technician assignment and visit scheduling forms with conflict safety
-  - [ ] Comprehensive customer, invoice, and inventory management
+  - [x] Comprehensive invoice and billing management (draft editing, issuance, voiding, fallback creation)
+  - [ ] Customer and inventory management
   - [ ] Operational metrics and revenue analytics
 
 ---
