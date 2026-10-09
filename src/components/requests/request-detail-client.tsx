@@ -62,13 +62,7 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
   });
 
   const handleCancelRequest = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to cancel this service request? This action cannot be undone.",
-      )
-    ) {
-      cancelMutation.mutate(id);
-    }
+    cancelMutation.mutate(id);
   };
 
   if (isLoading) {

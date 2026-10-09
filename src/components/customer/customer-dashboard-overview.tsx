@@ -26,11 +26,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { extractArray } from "@/lib/extract-data";
-import { formatSafeDate } from "@/lib/format-date";
+import { safeFormatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { getDisplayStatus } from "@/lib/work-order-rules";
 import { financeService } from "@/services/finance.service";
 import { requestsService } from "@/services/requests.service";
-import type { InvoiceSummary, ServiceRequestListItem } from "@/types/api";
+import type { CustomerRequestListItem, InvoiceSummary } from "@/types/api";
 
 export function CustomerDashboardOverview() {
   const { data: requestsData, isLoading: isRequestsLoading } = useQuery({
@@ -51,14 +52,21 @@ export function CustomerDashboardOverview() {
     staleTime: 30000,
   });
 
-  const requests = extractArray<ServiceRequestListItem>(requestsData);
+  const requests = extractArray<CustomerRequestListItem>(requestsData);
   const invoices = extractArray<InvoiceSummary>(invoicesData);
   const pendingInvoices = invoices.filter((inv) => inv.status === "ISSUED");
   const isVip = subscription?.status === "ACTIVE";
 
-  const totalActiveRequests = requests.filter(
-    (r) => r.status !== "COMPLETED" && r.status !== "CANCELLED",
-  ).length;
+  const totalActiveRequests = requests.filter((r) => {
+    const displayStatus = getDisplayStatus(r);
+    return (
+      displayStatus !== "COMPLETED" &&
+      displayStatus !== "CANCELLED" &&
+      displayStatus !== "REJECTED" &&
+      displayStatus !== "PAID" &&
+      displayStatus !== "CLOSED"
+    );
+  }).length;
 
   return (
     <div className="space-y-6">
@@ -250,11 +258,11 @@ export function CustomerDashboardOverview() {
                         <span className="font-bold text-sm text-foreground truncate">
                           {req.title}
                         </span>
-                        <StatusBadge status={req.status} />
+                        <StatusBadge status={getDisplayStatus(req)} />
                       </div>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                         <span>Category: {req.category?.name || "General"}</span>
-                        <span>Date: {formatSafeDate(req.createdAt)}</span>
+                        <span>Date: {safeFormatDate(req.createdAt)}</span>
                       </div>
                     </div>
 

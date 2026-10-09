@@ -14,12 +14,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { extractArray } from "@/lib/extract-data";
+import { safeFormatDate } from "@/lib/format";
 import { formatCurrencyCents } from "@/lib/format-currency";
-import { formatSafeDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
+import { getDisplayStatus } from "@/lib/work-order-rules";
 import { financeService } from "@/services/finance.service";
 import { requestsService } from "@/services/requests.service";
-import type { InvoiceSummary, ServiceRequestListItem } from "@/types/api";
+import type { CustomerRequestListItem, InvoiceSummary } from "@/types/api";
 
 export function CustomerHistoryClient() {
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -50,15 +51,19 @@ export function CustomerHistoryClient() {
       }),
   });
 
-  const allRequests = extractArray<ServiceRequestListItem>(requestsData);
+  const allRequests = extractArray<CustomerRequestListItem>(requestsData);
   const allInvoices = extractArray<InvoiceSummary>(invoicesData);
 
-  const completedRequests = allRequests.filter(
-    (r) =>
-      r.status === "APPROVED" ||
-      r.status === "COMPLETED" ||
-      r.status === "REJECTED",
-  );
+  const completedRequests = allRequests.filter((r) => {
+    const displayStatus = getDisplayStatus(r);
+    return (
+      displayStatus === "APPROVED" ||
+      displayStatus === "COMPLETED" ||
+      displayStatus === "REJECTED" ||
+      displayStatus === "CLOSED" ||
+      displayStatus === "PAID"
+    );
+  });
 
   const paidInvoices = allInvoices.filter(
     (i) => i.status === "PAID" || i.status === "ISSUED",
@@ -161,7 +166,7 @@ export function CustomerHistoryClient() {
                             <span className="font-mono text-xs font-bold text-muted-foreground">
                               {req.requestNumber || `#${req.id.slice(0, 8)}`}
                             </span>
-                            <StatusBadge status={req.status} />
+                            <StatusBadge status={getDisplayStatus(req)} />
                             <Badge variant="outline" className="text-xs">
                               Request
                             </Badge>
@@ -170,7 +175,7 @@ export function CustomerHistoryClient() {
                             {req.title}
                           </h3>
                           <p className="text-xs text-muted-foreground">
-                            Submitted {formatSafeDate(req.createdAt)}
+                            Submitted {safeFormatDate(req.createdAt)}
                           </p>
                         </div>
                         <Link
@@ -211,7 +216,7 @@ export function CustomerHistoryClient() {
                             <strong className="text-charcoal-900 dark:text-charcoal-100">
                               {formatCurrencyCents(inv.totalCents)}
                             </strong>{" "}
-                            • Date: {formatSafeDate(inv.createdAt)}
+                            • Date: {safeFormatDate(inv.createdAt)}
                           </p>
                         </div>
                         <Link
@@ -252,13 +257,13 @@ export function CustomerHistoryClient() {
                             <span className="font-mono text-xs font-bold text-muted-foreground">
                               {req.requestNumber || `#${req.id.slice(0, 8)}`}
                             </span>
-                            <StatusBadge status={req.status} />
+                            <StatusBadge status={getDisplayStatus(req)} />
                           </div>
                           <h3 className="font-bold text-charcoal-900 dark:text-charcoal-100 text-base">
                             {req.title}
                           </h3>
                           <p className="text-xs text-muted-foreground">
-                            Created {formatSafeDate(req.createdAt)}
+                            Created {safeFormatDate(req.createdAt)}
                           </p>
                         </div>
                         <Link
@@ -309,7 +314,7 @@ export function CustomerHistoryClient() {
                             <strong className="text-charcoal-900 dark:text-charcoal-100">
                               {formatCurrencyCents(inv.totalCents)}
                             </strong>{" "}
-                            • Date: {formatSafeDate(inv.createdAt)}
+                            • Date: {safeFormatDate(inv.createdAt)}
                           </p>
                         </div>
                         <Link
