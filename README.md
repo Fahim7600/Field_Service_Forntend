@@ -311,6 +311,20 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
 | `npm run format` | `biome format --write .` | Formats codebase according to style rules |
 | `npm run fix` | `biome check --write .` | Automatically fixes linting and formatting issues |
 | `npm run typecheck`| `tsc --noEmit` | Validates TypeScript types across the project |
+| `npm run check:links`| `node scripts/check-links.mjs` | Audits sidebar dashboard links against physical App Router pages |
+
+---
+
+## 📁 Multipart File Uploads & Two-Step Flows
+
+All file uploads are streamed directly to the backend API as `multipart/form-data`:
+1. **Service Reports (`POST /api/v1/work-orders/{id}/service-report`)**:
+   - Sent as multipart with `workDone`, `partsUsed`, `hoursSpent`, and binary `photos` attachments.
+   - Upload progress is visualized in real-time via `UploadProgress`.
+2. **Customer Service Requests & Attachments**:
+   - **Step 1**: Submits JSON payload (`categoryId`, `title`, `description`, `address`, `preferredAt`) to `POST /api/v1/service-requests`.
+   - **Step 2**: If photos were selected, uploads them to `POST /api/v1/service-requests/{id}/attachments` as multipart binary files.
+   - **Partial Recovery**: If photo upload fails after the request is created, the request is preserved with retry and skip options.
 
 ---
 
@@ -390,10 +404,10 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
   - [x] Authenticated `<UserMenu />` dropdown with initials fallback and profile/dashboard links
   - [x] Dashboard navigation constants for Admin, Technician, and Customer roles
   - [x] Fixed sidebar shell, sticky topbar with notifications and mobile slide-out drawer
-- [ ] **Phase 7: Customer Portal & Booking Wizard**
-  - [ ] Multi-step service booking wizard
-  - [ ] Live work order tracker with timeline visualization
-  - [ ] Customer billing history and online checkout
+- [x] **Phase 7: Customer Portal & Booking Wizard**
+  - [x] Multi-step service booking wizard with local photo picker & two-step submission
+  - [x] Live work order tracker with timeline visualization
+  - [x] Customer billing history and online checkout
 - [x] **Phase 8: Technician Mobile-Optimized Dashboard**
   - [x] Real-time task queue with single-status URL-synced chips (`All`, `Assigned`, `Scheduled`, `Arrived`, `In progress`, `Completed`, `Cancelled`)
   - [x] Job assignment acceptance & decline modal with validated reason (10-500 chars)
