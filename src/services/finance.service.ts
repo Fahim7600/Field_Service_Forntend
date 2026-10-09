@@ -1,39 +1,41 @@
-import { apiGet, apiGetPaginated, apiPost } from "@/lib/api-client";
+import { apiGet, apiGetPaginated, apiPatch, apiPost } from "@/lib/api-client";
 import type {
   CreateInvoicePayload,
   InitiatePaymentPayload,
   InitiatePaymentResponse,
-  InvoiceDetail,
-  InvoiceSummary,
+  Invoice,
+  InvoiceListItem,
   InvoicesQueryParams,
+  InvoiceUpdatePayload,
   MySubscriptionResponse,
   PaginatedResponse,
   SubscriptionCheckoutPayload,
   SubscriptionCheckoutResponse,
   SubscriptionPlan,
+  VoidInvoiceResponse,
 } from "@/types/api";
 
 export const financeService = {
   /**
-   * Retrieves paginated invoices (filtered by user role on backend).
+   * Retrieves paginated invoices (filtered by status, sort, etc.).
    */
   async fetchInvoices(
     params?: InvoicesQueryParams,
-  ): Promise<PaginatedResponse<InvoiceSummary>> {
-    return apiGetPaginated<InvoiceSummary>("/invoices", {
+  ): Promise<PaginatedResponse<InvoiceListItem>> {
+    return apiGetPaginated<InvoiceListItem>("/invoices", {
       params,
     });
   },
 
   /**
-   * Retrieves single invoice details by ID with line items and payment history.
+   * Retrieves single invoice details by ID with line items, breakdown, and dates.
    */
-  async fetchInvoiceById(id: string): Promise<InvoiceDetail> {
-    return apiGet<InvoiceDetail>(`/invoices/${id}`);
+  async fetchInvoiceById(id: string): Promise<Invoice> {
+    return apiGet<Invoice>(`/invoices/${id}`);
   },
 
   /**
-   * Creates a new draft invoice for a completed work order (Admin only).
+   * Creates a new manual draft invoice for a completed work order (Admin only).
    */
   async createInvoice(
     payload: CreateInvoicePayload,
@@ -45,19 +47,40 @@ export const financeService = {
   },
 
   /**
-   * Issues/sends a drafted invoice to the customer (Admin only).
+   * Updates line items or notes on a draft invoice (Admin only).
    */
-  async sendInvoice(id: string): Promise<unknown> {
-    return apiPost<unknown>(`/admin/invoices/${id}/send`);
+  async updateInvoice(
+    id: string,
+    payload: InvoiceUpdatePayload,
+  ): Promise<{ id: string }> {
+    return apiPatch<{ id: string }, InvoiceUpdatePayload>(
+      `/admin/invoices/${id}`,
+      payload,
+    );
   },
 
   /**
-   * Voids an invoice with a required reason (Admin only).
+   * Issues/sends a drafted invoice to the customer notification/email (Admin only).
    */
-  async voidInvoice(id: string, reason: string): Promise<unknown> {
-    return apiPost<unknown, { reason: string }>(`/admin/invoices/${id}/void`, {
-      reason,
-    });
+  async issueInvoice(id: string): Promise<{ success: boolean }> {
+    return apiPost<{ success: boolean }>(`/admin/invoices/${id}/send`);
+  },
+
+  /**
+   * Legacy alias for issueInvoice.
+   */
+  async sendInvoice(id: string): Promise<{ success: boolean }> {
+    return this.issueInvoice(id);
+  },
+
+  /**
+   * Voids an unpaid/draft invoice with a required reason (Admin only).
+   */
+  async voidInvoice(id: string, reason: string): Promise<VoidInvoiceResponse> {
+    return apiPost<VoidInvoiceResponse, { reason: string }>(
+      `/admin/invoices/${id}/void`,
+      { reason },
+    );
   },
 
   /**

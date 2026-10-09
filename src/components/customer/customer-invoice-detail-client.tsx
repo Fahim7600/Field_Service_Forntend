@@ -33,7 +33,7 @@ import { formatCurrencyCents } from "@/lib/format-currency";
 import { formatSafeDate, formatSafeDateTime } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
-import type { InvoiceDetail } from "@/types/api";
+import type { InvoiceDetail, InvoiceItem } from "@/types/api";
 
 interface CustomerInvoiceDetailClientProps {
   id: string;
@@ -200,40 +200,42 @@ export function CustomerInvoiceDetailClient({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
-                    {(invoice.items || []).map((item, idx) => (
-                      <tr
-                        key={item.id || item.description + idx}
-                        className="hover:bg-muted/20"
-                      >
-                        <td className="px-4 py-2.5">
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] uppercase font-mono"
-                          >
-                            {item.type}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-2.5 font-medium text-foreground">
-                          {item.description}
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">
-                          {item.quantity}
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">
-                          {formatCurrencyCents(
-                            item.unitAmountCents,
-                            invoice.currency,
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-semibold font-mono text-foreground">
-                          {formatCurrencyCents(
-                            item.amountCents ??
-                              item.quantity * item.unitAmountCents,
-                            invoice.currency,
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {(invoice.items || []).map(
+                      (item: InvoiceItem, idx: number) => (
+                        <tr
+                          key={item.id || item.description + idx}
+                          className="hover:bg-muted/20"
+                        >
+                          <td className="px-4 py-2.5">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] uppercase font-mono"
+                            >
+                              {item.type}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-2.5 font-medium text-foreground">
+                            {item.description}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">
+                            {item.quantity}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">
+                            {formatCurrencyCents(
+                              item.unitAmountCents,
+                              invoice.currency,
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-semibold font-mono text-foreground">
+                            {formatCurrencyCents(
+                              item.amountCents ??
+                                item.quantity * item.unitAmountCents,
+                              invoice.currency,
+                            )}
+                          </td>
+                        </tr>
+                      ),
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -242,34 +244,34 @@ export function CustomerInvoiceDetailClient({
             {/* Financial Summary */}
             <CardFooter className="border-t border-border bg-panel/50 p-4 flex flex-col items-end gap-1.5 text-xs">
               <div className="w-full sm:w-64 space-y-1.5">
-                {invoice.laborCents > 0 && (
+                {(invoice.laborCents ?? 0) > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Labor Charges:</span>
                     <span className="font-mono">
                       {formatCurrencyCents(
-                        invoice.laborCents,
+                        invoice.laborCents ?? 0,
                         invoice.currency,
                       )}
                     </span>
                   </div>
                 )}
-                {invoice.partsCents > 0 && (
+                {(invoice.partsCents ?? 0) > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Parts & Materials:</span>
                     <span className="font-mono">
                       {formatCurrencyCents(
-                        invoice.partsCents,
+                        invoice.partsCents ?? 0,
                         invoice.currency,
                       )}
                     </span>
                   </div>
                 )}
-                {invoice.extraCents > 0 && (
+                {(invoice.extraCents ?? 0) > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Extra Fees:</span>
                     <span className="font-mono">
                       {formatCurrencyCents(
-                        invoice.extraCents,
+                        invoice.extraCents ?? 0,
                         invoice.currency,
                       )}
                     </span>

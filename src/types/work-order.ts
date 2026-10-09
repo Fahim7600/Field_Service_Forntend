@@ -69,6 +69,7 @@ export interface WorkOrder {
   } | null;
   createdAt: string;
   updatedAt?: string;
+  invoiceId?: string | null;
   technician?: {
     id: string;
     name: string;
