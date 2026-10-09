@@ -56,11 +56,16 @@ export interface WorkOrder {
   hasReport?: boolean;
   serviceReport?: {
     id: string;
-    summary?: string;
-    workPerformed?: string;
-    partsUsed?: string[];
-    customerSignature?: string;
+    workOrderId?: string;
+    workDone?: string;
+    hoursSpent?: number;
+    partsUsed?: unknown;
+    photos?: Array<{ url: string; fileName?: string } | string>;
     createdAt?: string;
+    technician?: {
+      id: string;
+      name: string;
+    };
   } | null;
   createdAt: string;
   updatedAt?: string;
@@ -102,6 +107,7 @@ export interface TechnicianTask {
   scheduledDate?: string | null;
   acceptedAt?: string | null;
   hasReport?: boolean;
+  serviceReport?: WorkOrder["serviceReport"];
   createdAt?: string;
   updatedAt?: string;
   customer?: {
@@ -214,4 +220,11 @@ export interface DispatchQueueQueryParams {
   page?: number;
   limit?: number;
   type?: "REQUEST_REVIEW" | "NEEDS_TECHNICIAN";
+}
+
+export interface SubmitServiceReportPayload {
+  workDone: string;
+  hoursSpent: number;
+  partsUsed?: string;
+  photos?: string[];
 }

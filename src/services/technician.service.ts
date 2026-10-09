@@ -3,6 +3,7 @@ import type {
   CreateServiceReportPayload,
   PaginatedResponse,
   ServiceReportDetail,
+  SubmitServiceReportPayload,
   TechnicianTask,
   TechnicianTasksQueryParams,
   WorkOrder,
@@ -85,8 +86,12 @@ export const technicianService = {
    */
   async submitServiceReport(
     id: string,
-    payload: CreateServiceReportPayload | FormData,
-  ): Promise<{ report: ServiceReportDetail }> {
+    payload: SubmitServiceReportPayload | CreateServiceReportPayload | FormData,
+  ): Promise<{
+    report?: ServiceReportDetail;
+    id?: string;
+    workOrderId?: string;
+  }> {
     if (payload instanceof FormData) {
       return apiPost<{ report: ServiceReportDetail }, FormData>(
         `/work-orders/${id}/service-report`,
@@ -99,7 +104,7 @@ export const technicianService = {
       );
     }
 
-    if (payload.files && payload.files.length > 0) {
+    if ("files" in payload && payload.files && payload.files.length > 0) {
       const formData = new FormData();
       formData.append("workDone", payload.workDone);
       formData.append("hoursSpent", String(payload.hoursSpent));
@@ -127,12 +132,15 @@ export const technicianService = {
     }
 
     return apiPost<
-      { report: ServiceReportDetail },
-      Omit<CreateServiceReportPayload, "files">
+      { report?: ServiceReportDetail; id?: string },
+      Record<string, unknown>
     >(`/work-orders/${id}/service-report`, {
       workDone: payload.workDone,
       hoursSpent: payload.hoursSpent,
       partsUsed: payload.partsUsed,
+      ...("photos" in payload && payload.photos
+        ? { photos: payload.photos }
+        : {}),
     });
   },
 };
