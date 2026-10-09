@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 import type { PickedImage } from "@/components/forms/image-picker";
+import { combinePreferredAt } from "@/lib/preferred-time";
 import type { ServiceRequestFormValues } from "@/lib/validations/request";
 import { requestsService } from "@/services/requests.service";
 
@@ -96,14 +97,10 @@ export function useCreateRequest() {
       setState("creating-request");
       setErrorMessage(null);
 
-      let preferredAt: string;
-      try {
-        const datePart = values.preferredDate;
-        const timePart = values.preferredTime || "09:00:00";
-        preferredAt = new Date(`${datePart}T${timePart}`).toISOString();
-      } catch {
-        preferredAt = new Date().toISOString();
-      }
+      const preferredAt = combinePreferredAt(
+        values.preferredDate,
+        values.preferredTime,
+      );
 
       let newId: string;
       try {

@@ -39,6 +39,11 @@ export const step3Schema = z.object({
     .max(5, "Maximum 5 attachments allowed"),
 });
 
+export const editServiceRequestSchema = step1Schema.merge(step2Schema);
+export type EditServiceRequestFormValues = z.infer<
+  typeof editServiceRequestSchema
+>;
+
 export const serviceRequestSchema = step1Schema
   .merge(step2Schema)
   .merge(step3Schema);
