@@ -318,7 +318,15 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
 
 ### URL Filter Hook (`src/hooks/use-url-filters.ts`)
 - **`useUrlFilters(defaults)`**: URL search param synchronization hook. Automatically resets `page` back to 1 when any non-page filter changes, drops empty/default keys, and uses non-polluting `router.replace({ scroll: false })` for filter modifications.
-- **`useDebouncedSearchFilter(key, delay)`**: Debounced text search filter hook synchronized with URL parameters.
+### Admin Dispatch Flow
+1. **Needs Review Queue (`/admin/dispatch?type=REQUEST_REVIEW`)**: Incoming submitted service requests appear in the review queue with SLA priority indicators and review due dates.
+2. **Review & Decision (`/admin/dispatch/[id]`)**:
+   - Inspect customer details, service category, required skills, preferred schedule window, and attached media.
+   - **Approve**: Confirms via dialog and calls `PATCH /admin/service-requests/{id}/review` with `{ decision: "APPROVE" }`. Invalidates queries, fetches the generated `workOrder.id`, and seamlessly routes to `/admin/work-orders/{workOrderId}`.
+   - **Reject**: Opens a locked modal to input a validated reason (10-500 chars) and calls `PATCH /admin/service-requests/{id}/review` with `{ decision: "REJECT", reason }`.
+3. **Work Order Management (`/admin/work-orders`)**: Full list of generated work orders with single-status filters, sorting (createdAt, visitStart, status), and responsive data tables.
+4. **Work Order Inspection (`/admin/work-orders/[id]`)**: Full view of customer details, linked service request, assigned technician, visit window, dispatch actions guidance, and chronological status transition history.
+5. **Next Step**: Technician assignment and visit scheduling forms on `/admin/work-orders/[id]`.
 
 ---
 
@@ -328,14 +336,14 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
   - [x] Next.js 15 App Router + TypeScript Strict setup
   - [x] Biome formatting, linting, and import organization
   - [x] Industrial Amber design system & CSS theme tokens
-  - [x] Core shadcn/ui components (Button with CTA variant, Input, Card, Badge, Skeleton, Separator, Sonner, Sheet)
+  - [x] Core shadcn/ui components (Button with CTA variant, Input, Card, Badge, Skeleton, Separator, Sonner, Sheet, AlertDialog)
   - [x] Next.js API proxy rewrites configuration
 - [x] **Phase 2: Shell Layout, Navigation & Error Handling**
   - [x] Responsive public Navbar with active path indicator and accessible skip link
   - [x] Mobile slide-out Sheet navigation drawer with stacked actions
   - [x] Solid charcoal Footer with link matrix and copyright
   - [x] Custom 404 page, client error boundaries (`error.tsx`, `global-error.tsx`), and loading skeleton
-  - [x] Reusable shared layout primitives (`Container`, `PageHeader`, `EmptyState`)
+  - [x] Reusable shared layout primitives (`Container`, `PageHeader`, `EmptyState`, `StatusBadge`, `PriorityBadge`, `DueBadge`, `StatusTimeline`, `ResponsiveDataList`, `PaginationControls`)
 - [x] **Phase 3: Core API Client, Auth Store & Architecture**
   - [x] Local archive of OpenAPI 3.0 specification ([`docs/openapi.json`](docs/openapi.json))
   - [x] Strict TypeScript types for API responses, errors, pagination, and Auth models
@@ -370,8 +378,12 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
 - [ ] **Phase 8: Technician Mobile-Optimized Dashboard**
   - [ ] Real-time job queue and dispatch acceptance
   - [ ] Work logs, parts usage, and digital sign-off
-- [ ] **Phase 9: Admin Command Center**
-  - [ ] Interactive dispatch calendar & technician map
+- [x] **Phase 9: Admin Command Center**
+  - [x] Dispatch queue with "Needs review" and "Needs technician" URL-synced tabs
+  - [x] Request review detail with Approve (auto-creates work order) & Reject modal
+  - [x] Work orders list with status filters, sorting, and pagination
+  - [x] Work order detail view with customer context, dispatch guidance, and status timeline
+  - [ ] Interactive technician assignment and visit scheduling forms (Next)
   - [ ] Comprehensive customer, invoice, and inventory management
   - [ ] Operational metrics and revenue analytics
 
