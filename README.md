@@ -410,15 +410,17 @@ All file uploads are streamed directly to the backend API as `multipart/form-dat
   - [x] Request detail view with milestone progress stepper, active polling, job card, and service report preview
   - [x] Photo management on submitted requests (delete and upload with progress bar)
   - [x] Dedicated request edit page with prefill, diff submissions, and status guards
-  - [x] Deletion of submitted requests with accessible `AlertDialog` confirmations
+  - [x] Cancellation and reschedule dialogs with automated policy estimate and conflict handling
+  - [x] Rebuilt customer service history page with URL-synced filters and pagination
+  - [x] Customer workspace overview dashboard with 4 independent metric stat cards and next visit spotlight
   - [x] Live work order tracker with timeline visualization
   - [x] Customer billing history and online checkout
 
 ---
 
-## 🛠️ Customer Request Flow
+## 🛠️ Customer Request & Modification Flow
 
-The customer portal provides a dedicated end-to-end service request lifecycle management flow:
+The customer portal provides a dedicated end-to-end service request lifecycle and appointment management flow:
 
 1. **Request List (`/customer/requests`)**:
    - URL-synced search toolbar with 400ms debounce (`q`), status chips (`All`, `Submitted`, `Approved`, `Rejected`), priority filter (`All`, `High`, `Normal`), date range picker (`dateFrom`, `dateTo`), and sort order selector.
@@ -431,6 +433,7 @@ The customer portal provides a dedicated end-to-end service request lifecycle ma
    - Two-column responsive layout with independent queries for service request details, work order progress, and status timeline.
    - Dynamic `WorkProgressStepper` driven by live work order progression, with active polling (30s interval while active status and tab visible).
    - For `SUBMITTED` requests: "Waiting for review" banner (with priority review SLA countdown if applicable), edit link, and delete action with `AlertDialog` confirmation.
+   - For `CANCELLED` jobs: dedicated cancellation banner displaying date and recorded cancellation reason.
    - Editable photo gallery while in `SUBMITTED` status: delete individual attachments or upload additional photos (up to 5 total) with multipart/form-data progress indicator.
    - Job assignment details, technician information, service report summary, and direct link to customer invoices.
 
@@ -440,6 +443,13 @@ The customer portal provides a dedicated end-to-end service request lifecycle ma
    - Sends only modified fields via `PATCH /api/v1/service-requests/{id}`.
    - Handles backend conflict rejection (e.g., if status transitioned to `APPROVED`) with instant feedback and redirection.
    - Browser navigation guard (`beforeunload`) prevents accidental loss of unsaved changes.
+
+4. **Cancellation & Reschedule Rules**:
+   - **Allowed State Window**: Changes are permitted strictly before the technician arrives on site (`APPROVED`, `ASSIGNED`, `SCHEDULED`). Once marked `ARRIVED`, modifications are locked.
+   - **Rescheduling**: Requires a confirmed visit time (`SCHEDULED` only) and preserves the original appointment duration.
+   - **Active Premium Members**: Customers with an `ACTIVE` subscription enjoy unlimited free cancellations and reschedules at any time prior to arrival.
+   - **Standard Bookings**: Modifications are completely free if made more than 24 hours before the scheduled appointment. If changed within 24 hours, an estimated $5.00 late fee is calculated and billed via online invoice.
+   - **Conflict Handling**: The reschedule modal detects technician scheduling overlaps (409 / conflict responses) and maintains user inputs while displaying actionable inline alerts.
 - [x] **Phase 8: Technician Mobile-Optimized Dashboard**
   - [x] Real-time task queue with single-status URL-synced chips (`All`, `Assigned`, `Scheduled`, `Arrived`, `In progress`, `Completed`, `Cancelled`)
   - [x] Job assignment acceptance & decline modal with validated reason (10-500 chars)
