@@ -67,23 +67,32 @@ export function RejectTaskDialog({
 
   React.useEffect(() => {
     if (!open) {
-      reset();
+      reset({ reason: "" });
     }
   }, [open, reset]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (isSubmitting) return;
+    onOpenChange(newOpen);
+  };
 
   const onSubmit = async (values: RejectTaskFormValues) => {
     try {
       setIsSubmitting(true);
-      await technicianService.rejectTask(workOrderId, {
-        reason: values.reason.trim(),
+      await technicianService.rejectTask(workOrderId, values.reason.trim());
+
+      toast.success("Job rejected", {
+        description: "It has been sent back to the dispatcher.",
       });
 
-      toast.success("Job assignment rejected and returned to dispatch.");
       await queryClient.invalidateQueries({
         queryKey: ["technician", "tasks"],
       });
       await queryClient.invalidateQueries({
-        queryKey: ["work-orders", workOrderId],
+        queryKey: ["technician", "task", workOrderId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "work-orders", workOrderId],
       });
 
       onOpenChange(false);
@@ -96,12 +105,12 @@ export function RejectTaskDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md" showCloseButton={!isSubmitting}>
         <DialogHeader>
           <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="size-5" />
-            <DialogTitle>Decline Job Assignment</DialogTitle>
+            <DialogTitle>Reject Job Assignment</DialogTitle>
           </div>
           <DialogDescription>
             Decline work order assignment #{workOrderId.slice(0, 8)}
@@ -117,7 +126,7 @@ export function RejectTaskDialog({
                 htmlFor="reject-task-reason"
                 className="font-semibold text-charcoal-800 dark:text-charcoal-200"
               >
-                Reason for Declining <span className="text-destructive">*</span>
+                Reason for Rejection <span className="text-destructive">*</span>
               </Label>
               <span
                 className={`text-[11px] ${
@@ -171,7 +180,7 @@ export function RejectTaskDialog({
               className="gap-2 shadow-xs"
             >
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              <span>Confirm Decline</span>
+              <span>Confirm Rejection</span>
             </Button>
           </DialogFooter>
         </form>
