@@ -477,7 +477,99 @@ export function TaskDetailClient({ id }: TaskDetailClientProps) {
             </CardContent>
           </Card>
 
-          {/* Card 5: Status Timeline History */}
+          {/* Card 5: Service Report (if filed) */}
+          {task.serviceReport && (
+            <Card className="border-border bg-card shadow-xs">
+              <CardHeader className="pb-3 border-b border-border/60">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <FileText className="size-4 text-emerald-600" />
+                    <span>Submitted Service Report</span>
+                  </CardTitle>
+                  <Badge
+                    variant="outline"
+                    className="text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-[10px] font-semibold border-emerald-300"
+                  >
+                    Report Filed
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4 text-xs">
+                {task.serviceReport.workDone && (
+                  <div>
+                    <span className="block text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-1">
+                      Work Performed
+                    </span>
+                    <p className="text-charcoal-800 dark:text-charcoal-200 leading-relaxed whitespace-pre-wrap bg-muted/30 p-3 rounded-lg border border-border/60">
+                      {task.serviceReport.workDone}
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {typeof task.serviceReport.hoursSpent === "number" && (
+                    <div className="p-3 bg-muted/20 border border-border/60 rounded-lg">
+                      <span className="block text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-0.5">
+                        Labor Hours
+                      </span>
+                      <p className="font-bold text-foreground text-sm">
+                        {task.serviceReport.hoursSpent} hrs
+                      </p>
+                    </div>
+                  )}
+
+                  {task.serviceReport.partsUsed ? (
+                    <div className="p-3 bg-muted/20 border border-border/60 rounded-lg">
+                      <span className="block text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-0.5">
+                        Parts Used
+                      </span>
+                      <p className="font-medium text-foreground text-xs">
+                        {typeof task.serviceReport.partsUsed === "string"
+                          ? task.serviceReport.partsUsed
+                          : JSON.stringify(task.serviceReport.partsUsed)}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+
+                {Array.isArray(task.serviceReport.photos) &&
+                  task.serviceReport.photos.length > 0 && (
+                    <div>
+                      <span className="block text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-1.5">
+                        Completion Photos ({task.serviceReport.photos.length})
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {task.serviceReport.photos.map((p, pIdx) => {
+                          const pUrl = typeof p === "string" ? p : p.url;
+                          return (
+                            <a
+                              key={pUrl || pIdx}
+                              href={pUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group relative block aspect-square overflow-hidden rounded-lg border border-border bg-muted/40 hover:ring-2 hover:ring-primary/50"
+                            >
+                              <Image
+                                src={pUrl}
+                                alt={`Completion Photo ${pIdx + 1}`}
+                                fill
+                                unoptimized
+                                className="object-cover transition-transform duration-200 group-hover:scale-105"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center">
+                                <ExternalLink className="size-4 text-white" />
+                              </div>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Card 6: Status Timeline History */}
           <Card className="border-border bg-card shadow-xs">
             <CardHeader className="pb-3 border-b border-border/60">
               <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
