@@ -126,10 +126,14 @@ export function useCompleteJob({
         updateState("saving-report");
 
         try {
+          // OpenAPI spec requires partsUsed (non-empty string).
+          // If empty/omitted in UI, normalize to "None" so backend validation passes.
+          const normalizedPartsUsed = values.partsUsed?.trim() || "None";
+
           await technicianService.submitServiceReport(workOrderId, {
             workDone: values.workDone,
             hoursSpent: values.hoursSpent,
-            partsUsed: values.partsUsed || undefined,
+            partsUsed: normalizedPartsUsed,
             photos:
               values.photos && values.photos.length > 0
                 ? values.photos
