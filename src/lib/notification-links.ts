@@ -1,17 +1,11 @@
 import {
-  AlertTriangle,
   Bell,
-  Calendar,
-  CheckCircle,
-  CheckCircle2,
-  Clock,
+  ClipboardList,
   CreditCard,
-  FileText,
+  Crown,
   type LucideIcon,
-  RefreshCcw,
-  Sparkles,
+  RotateCcw,
   Wrench,
-  XCircle,
 } from "lucide-react";
 import type { Role } from "@/types/auth";
 import type { Notification } from "@/types/notification";
@@ -29,155 +23,146 @@ export interface NotificationVisualConfig {
 }
 
 /**
- * Returns an icon and visual color tone for a notification type.
+ * Returns an icon and visual color tone for a notification type via substring matching.
  */
 export function getNotificationVisual(
   type?: string | null,
 ): NotificationVisualConfig {
-  const normalized = (type || "").toUpperCase().trim();
+  const upper = (type || "").toUpperCase().trim();
 
-  switch (normalized) {
-    case "REQUEST_SUBMITTED":
-    case "REQUEST_APPROVED":
-      return { icon: CheckCircle2, tone: "success" };
-
-    case "REQUEST_REJECTED":
-      return { icon: XCircle, tone: "danger" };
-
-    case "TECHNICIAN_ASSIGNED":
-      return { icon: Wrench, tone: "info" };
-
-    case "VISIT_SCHEDULED":
-      return { icon: Calendar, tone: "info" };
-
-    case "JOB_STARTED":
-      return { icon: Clock, tone: "info" };
-
-    case "JOB_COMPLETED":
-      return { icon: CheckCircle, tone: "success" };
-
-    case "JOB_CANCELLED":
-      return { icon: AlertTriangle, tone: "danger" };
-
-    case "INVOICE_ISSUED":
-      return { icon: FileText, tone: "warning" };
-
-    case "INVOICE_PAID":
-    case "PAYMENT_RECEIVED":
-      return { icon: CreditCard, tone: "success" };
-
-    case "REFUND_ISSUED":
-      return { icon: RefreshCcw, tone: "warning" };
-
-    case "SUBSCRIPTION_ACTIVATED":
-      return { icon: Sparkles, tone: "success" };
-
-    case "SUBSCRIPTION_CANCELLED":
-    case "SUBSCRIPTION_PAST_DUE":
-      return { icon: AlertTriangle, tone: "warning" };
-
-    default:
-      return { icon: Bell, tone: "neutral" };
+  // Tone resolution by substring
+  let tone: NotificationTone = "info";
+  if (
+    upper.includes("FAILED") ||
+    upper.includes("REJECT") ||
+    upper.includes("CANCEL")
+  ) {
+    tone = "danger";
+  } else if (
+    upper.includes("SUCCEEDED") ||
+    upper.includes("PAID") ||
+    upper.includes("APPROVED") ||
+    upper.includes("COMPLETED") ||
+    upper.includes("ACTIVATED")
+  ) {
+    tone = "success";
+  } else if (upper.includes("PAST_DUE") || upper.includes("EXPIRED")) {
+    tone = "warning";
   }
+
+  // Icon resolution by substring
+  if (upper.includes("PAYMENT") || upper.includes("INVOICE")) {
+    return { icon: CreditCard, tone };
+  }
+  if (upper.includes("SUBSCRIPTION")) {
+    return { icon: Crown, tone };
+  }
+  if (
+    upper.includes("ASSIGNED") ||
+    upper.includes("SCHEDULED") ||
+    upper.includes("WORK_ORDER") ||
+    upper.includes("JOB")
+  ) {
+    return { icon: Wrench, tone };
+  }
+  if (upper.includes("REQUEST")) {
+    return { icon: ClipboardList, tone };
+  }
+  if (upper.includes("REFUND")) {
+    return { icon: RotateCcw, tone };
+  }
+
+  return { icon: Bell, tone: "neutral" };
+}
+
+function getStringId(data: unknown, key: string): string | null {
+  if (typeof data !== "object" || data === null) return null;
+  const val = (data as Record<string, unknown>)[key];
+  if (typeof val === "string" && val.trim().length > 0) {
+    return val.trim();
+  }
+  return null;
 }
 
 /**
  * Determines the target route for a notification based on real payload references and user role.
- * Returns null if the required reference ID does not exist in the notification data.
+ * Priority:
+ * 1. data.invoiceId: CUSTOMER /customer/invoices/{id}, ADMIN /admin/invoices/{id}
+ * 2. data.requestId: CUSTOMER /customer/requests/{id}, ADMIN /admin/dispatch/{id}
+ * 3. data.workOrderId: TECHNICIAN /technician/tasks/{id}, ADMIN /admin/work-orders/{id}, CUSTOMER /customer/jobs/{id}
+ * 4. data.paymentId (no invoice): CUSTOMER /customer/payments, ADMIN /admin/payments
+ * 5. type contains "SUBSCRIPTION": CUSTOMER /customer/premium
+ * 6. Otherwise null (the click only marks as read)
  */
 export function getNotificationHref(
   notification: Notification,
   role?: Role | string | null,
 ): string | null {
   const normalizedRole = (role || "").toUpperCase();
-  const normalizedType = (notification.type || "").toUpperCase();
+  const upperType = (notification.type || "").toUpperCase();
+  const data = notification.data;
 
-  // Extract reference IDs safely from direct fields, entity fields, or data payload
+  const invoiceId = getStringId(data, "invoiceId");
   const requestId =
-    notification.requestId ||
-    (notification.entityType?.toLowerCase() === "servicerequest"
-      ? notification.entityId
-      : undefined) ||
-    (notification.data?.requestId as string | undefined);
+    getStringId(data, "requestId") ?? getStringId(data, "serviceRequestId");
+  const workOrderId = getStringId(data, "workOrderId");
+  const paymentId = getStringId(data, "paymentId");
 
-  const workOrderId =
-    notification.workOrderId ||
-    (notification.entityType?.toLowerCase() === "workorder"
-      ? notification.entityId
-      : undefined) ||
-    (notification.data?.workOrderId as string | undefined);
-
-  const invoiceId =
-    notification.invoiceId ||
-    (notification.entityType?.toLowerCase() === "invoice"
-      ? notification.entityId
-      : undefined) ||
-    (notification.data?.invoiceId as string | undefined);
-
-  // 1. Customer Navigation
-  if (normalizedRole === "CUSTOMER") {
-    if (normalizedType.includes("SUBSCRIPTION")) {
-      return "/customer/premium";
+  // 1. data.invoiceId: CUSTOMER /customer/invoices/{id}, ADMIN /admin/invoices/{id}
+  if (invoiceId) {
+    if (normalizedRole === "CUSTOMER") {
+      return `/customer/invoices/${encodeURIComponent(invoiceId)}`;
     }
-
-    if (invoiceId) {
-      return `/customer/invoices/${invoiceId}`;
+    if (normalizedRole === "ADMIN") {
+      return `/admin/invoices/${encodeURIComponent(invoiceId)}`;
     }
+    return null;
+  }
 
-    if (normalizedType.includes("INVOICE")) {
-      return "/customer/invoices";
+  // 2. data.requestId: CUSTOMER /customer/requests/{id}, ADMIN /admin/dispatch/{id}
+  if (requestId) {
+    if (normalizedRole === "CUSTOMER") {
+      return `/customer/requests/${encodeURIComponent(requestId)}`;
     }
+    if (normalizedRole === "ADMIN") {
+      return `/admin/dispatch/${encodeURIComponent(requestId)}`;
+    }
+    return null;
+  }
 
-    if (
-      normalizedType.includes("PAYMENT") ||
-      normalizedType.includes("REFUND")
-    ) {
+  // 3. data.workOrderId: TECHNICIAN /technician/tasks/{id}, ADMIN /admin/work-orders/{id}, CUSTOMER /customer/jobs/{id}
+  if (workOrderId) {
+    if (normalizedRole === "TECHNICIAN") {
+      return `/technician/tasks/${encodeURIComponent(workOrderId)}`;
+    }
+    if (normalizedRole === "ADMIN") {
+      return `/admin/work-orders/${encodeURIComponent(workOrderId)}`;
+    }
+    if (normalizedRole === "CUSTOMER") {
+      return `/customer/jobs/${encodeURIComponent(workOrderId)}`;
+    }
+    return null;
+  }
+
+  // 4. data.paymentId (no invoice): CUSTOMER /customer/payments, ADMIN /admin/payments
+  if (paymentId) {
+    if (normalizedRole === "CUSTOMER") {
       return "/customer/payments";
     }
-
-    if (requestId) {
-      return `/customer/requests/${requestId}`;
-    }
-
-    return null;
-  }
-
-  // 2. Technician Navigation
-  if (normalizedRole === "TECHNICIAN") {
-    if (workOrderId) {
-      return `/technician/tasks/${workOrderId}`;
-    }
-
-    if (normalizedType.includes("SCHEDULE")) {
-      return "/technician/schedule";
-    }
-
-    return null;
-  }
-
-  // 3. Admin Navigation
-  if (normalizedRole === "ADMIN") {
-    if (workOrderId) {
-      return `/admin/work-orders/${workOrderId}`;
-    }
-
-    if (requestId) {
-      return `/admin/dispatch/${requestId}`;
-    }
-
-    if (invoiceId) {
-      return `/admin/invoices/${invoiceId}`;
-    }
-
-    if (
-      normalizedType.includes("PAYMENT") ||
-      normalizedType.includes("REFUND")
-    ) {
+    if (normalizedRole === "ADMIN") {
       return "/admin/payments";
     }
-
     return null;
   }
 
+  // 5. type contains "SUBSCRIPTION": CUSTOMER /customer/premium
+  if (upperType.includes("SUBSCRIPTION")) {
+    if (normalizedRole === "CUSTOMER") {
+      return "/customer/premium";
+    }
+    return null;
+  }
+
+  // 6. Otherwise null
   return null;
 }

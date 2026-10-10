@@ -79,8 +79,8 @@ export function NotificationsPageClient({
   const markReadMutation = useMarkNotificationRead();
   const markAllMutation = useMarkAllRead();
 
-  const notifications = extractArray<Notification>(data);
-  const pagination = data?.pagination;
+  const notifications = data?.items ?? extractArray<Notification>(data);
+  const pagination = data?.meta ?? data?.pagination;
 
   const handleCardClick = (notification: Notification) => {
     if (!notification.isRead) {

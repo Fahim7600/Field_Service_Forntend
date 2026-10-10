@@ -82,15 +82,22 @@ export function useNotificationPreview() {
 }
 
 /**
- * Fetches total unread count using the backend isRead=false query filter.
- * Polls every 30s only while the tab is visible.
+ * Fetches total unread count: reads extra.unreadCount from the preview query response first.
+ * Only if extra is missing does it fall back to the separate isRead=false query.
  */
 export function useUnreadCount() {
   const isVisible = useDocumentVisibility();
   const status = useAuthStore((state) => state.status);
   const isAuthenticated = status === "authenticated";
 
-  const query = useQuery<PaginatedResponse<Notification>>({
+  const previewQuery = useNotificationPreview();
+
+  const extra = previewQuery.data?.extra as
+    | { unreadCount?: number }
+    | undefined;
+  const hasExtra = typeof extra?.unreadCount === "number";
+
+  const fallbackQuery = useQuery<PaginatedResponse<Notification>>({
     queryKey: ["notifications", "unread-count"],
     queryFn: () =>
       notificationsService.fetchNotifications({
@@ -98,7 +105,7 @@ export function useUnreadCount() {
         limit: 1,
         isRead: "false",
       }),
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !hasExtra && !previewQuery.isLoading,
     refetchInterval: isVisible ? 30_000 : false,
     refetchOnWindowFocus: true,
     staleTime: 15_000,
@@ -111,15 +118,25 @@ export function useUnreadCount() {
     },
   });
 
-  const rawCount = query.data?.pagination?.total ?? 0;
+  const rawCount = hasExtra
+    ? (extra?.unreadCount ?? 0)
+    : (fallbackQuery.data?.meta?.total ??
+      fallbackQuery.data?.pagination?.total ??
+      0);
+
   const count = Math.max(0, rawCount);
   const formatted = count > 9 ? "9+" : String(count);
 
   return {
-    ...query,
     count,
     formatted,
     hasUnread: count > 0,
+    isLoading: hasExtra ? previewQuery.isLoading : fallbackQuery.isLoading,
+    isError: hasExtra ? previewQuery.isError : fallbackQuery.isError,
+    refetch: () => {
+      previewQuery.refetch();
+      if (!hasExtra) fallbackQuery.refetch();
+    },
   };
 }
 
@@ -171,28 +188,49 @@ export function useMarkNotificationRead() {
         PaginatedResponse<Notification>
       >(["notifications", "unread-count"]);
 
-      // 1. Update Preview cache
+      // 1. Update Preview cache & decrement extra.unreadCount if present
       if (previousPreview) {
+        const prevExtra = previousPreview.extra as
+          | { unreadCount?: number }
+          | undefined;
+        const newUnreadCount =
+          typeof prevExtra?.unreadCount === "number"
+            ? Math.max(0, prevExtra.unreadCount - 1)
+            : undefined;
+
         queryClient.setQueryData<PaginatedResponse<Notification>>(
           ["notifications", "preview"],
           {
             ...previousPreview,
-            data: previousPreview.data.map((n) =>
-              n.id === id ? { ...n, isRead: true } : n,
+            items: (previousPreview.items ?? previousPreview.data ?? []).map(
+              (n) => (n.id === id ? { ...n, isRead: true } : n),
             ),
+            data: (previousPreview.data ?? previousPreview.items ?? []).map(
+              (n) => (n.id === id ? { ...n, isRead: true } : n),
+            ),
+            extra:
+              newUnreadCount !== undefined
+                ? { ...prevExtra, unreadCount: newUnreadCount }
+                : previousPreview.extra,
           },
         );
       }
 
-      // 2. Decrement Unread count cache
-      if (previousUnread?.pagination) {
-        const newTotal = Math.max(0, previousUnread.pagination.total - 1);
+      // 2. Decrement Unread count cache (fallback query)
+      if (previousUnread) {
+        const prevTotal =
+          previousUnread.meta?.total ?? previousUnread.pagination?.total ?? 0;
+        const newTotal = Math.max(0, prevTotal - 1);
         queryClient.setQueryData<PaginatedResponse<Notification>>(
           ["notifications", "unread-count"],
           {
             ...previousUnread,
             pagination: {
               ...previousUnread.pagination,
+              total: newTotal,
+            },
+            meta: {
+              ...previousUnread.meta,
               total: newTotal,
             },
           },
@@ -204,11 +242,12 @@ export function useMarkNotificationRead() {
         { queryKey: ["notifications", "list"] },
         (old) => {
           if (!old) return old;
+          const updateItem = (n: Notification) =>
+            n.id === id ? { ...n, isRead: true } : n;
           return {
             ...old,
-            data: old.data.map((n) =>
-              n.id === id ? { ...n, isRead: true } : n,
-            ),
+            items: (old.items ?? old.data ?? []).map(updateItem),
+            data: (old.data ?? old.items ?? []).map(updateItem),
           };
         },
       );
@@ -264,25 +303,42 @@ export function useMarkAllRead() {
         PaginatedResponse<Notification>
       >(["notifications", "unread-count"]);
 
-      // 1. Update Preview cache
+      // 1. Update Preview cache & reset extra.unreadCount to 0
       if (previousPreview) {
+        const prevExtra = previousPreview.extra as
+          | { unreadCount?: number }
+          | undefined;
+
         queryClient.setQueryData<PaginatedResponse<Notification>>(
           ["notifications", "preview"],
           {
             ...previousPreview,
-            data: previousPreview.data.map((n) => ({ ...n, isRead: true })),
+            items: (previousPreview.items ?? previousPreview.data ?? []).map(
+              (n) => ({ ...n, isRead: true }),
+            ),
+            data: (previousPreview.data ?? previousPreview.items ?? []).map(
+              (n) => ({ ...n, isRead: true }),
+            ),
+            extra:
+              prevExtra !== undefined
+                ? { ...prevExtra, unreadCount: 0 }
+                : previousPreview.extra,
           },
         );
       }
 
-      // 2. Clear unread count cache
-      if (previousUnread?.pagination) {
+      // 2. Clear unread count cache (fallback query)
+      if (previousUnread) {
         queryClient.setQueryData<PaginatedResponse<Notification>>(
           ["notifications", "unread-count"],
           {
             ...previousUnread,
             pagination: {
               ...previousUnread.pagination,
+              total: 0,
+            },
+            meta: {
+              ...previousUnread.meta,
               total: 0,
             },
           },
@@ -294,9 +350,11 @@ export function useMarkAllRead() {
         { queryKey: ["notifications", "list"] },
         (old) => {
           if (!old) return old;
+          const markAll = (n: Notification) => ({ ...n, isRead: true });
           return {
             ...old,
-            data: old.data.map((n) => ({ ...n, isRead: true })),
+            items: (old.items ?? old.data ?? []).map(markAll),
+            data: (old.data ?? old.items ?? []).map(markAll),
           };
         },
       );

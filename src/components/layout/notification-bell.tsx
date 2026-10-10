@@ -65,16 +65,17 @@ export function NotificationBell({ role }: NotificationBellProps) {
   const markNotificationRead = useMarkNotificationRead();
   const markAllRead = useMarkAllRead();
 
-  const notifications = extractArray<Notification>(previewData);
+  const notifications =
+    previewData?.items ?? extractArray<Notification>(previewData);
 
   // New-notification toast tracking across polling cycles
   const seenIdsRef = React.useRef<Set<string>>(new Set());
   const isInitialSessionRef = React.useRef(true);
 
   React.useEffect(() => {
-    if (!previewData?.data) return;
-
-    const currentItems = extractArray<Notification>(previewData);
+    const currentItems =
+      previewData?.items ?? extractArray<Notification>(previewData);
+    if (!currentItems || currentItems.length === 0) return;
 
     if (isInitialSessionRef.current) {
       for (const item of currentItems) {
