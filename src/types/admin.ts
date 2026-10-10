@@ -167,3 +167,28 @@ export interface SubscriptionListParams {
   sortBy?: "createdAt" | string;
   order?: "asc" | "desc";
 }
+
+export interface RequestsByStatusItem {
+  status: string;
+  count: number;
+}
+
+export interface DashboardStats {
+  totalRevenueCents: number;
+  activeWorkOrders: number;
+  pendingRequests: number;
+  totalTechnicians: number;
+  requestsByStatus?: Record<string, number> | RequestsByStatusItem[] | null;
+  totalRequests?: number;
+  activePremiumUsers?: number;
+  lateReviews?: number;
+}
+
+export interface TechnicianAnalytics {
+  technicianId: string;
+  completedJobs: number;
+  averageRating: number;
+  onTimeRate?: number | null;
+  averageJobTimeMinutes?: number | null;
+  totalJobs?: number | null;
+}

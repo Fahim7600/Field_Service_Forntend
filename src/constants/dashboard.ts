@@ -17,6 +17,7 @@ import {
   UserCog,
   Users,
   Wallet,
+  Wrench,
 } from "lucide-react";
 import type { Role } from "@/types/auth";
 
@@ -150,6 +151,11 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
         label: "Users",
         href: "/admin/users",
         icon: Users,
+      },
+      {
+        label: "Technicians",
+        href: "/admin/technicians",
+        icon: Wrench,
       },
       {
         label: "Catalog",
