@@ -516,6 +516,12 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
   - [x] Audit Logs explorer (`/admin/audit-logs`) with date/action/entity filters, masked sensitive credentials, field-level deltas, and expandable raw JSON viewer
   - [x] Customer Feedback dashboard (`/admin/feedback`) with StarRating component, technician filters, and low-rating highlights (1–2 stars)
   - [x] Premium Subscriptions ledger (`/admin/subscriptions`) with active/past-due independent stat cards and renewal/cancellation tracking
+- [x] **Phase 14: Rebuilt Admin Dashboard, Accessible Charts & Field Technician Analytics**
+  - [x] Rebuilt Admin Dashboard (`/admin`) with 6 independent stat cards, real server telemetry, and zero fabricated trends
+  - [x] Accessible lazy-loaded Recharts status bar chart (`StatusBarChartLazy`, `ChartCard`, `ChartSkeleton`) with `prefers-reduced-motion` suppression and accessible data tables
+  - [x] Field Technicians directory (`/admin/technicians`) with URL-synced search, status filters, responsive mobile cards, and pagination
+  - [x] Technician Analytics console (`/admin/technicians/[id]`) with completed job counts, star ratings, on-time rates, average job durations, and customer feedback history
+
 
 ---
 
@@ -633,6 +639,46 @@ The Audit Logs console (`/admin/audit-logs`) provides complete compliance and ac
 2. **Subscriptions Management (`/admin/subscriptions`)**:
    - High-level metric spotlight displaying live counts for active VIP members and past-due accounts.
    - Comprehensive customer plan registry with status filtering, renewal dates, and period-end cancellation tracking.
+
+---
+
+## 📊 Admin Dashboard & Technician Analytics
+
+### 1. Operational Command Center (`/admin`)
+- **Real Backend Metrics**: The rebuilt dashboard is strictly grounded in the OpenAPI specification (`GET /api/v1/admin/dashboard-stats` and `GET /api/v1/admin/dispatch-queue`). No fake trend lines, no randomized numbers, and no synthetic series.
+- **6 Independent KPI Stat Cards**:
+  1. **Total Revenue**: Accurately formatted invoiced amount in currency cents (`formatMoney`).
+  2. **Total Requests**: Lifetime customer service request volume.
+  3. **Active Premium**: Active VIP memberships with direct link to `/admin/subscriptions`.
+  4. **Late Reviews**: Overdue dispatch reviews highlighted with a high-visibility red accent when count > 0.
+  5. **Awaiting Review**: Real-time count of requests in `REQUEST_REVIEW` queue.
+  6. **Needs Technician**: Real-time count of approved work orders requiring technician assignment (`NEEDS_TECHNICIAN`).
+- **Resilient Isolated Queries**: Each metric card manages its own query state, skeleton loader, and individual retry trigger, preventing one slow or failing endpoint from degrading the entire dashboard.
+- **Global Invalidation**: A top-level "Refresh" button invalidates all active dashboard queries in parallel.
+
+### 2. Accessible, Zero-Hydration-Risk Recharts
+- **Server/Client Isolation**: Charts are dynamically imported with `ssr: false` via `StatusBarChartLazy`, ensuring Recharts only executes client-side after mounting to prevent SSR hydration mismatches.
+- **Calm & Semantic Palette**: Mapped to brand tokens and `StatusBadge` theme colors (amber, blue, purple, cyan, orange, emerald, charcoal) without harsh neon highlights.
+- **Accessibility & Reduced Motion**:
+  - `aria-label` summary regions describing category count and total volume.
+  - Automatic detection of `prefers-reduced-motion` to disable transitions when requested by user OS preferences.
+  - Accessible `<details>` dropdown containing a full HTML `<table>` representation of chart data points for screen readers.
+- **Responsive Layout**: Zero horizontal overflow at 375px mobile viewport widths with truncated label formatters.
+
+### 3. Field Technicians Directory (`/admin/technicians`)
+- Dedicated directory for viewing and managing field workforce staff.
+- Search with 400ms debounce, status filters (`All`, `Active`, `Suspended`), and pagination.
+- Displays technician initials, contact numbers, account statuses, and registration dates.
+- Direct navigation links to detailed performance analytics for each technician.
+
+### 4. Technician Analytics & Feedback Console (`/admin/technicians/[id]`)
+- **Key Performance Telemetry**:
+  1. **Completed Jobs**: Total finished work orders.
+  2. **Average Rating**: StarRating visual display and average score out of 5.0 (or "No ratings yet").
+  3. **On-Time Rate**: Verified completion percentage with visual progress bar.
+  4. **Average Job Duration**: Formatted duration per task (`formatDuration`).
+- **Customer Feedback History**: Direct integration with `GET /feedback?technicianId={id}`, previewing recent customer star ratings, comments, customer details, and linked work orders with deep links to full feedback logs.
+- **404 Handling**: Graceful fallback and recovery for nonexistent or removed technician IDs.
 
 ---
 
