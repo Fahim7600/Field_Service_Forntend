@@ -1,4 +1,7 @@
+import Link from "next/link";
 import { Logo } from "@/components/shared/logo";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { AuthActions } from "./auth-actions";
 import { MobileNav } from "./mobile-nav";
 import { NavLinks } from "./nav-links";
@@ -28,6 +31,15 @@ export function Navbar() {
 
           {/* Right Auth Slot (Desktop) & Mobile Toggle */}
           <div className="flex items-center gap-3">
+            <Link
+              href="/customer/requests/new"
+              className={cn(
+                buttonVariants({ variant: "cta", size: "sm" }),
+                "hidden lg:inline-flex font-semibold shadow-xs",
+              )}
+            >
+              Book Service
+            </Link>
             <div className="hidden md:flex items-center">
               <AuthActions />
             </div>

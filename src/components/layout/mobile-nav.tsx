@@ -1,9 +1,10 @@
 "use client";
 
 import { Menu } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { Logo } from "@/components/shared/logo";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
@@ -12,6 +13,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 import { AuthActions } from "./auth-actions";
 import { NavLinks } from "./nav-links";
 
@@ -43,6 +45,18 @@ export function MobileNav() {
             <SheetTitle className="sr-only">Mobile Navigation Menu</SheetTitle>
             <Logo onClick={handleClose} />
           </SheetHeader>
+          <div className="mb-6">
+            <Link
+              href="/customer/requests/new"
+              onClick={handleClose}
+              className={cn(
+                buttonVariants({ variant: "cta" }),
+                "w-full justify-center font-semibold shadow-xs",
+              )}
+            >
+              Book Service
+            </Link>
+          </div>
           <Separator className="mb-6" />
           <NavLinks orientation="vertical" onLinkClick={handleClose} />
         </div>
