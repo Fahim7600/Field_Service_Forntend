@@ -779,26 +779,54 @@ Field Service is engineered for high resilience against slow or sleeping server 
   - Full catalog grid (1 col mobile, 2 col md, 3 col xl) with direct "Book this service" buttons linking to `/customer/requests/new?category={id}`.
   - URL query parameter preselection in `ServiceRequestWizard`: When navigating with `?category={id}`, the wizard automatically preselects the matching service category.
   - Compact "What to expect" overview and closing CTA band.
+- **Pricing Page (`/pricing`)**:
+  - **Plan Cards**: Free tier ($0) and live Premium monthly and annual tiers fetched from `GET /subscription-plans` via `getPublicPlans()`. The yearly card features a "Best value" badge and live calculated annual savings percentage (`getYearlySavings`). Falls back gracefully to benefit cards without prices if the backend is waking up.
+  - **Feature Comparison Table**: Semantic, accessible `<table>` with visible keyboard focus ring comparing review speed, labor discount, cancellation rules, Stripe checkout, digital reports, and in-app notifications.
+  - **Pricing FAQ**: Filtered accordion for billing, cancellation, and Premium questions, paired with `<JsonLd>` FAQPage structured data.
+- **About Page (`/about`)**:
+  - **AboutHero**: Factual mission statement detailing the end-to-end service cycle paired with SafeImage photography.
+  - **Specialized Disciplines (`WhatWeDoSection`)**: Core service areas (HVAC, plumbing, electrical, appliances).
+  - **Reused Operational Foundations**: Seamlessly imports `HowItWorksSection` and `AudienceSection` to avoid code duplication.
+  - **Operational Principles (`PrinciplesSection`)**: Highlights Transparency, Fair Scheduling, Secure Payments, and Accountability.
+  - **Factual Architecture (`BuiltWithSection`)**: Categorized list of frontend and backend technologies with clear purpose descriptions, concluding with a test mode footnote ("This is a demonstration platform. Payments run in Stripe test mode.").
+- **Contact Page (`/contact`)**:
+  - **Verified Touchpoints**: Displays active email, phone, street address, and business hours from environment variables using `getContactEntries()`. If no contact variables are configured, prompts users to register for dashboard-based dispatch messaging.
+  - **Mailto Inquiries Form (`<ContactForm />`)**: Validated with React Hook Form and Zod (`src/lib/validations/contact.ts`) with live 1000-character counter. Sanitizes inputs against header injection (strips CR/LF), verifies URL length limits, launches the visitor's default email client pre-filled, and provides one-click message copying. **Never claims a message was sent**.
+  - **Quick Answers Block**: Curated 4-question FAQ spotlight with deep link to `/pricing#faq`.
 
-### 2. Resilient Server-Side Public Data Helpers (`src/lib/public-data.ts`)
+### 2. Policy Constants & FAQ Knowledge Base
+- **Centralized Operational Policies (`src/constants/policy.ts`)**:
+  - `REVIEW_TARGET_HOURS_PREMIUM = 2`
+  - `REVIEW_TARGET_HOURS_NORMAL = 24`
+  - `LATE_FEE_CENTS = 500` ($5.00 late fee for cancel/reschedule within 24 hours of visit)
+  - `LATE_FEE_WINDOW_HOURS = 24`
+  - `PREMIUM_LABOR_DISCOUNT_PERCENT = 10` (marketing & estimate display only)
+  - `MAX_REQUEST_PHOTOS = 5`
+  - `MAX_PHOTO_MB = 5`
+- **Grounded FAQ Registry (`src/constants/faq.ts`)**: 12 verified platform questions across booking, payments, premium, technicians, and account management.
+- **Accessible Accordion (`<FaqSection />`)**: Keyboard-navigable, reduced-motion-safe, smooth expand/collapse triggers with semantic `h2`/`h3` hierarchy.
+- **Schema.org Structured Data**: Generates valid `FAQPage` JSON-LD blocks using `<JsonLd>` helper for rich Google search results.
+
+### 3. Resilient Server-Side Public Data Helpers (`src/lib/public-data.ts`)
 - **Strict Server Component Isolation**: Marked with `import "server-only"`.
 - **Never Throws / Fails Gracefully**: Wrapped in try/catch with 8-second timeout (`AbortSignal.timeout(8000)`) and 5-minute ISR revalidation (`revalidate = 300`).
 - **Endpoint Security Awareness**: Because `GET /service-categories` requires an authenticated bearer token, `getPublicCategories()` immediately returns `{ data: [], error: null }` without triggering failing 401 calls, cleanly falling back to static `SERVICE_AREAS`.
 - **Public Plans**: `getPublicPlans()` contacts `GET /subscription-plans` (verified public endpoint) and falls back safely to benefit listings without prices if unreachable.
 
-### 3. Remote Unsplash Photography & `<SafeImage />`
+### 4. Remote Unsplash Photography & `<SafeImage />`
 - **Verified Remote Images**: Handpicked Unsplash images covering Hero, How-It-Works, and the four core trade disciplines, verified with HTTP 200 headers.
 - **Fail-Safe Fallback (`<SafeImage />`)**: Wraps Next.js `next/image`. If an image fails to load or the network drops, it replaces the image with an industrial charcoal-to-amber gradient placeholder featuring a centered Lucide `Wrench` icon and matching accessible `aria-label`.
 - **Unsplash Attribution**: Muted photo credit in the footer linking to `https://unsplash.com`.
 
-### 4. Dynamic Contact Configuration
+### 5. Dynamic Contact Configuration
 - Reads optional contact information from `NEXT_PUBLIC_CONTACT_EMAIL`, `NEXT_PUBLIC_CONTACT_PHONE`, `NEXT_PUBLIC_CONTACT_ADDRESS`, and `NEXT_PUBLIC_CONTACT_HOURS`.
 - Rendered only when values are provided (never displays fake placeholders or empty labels).
 
-### 5. SEO & Metadata
+### 6. SEO & Metadata
 - **`src/app/sitemap.ts`**: Generates dynamic XML sitemap for public routes (`/`, `/services`, `/pricing`, `/about`, `/contact`) with change frequencies and priorities.
 - **`src/app/robots.ts`**: Allows indexing of public routes while blocking internal dashboards and API routes (`/admin`, `/customer`, `/technician`, `/api`, `/payment`, etc.).
 - **`src/app/opengraph-image.tsx` & `src/app/twitter-image.tsx`**: Dynamic 1200x630 social preview image generated using `next/og` `ImageResponse` with system fonts and industrial charcoal/amber branding.
+- **Route Error Boundary**: Dedicated `src/app/(marketing)/error.tsx` providing graceful recovery, retry button, and home navigation if an unexpected runtime failure occurs.
 
 ---
 
