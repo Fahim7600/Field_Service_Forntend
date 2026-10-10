@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 import { TechnicianPicker } from "@/components/admin/technician-picker";
 import { VisitWindowFields } from "@/components/admin/visit-window-fields";
@@ -27,6 +26,7 @@ import {
 import { useAvailableTechnicians } from "@/hooks/use-available-technicians";
 import { getErrorMessage } from "@/lib/api-client";
 import { safeFormatDate, safeFormatDateTime } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import {
   type VisitWindowValues,
   visitWindowSchema,
@@ -110,6 +110,7 @@ export function AssignTechnicianCard({
 
   // Assign technician mutation
   const assignMutation = useMutation({
+    meta: { silent: true },
     mutationFn: async (techId: string) => {
       setConflictError(null);
       return adminService.assignTechnician(workOrder.id, {
@@ -117,9 +118,10 @@ export function AssignTechnicianCard({
       });
     },
     onSuccess: async () => {
-      toast.success("Technician assigned", {
-        description: "Waiting for the technician to accept the job.",
-      });
+      notify.success(
+        messages.dispatch.assigned.title,
+        messages.dispatch.assigned.description,
+      );
 
       await queryClient.invalidateQueries({
         queryKey: ["admin", "work-orders", workOrder.id],
@@ -150,7 +152,8 @@ export function AssignTechnicianCard({
 
       if (isConflict) {
         setConflictError(
-          msg ||
+          messages.dispatch.scheduleConflict.description ||
+            msg ||
             "The technician is no longer available or this job was already assigned. Please choose another technician.",
         );
         setSelectedTechnicianId(undefined);
@@ -159,7 +162,7 @@ export function AssignTechnicianCard({
         });
         await refetchTechnicians();
       } else {
-        toast.error(msg);
+        notify.fromError(err);
       }
     },
   });
@@ -283,7 +286,11 @@ export function AssignTechnicianCard({
               ) : (
                 <CheckCircle2 className="size-4" />
               )}
-              <span>Assign Technician</span>
+              <span>
+                {assignMutation.isPending
+                  ? "Assigning..."
+                  : "Assign Technician"}
+              </span>
             </Button>
 
             <p className="text-[11px] text-muted-foreground text-center mt-2 flex items-center justify-center gap-1">

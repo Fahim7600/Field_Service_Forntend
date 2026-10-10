@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 import { VisitWindowFields } from "@/components/admin/visit-window-fields";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -28,6 +27,7 @@ import {
 import { useAvailableTechnicians } from "@/hooks/use-available-technicians";
 import { getErrorMessage } from "@/lib/api-client";
 import { safeFormatDate, safeFormatDateTime } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import {
   type VisitWindowValues,
   visitWindowSchema,
@@ -136,6 +136,7 @@ export function ScheduleVisitCard({
 
   // Schedule mutation
   const scheduleMutation = useMutation({
+    meta: { silent: true },
     mutationFn: async (values: VisitWindowValues) => {
       setErrorMessage(null);
       const iso = windowToIso(values);
@@ -147,9 +148,10 @@ export function ScheduleVisitCard({
       });
     },
     onSuccess: async () => {
-      toast.success("Visit scheduled", {
-        description: "The customer and technician have been notified.",
-      });
+      notify.success(
+        messages.dispatch.scheduleSet.title,
+        messages.dispatch.scheduleSet.description,
+      );
 
       await queryClient.invalidateQueries({
         queryKey: ["admin", "work-orders", workOrder.id],
@@ -178,7 +180,8 @@ export function ScheduleVisitCard({
 
       if (isConflict) {
         setErrorMessage(
-          `${technicianName} already has a visit that overlaps this time. Please choose a different time.`,
+          messages.dispatch.scheduleConflict.description ||
+            `${technicianName} already has a visit that overlaps this time. Please choose a different time.`,
         );
       } else {
         setErrorMessage(msg || "Failed to schedule visit. Please try again.");
@@ -311,7 +314,11 @@ export function ScheduleVisitCard({
               ) : (
                 <CheckCircle2 className="size-4" />
               )}
-              <span>Schedule Visit</span>
+              <span>
+                {scheduleMutation.isPending
+                  ? "Scheduling..."
+                  : "Schedule Visit"}
+              </span>
             </Button>
           </div>
         </form>
