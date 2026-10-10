@@ -511,6 +511,11 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
   - [x] Admin Service Catalog page (`/admin/catalog`) with URL-synced tabs (`?tab=categories|skills`)
   - [x] Service Category CRUD dialogs with required skill selector, integer cents pricing (`MoneyInput`), and duplicate conflict handling
   - [x] Technician Skills registry with immutable skill note and shared TanStack Query keys (`["service-categories"]`, `["skills"]`)
+- [x] **Phase 13: Grouped Admin Navigation, Audit Logs, Feedback & Subscriptions**
+  - [x] Grouped admin sidebar (`Operations`, `Finance`, `People and Setup`, `System`) with accessible role groups and exact active route matching
+  - [x] Audit Logs explorer (`/admin/audit-logs`) with date/action/entity filters, masked sensitive credentials, field-level deltas, and expandable raw JSON viewer
+  - [x] Customer Feedback dashboard (`/admin/feedback`) with StarRating component, technician filters, and low-rating highlights (1–2 stars)
+  - [x] Premium Subscriptions ledger (`/admin/subscriptions`) with active/past-due independent stat cards and renewal/cancellation tracking
 
 ---
 
@@ -602,6 +607,32 @@ The Service Catalog (`/admin/catalog`) defines the core foundation linking custo
    - Skills are immutable after creation to protect historical assignment logs and dispatch consistency.
 4. **Shared Query Invalidation**:
    - Catalog changes automatically synchronize across the booking wizard (`["service-categories"]`) and technician skill profiles (`["skills"]`).
+
+---
+
+## 📜 Audit Logs
+
+The Audit Logs console (`/admin/audit-logs`) provides complete compliance and accountability across platform modifications:
+
+1. **Detailed Event Tracking**:
+   - Captures who changed what and when across user roles, work orders, invoices, payments, categories, and subscriptions.
+   - Highlights actor role, system-triggered operations, and target entity IDs.
+2. **Field-Level Diffing & Security**:
+   - Deep credential masking (`maskSensitive`) automatically replaces passwords, tokens, API secrets, and authorization headers with `"hidden"`.
+   - Field-level diffing (`diffValues`) visualizes changes from previous to new values with currency awareness for cents values.
+   - Expandable raw JSON panel allows technical inspection of full payloads without exposing raw secrets.
+
+---
+
+## 🌟 Feedback & Subscriptions
+
+1. **Customer Feedback (`/admin/feedback`)**:
+   - Collects 1–5 star reviews and comments submitted by customers following completed service visits.
+   - Filter reviews by rating (1 to 5 stars) and assigned technician.
+   - Visual emphasis (red border and "Low Rating" badge) for 1–2 star reviews to facilitate proactive customer resolution.
+2. **Subscriptions Management (`/admin/subscriptions`)**:
+   - High-level metric spotlight displaying live counts for active VIP members and past-due accounts.
+   - Comprehensive customer plan registry with status filtering, renewal dates, and period-end cancellation tracking.
 
 ---
 
