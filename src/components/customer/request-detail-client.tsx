@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 import { CancelJobDialog } from "@/components/customer/cancel-job-dialog";
+import { FeedbackCard } from "@/components/customer/feedback-card";
 import { RescheduleJobDialog } from "@/components/customer/reschedule-job-dialog";
 import { ImagePicker, type PickedImage } from "@/components/forms/image-picker";
 import { UploadProgress } from "@/components/forms/upload-progress";
@@ -694,6 +695,18 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
                 )}
               </CardContent>
             </Card>
+          )}
+
+          {/* 5.5 Inline Rate Your Service Feedback Card */}
+          {workOrderId && (
+            <FeedbackCard
+              workOrderId={workOrderId}
+              workOrderStatus={activeWorkOrder?.status}
+              onRequestRefresh={() => {
+                refetchRequest();
+                refetchWorkOrder();
+              }}
+            />
           )}
         </div>
 

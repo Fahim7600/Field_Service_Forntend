@@ -84,4 +84,17 @@ export const workOrdersService = {
       },
     );
   },
+
+  /**
+   * Submits customer rating and feedback for a paid work order.
+   */
+  async submitFeedback(
+    workOrderId: string,
+    payload: { rating: number; comment?: string },
+  ): Promise<{ id: string; rating: number; comment?: string | null }> {
+    return apiPost<
+      { id: string; rating: number; comment?: string | null },
+      { rating: number; comment?: string }
+    >(`/work-orders/${workOrderId}/feedback`, payload);
+  },
 };

@@ -229,3 +229,16 @@ export interface SubmitServiceReportPayload {
   partsUsed?: string;
   photos?: string[];
 }
+
+export interface WorkOrderFeedback {
+  id: string;
+  workOrderId?: string;
+  rating: number;
+  comment?: string | null;
+  createdAt?: string;
+}
+
+export interface SubmitFeedbackPayload {
+  rating: number;
+  comment?: string;
+}
