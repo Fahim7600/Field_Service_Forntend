@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Calendar,
@@ -17,7 +16,6 @@ import {
   Navigation,
   Phone,
   Play,
-  RefreshCw,
   User,
   Wrench,
   XCircle,
@@ -25,6 +23,9 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import * as React from "react";
+
+import { DetailNotFound } from "@/components/shared/detail-not-found";
+import { QueryError } from "@/components/shared/query-error";
 import { StatusTimeline } from "@/components/shared/status-timeline";
 import { WorkProgressStepper } from "@/components/shared/work-progress-stepper";
 import { RejectTaskDialog } from "@/components/technician/reject-task-dialog";
@@ -181,71 +182,22 @@ export function TaskDetailClient({ id }: TaskDetailClientProps) {
 
   if (isForbiddenOrNotFound) {
     return (
-      <Card className="border-border bg-card p-8 text-center max-w-lg mx-auto shadow-xs">
-        <CardContent className="space-y-4 p-0">
-          <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
-            <AlertCircle className="size-6" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-foreground">
-              This job is not available
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              The task you requested could not be found or you do not have
-              permission to view it.
-            </p>
-          </div>
-          <div className="pt-2">
-            <Link
-              href="/technician/tasks"
-              className={cn(
-                buttonVariants({ variant: "default", size: "sm" }),
-                "gap-1.5",
-              )}
-            >
-              <ArrowLeft className="size-4" />
-              <span>Back to tasks</span>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      <DetailNotFound
+        title="This job is not available"
+        description="The task you requested could not be found or you do not have permission to view it."
+        backHref="/technician/tasks"
+        backLabel="Back to tasks"
+      />
     );
   }
 
   if (isError || !task) {
     return (
-      <Card className="border-destructive/30 bg-destructive/5 p-8 text-center max-w-lg mx-auto shadow-xs">
-        <CardContent className="space-y-4 p-0">
-          <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
-            <AlertCircle className="size-6" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-destructive">
-              Failed to load task details
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              {errorMessage ||
-                "An unexpected error occurred while communicating with the server."}
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <Link
-              href="/technician/tasks"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "gap-1.5",
-              )}
-            >
-              <ArrowLeft className="size-4" />
-              <span>Back to tasks</span>
-            </Link>
-            <Button size="sm" onClick={() => refetch()} className="gap-1.5">
-              <RefreshCw className="size-3.5" />
-              <span>Retry</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <QueryError
+        error={error}
+        onRetry={() => refetch()}
+        title="Failed to load task details"
+      />
     );
   }
 

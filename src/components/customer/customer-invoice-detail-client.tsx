@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertCircle,
   ArrowLeft,
   CheckCircle2,
   CreditCard,
@@ -17,9 +16,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
-import { toast } from "sonner";
+import { DetailNotFound } from "@/components/shared/detail-not-found";
 
 import { InvoiceBreakdown } from "@/components/shared/invoice-breakdown";
+import { QueryError } from "@/components/shared/query-error";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -31,8 +31,9 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { getErrorMessage } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-client";
 import { formatMoney, safeFormatDate, safeFormatDateTime } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import { isSafeCheckoutUrl, redirectToCheckout } from "@/lib/stripe-redirect";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
@@ -76,6 +77,7 @@ export function CustomerInvoiceDetailClient({
 
   // Initiate Stripe Payment Mutation
   const payMutation = useMutation({
+    meta: { silent: true },
     mutationFn: async () => {
       setIsRedirecting(true);
       return financeService.initiatePayment(id);
@@ -85,21 +87,23 @@ export function CustomerInvoiceDetailClient({
 
       if (!targetUrl || !isSafeCheckoutUrl(targetUrl)) {
         setIsRedirecting(false);
-        toast.error("Could not start checkout", {
-          description: "Payment link was invalid. Please try again.",
-        });
+        notify.error(
+          "Could not start checkout",
+          "Payment link was invalid. Please try again.",
+        );
         return;
       }
 
+      notify.info(
+        messages.payments.redirectingToStripe.title,
+        messages.payments.redirectingToStripe.description,
+      );
       // Safely transition window to verified Stripe Checkout domain
       redirectToCheckout(targetUrl);
     },
     onError: (err: unknown) => {
       setIsRedirecting(false);
-      const msg = getErrorMessage(err);
-      toast.error("Payment initiation failed", {
-        description: msg,
-      });
+      notify.fromError(err, "Payment initiation failed");
       // Refetch invoice in case status changed (e.g., already paid or voided)
       queryClient.invalidateQueries({
         queryKey: ["customer", "invoices", id],
@@ -130,42 +134,23 @@ export function CustomerInvoiceDetailClient({
   }
 
   if (isError || !invoice) {
+    if (error instanceof ApiError && error.status === 404) {
+      return (
+        <DetailNotFound
+          title="Invoice not found"
+          description="We could not find the requested invoice or you do not have permission to view it."
+          backHref="/customer/invoices"
+          backLabel="Back to Invoices"
+        />
+      );
+    }
     return (
-      <div className="max-w-md mx-auto py-12 text-center space-y-4">
-        <Card className="border-destructive/30 bg-destructive/5 p-6 space-y-4">
-          <CardContent className="space-y-3 p-0">
-            <AlertCircle className="size-8 text-destructive mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-destructive">
-                Invoice Not Found
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {error
-                  ? getErrorMessage(error)
-                  : "We could not find the requested invoice or you do not have permission to view it."}
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <Link
-                href="/customer/invoices"
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "sm" }),
-                  "gap-1.5 text-xs font-semibold",
-                )}
-              >
-                <ArrowLeft className="size-3.5" />
-                <span>Back to Invoices</span>
-              </Link>
-              <Button
-                size="sm"
-                onClick={() => refetch()}
-                className="gap-1.5 text-xs font-semibold"
-              >
-                Retry
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="max-w-md mx-auto py-12">
+        <QueryError
+          error={error}
+          onRetry={refetch}
+          title="Unable to load invoice"
+        />
       </div>
     );
   }

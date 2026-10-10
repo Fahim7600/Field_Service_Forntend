@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertCircle,
   ArrowLeft,
   CheckCircle2,
   Clock,
@@ -14,7 +13,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { DetailNotFound } from "@/components/shared/detail-not-found";
 import { EmptyState } from "@/components/shared/empty-state";
+import { QueryError } from "@/components/shared/query-error";
 import { StarRating } from "@/components/shared/star-rating";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -110,19 +111,23 @@ export function TechnicianAnalyticsClient({
   if (is404) {
     return (
       <div className="py-12 max-w-lg mx-auto">
-        <EmptyState
-          icon={AlertCircle}
+        <DetailNotFound
           title="Technician Not Found"
           description={`No technician record found with ID "${id}". They may have been deleted or the ID is incorrect.`}
-          action={
-            <Link
-              href="/admin/technicians"
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-            >
-              <ArrowLeft className="size-3.5 mr-1.5" />
-              <span>Back to Technicians</span>
-            </Link>
-          }
+          backHref="/admin/technicians"
+          backLabel="Back to Technicians"
+        />
+      </div>
+    );
+  }
+
+  if (isAnalyticsError) {
+    return (
+      <div className="py-12 max-w-lg mx-auto">
+        <QueryError
+          error={analyticsError}
+          onRetry={() => refetchAnalytics()}
+          title="Failed to load technician analytics"
         />
       </div>
     );
@@ -208,197 +213,173 @@ export function TechnicianAnalyticsClient({
       </div>
 
       {/* 4 Stat Cards */}
-      {isAnalyticsError ? (
-        <Card className="border-border shadow-xs">
-          <CardContent className="p-6 text-center space-y-3">
-            <AlertCircle className="size-6 text-destructive mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">
-                Failed to load analytics metrics
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Could not retrieve performance figures for this technician.
-              </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Jobs Done */}
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Jobs Done
+            </CardTitle>
+            <div className="size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <CheckCircle2 className="size-4" />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetchAnalytics()}
-            >
-              <RefreshCw className="size-3.5 mr-1.5" />
-              <span>Retry</span>
-            </Button>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            {isLoadingAnalytics ? (
+              <div className="space-y-2 py-1">
+                <Skeleton className="h-7 w-20" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+            ) : (
+              <div>
+                <div className="text-2xl font-bold font-heading text-foreground tabular-nums">
+                  {jobsDoneCount.toLocaleString()}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Finished assignments
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Jobs Done */}
-          <Card className="border-border bg-card shadow-xs">
-            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Jobs Done
-              </CardTitle>
-              <div className="size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                <CheckCircle2 className="size-4" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-1">
-              {isLoadingAnalytics ? (
-                <div className="space-y-2 py-1">
-                  <Skeleton className="h-7 w-20" />
-                  <Skeleton className="h-3 w-28" />
-                </div>
-              ) : (
-                <div>
-                  <div className="text-2xl font-bold font-heading text-foreground tabular-nums">
-                    {jobsDoneCount.toLocaleString()}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Finished assignments
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
-          {/* Card 2: Average Rating */}
-          <Card className="border-border bg-card shadow-xs">
-            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Average Rating
-              </CardTitle>
-              <div className="size-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                <Star className="size-4" />
+        {/* Card 2: Average Rating */}
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Average Rating
+            </CardTitle>
+            <div className="size-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <Star className="size-4" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            {isLoadingAnalytics ? (
+              <div className="space-y-2 py-1">
+                <Skeleton className="h-7 w-24" />
+                <Skeleton className="h-3 w-32" />
               </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-1">
-              {isLoadingAnalytics ? (
-                <div className="space-y-2 py-1">
-                  <Skeleton className="h-7 w-24" />
-                  <Skeleton className="h-3 w-32" />
+            ) : ratingCount &&
+              ratingCount > 0 &&
+              typeof analytics?.averageRating === "number" ? (
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold font-heading text-foreground tabular-nums">
+                    {analytics.averageRating.toFixed(1)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">/ 5.0</span>
                 </div>
-              ) : ratingCount &&
-                ratingCount > 0 &&
-                typeof analytics?.averageRating === "number" ? (
-                <div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-bold font-heading text-foreground tabular-nums">
-                      {analytics.averageRating.toFixed(1)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">/ 5.0</span>
-                  </div>
-                  <div className="mt-1">
-                    <StarRating
-                      value={Math.round(analytics.averageRating)}
-                      readOnly
-                      size="sm"
-                    />
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Based on {ratingCount}{" "}
-                    {ratingCount === 1 ? "rating" : "ratings"}
-                  </p>
+                <div className="mt-1">
+                  <StarRating
+                    value={Math.round(analytics.averageRating)}
+                    readOnly
+                    size="sm"
+                  />
                 </div>
-              ) : (
-                <div>
-                  <div className="text-sm font-semibold text-muted-foreground">
-                    No ratings yet
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Awaiting customer reviews
-                  </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Based on {ratingCount}{" "}
+                  {ratingCount === 1 ? "rating" : "ratings"}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <div className="text-sm font-semibold text-muted-foreground">
+                  No ratings yet
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Awaiting customer reviews
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Card 3: On-Time Rate */}
-          <Card className="border-border bg-card shadow-xs">
-            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                On-Time Rate
-              </CardTitle>
-              <div className="size-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                <Clock className="size-4" />
+        {/* Card 3: On-Time Rate */}
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              On-Time Rate
+            </CardTitle>
+            <div className="size-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <Clock className="size-4" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            {isLoadingAnalytics ? (
+              <div className="space-y-2 py-1">
+                <Skeleton className="h-7 w-20" />
+                <Skeleton className="h-3 w-28" />
               </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-1">
-              {isLoadingAnalytics ? (
-                <div className="space-y-2 py-1">
-                  <Skeleton className="h-7 w-20" />
-                  <Skeleton className="h-3 w-28" />
+            ) : onTimePct !== null ? (
+              <div>
+                <div className="text-2xl font-bold font-heading text-foreground tabular-nums">
+                  {onTimePct}%
                 </div>
-              ) : onTimePct !== null ? (
-                <div>
-                  <div className="text-2xl font-bold font-heading text-foreground tabular-nums">
-                    {onTimePct}%
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-1.5 mt-2 overflow-hidden">
-                    <div
-                      className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.min(100, Math.max(0, onTimePct))}%`,
-                      }}
-                    />
-                  </div>
-                  {measuredJobs ? (
-                    <p className="text-[11px] text-muted-foreground mt-1.5">
-                      Based on {measuredJobs} measured jobs
-                    </p>
-                  ) : null}
+                <div className="w-full bg-muted rounded-full h-1.5 mt-2 overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, onTimePct))}%`,
+                    }}
+                  />
                 </div>
-              ) : (
-                <div>
-                  <div className="text-2xl font-bold font-heading text-muted-foreground tabular-nums">
-                    —
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Not reported
+                {measuredJobs ? (
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    Based on {measuredJobs} measured jobs
                   </p>
+                ) : null}
+              </div>
+            ) : (
+              <div>
+                <div className="text-2xl font-bold font-heading text-muted-foreground tabular-nums">
+                  —
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Not reported
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Card 4: Average Job Duration */}
-          <Card className="border-border bg-card shadow-xs">
-            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Average Job Time
-              </CardTitle>
-              <div className="size-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-                <Timer className="size-4" />
+        {/* Card 4: Average Job Duration */}
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Average Job Time
+            </CardTitle>
+            <div className="size-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+              <Timer className="size-4" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            {isLoadingAnalytics ? (
+              <div className="space-y-2 py-1">
+                <Skeleton className="h-7 w-20" />
+                <Skeleton className="h-3 w-28" />
               </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-1">
-              {isLoadingAnalytics ? (
-                <div className="space-y-2 py-1">
-                  <Skeleton className="h-7 w-20" />
-                  <Skeleton className="h-3 w-28" />
+            ) : durationFormatted !== "-" ? (
+              <div>
+                <div className="text-2xl font-bold font-heading text-foreground tabular-nums">
+                  {durationFormatted}
                 </div>
-              ) : durationFormatted !== "-" ? (
-                <div>
-                  <div className="text-2xl font-bold font-heading text-foreground tabular-nums">
-                    {durationFormatted}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Per completed task
-                  </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Per completed task
+                </p>
+              </div>
+            ) : (
+              <div>
+                <div className="text-2xl font-bold font-heading text-muted-foreground tabular-nums">
+                  —
                 </div>
-              ) : (
-                <div>
-                  <div className="text-2xl font-bold font-heading text-muted-foreground tabular-nums">
-                    —
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Not reported
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Not reported
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Recent Feedback Section */}
       <Card className="border-border bg-card shadow-xs">

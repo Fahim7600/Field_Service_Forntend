@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertTriangle,
   ArrowLeft,
   Calendar,
   Clock,
@@ -11,23 +10,26 @@ import {
   ImageIcon,
   Loader2,
   MapPin,
-  RefreshCw,
   Trash2,
   Wrench,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import * as React from "react";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { DetailNotFound } from "@/components/shared/detail-not-found";
+import { QueryError } from "@/components/shared/query-error";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { ApiError } from "@/lib/api-client";
 import { getAttachmentUrl } from "@/lib/attachments";
 import { formatSafeDateTime } from "@/lib/format-date";
-import { cn } from "@/lib/utils";
+import { messages, notify } from "@/lib/notify";
 import { requestsService } from "@/services/requests.service";
 
 export interface RequestDetailClientProps {
@@ -37,6 +39,7 @@ export interface RequestDetailClientProps {
 export function RequestDetailClient({ id }: RequestDetailClientProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = React.useState(false);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["service-request", id],
@@ -48,16 +51,17 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
     mutationFn: (requestId: string) =>
       requestsService.cancelServiceRequest(requestId),
     onSuccess: () => {
-      toast.success("Service request has been cancelled.");
+      notify.success(
+        messages.requests.cancelled.title,
+        messages.requests.cancelled.description,
+      );
       queryClient.invalidateQueries({
         queryKey: ["customer-service-requests"],
       });
       queryClient.invalidateQueries({ queryKey: ["service-request", id] });
+      setIsCancelConfirmOpen(false);
       router.push("/customer/requests");
       router.refresh();
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || "Failed to cancel service request.");
     },
   });
 
@@ -87,31 +91,23 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
   }
 
   if (isError || !data) {
+    if (error instanceof ApiError && error.status === 404) {
+      return (
+        <DetailNotFound
+          title="Service request not found"
+          description="The requested service request could not be retrieved."
+          backHref="/customer/requests"
+          backLabel="Back to Requests"
+        />
+      );
+    }
     return (
-      <div className="max-w-xl mx-auto text-center p-8 bg-card rounded-2xl border border-border shadow-xs space-y-4">
-        <AlertTriangle className="size-10 text-amber-500 mx-auto" />
-        <div className="space-y-1">
-          <h2 className="text-lg font-bold text-charcoal-900">
-            Service Request Not Found
-          </h2>
-          <p className="text-xs text-charcoal-600">
-            {error instanceof Error
-              ? error.message
-              : "The requested service request could not be retrieved."}
-          </p>
-        </div>
-        <div className="flex items-center justify-center gap-3 pt-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="size-3.5 mr-1.5" />
-            Retry
-          </Button>
-          <Link
-            href="/customer/requests"
-            className={cn(buttonVariants({ variant: "default", size: "sm" }))}
-          >
-            Back to Requests
-          </Link>
-        </div>
+      <div className="max-w-xl mx-auto py-8">
+        <QueryError
+          error={error}
+          onRetry={refetch}
+          title="Unable to load service request"
+        />
       </div>
     );
   }
@@ -296,7 +292,7 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
                 size="sm"
                 className="shrink-0 text-xs"
                 disabled={cancelMutation.isPending}
-                onClick={handleCancelRequest}
+                onClick={() => setIsCancelConfirmOpen(true)}
               >
                 {cancelMutation.isPending ? (
                   <>
@@ -314,6 +310,17 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={isCancelConfirmOpen}
+        onOpenChange={setIsCancelConfirmOpen}
+        title="Cancel service request?"
+        description="Are you sure you want to cancel this pending request? You can submit a new request at any time."
+        confirmLabel="Cancel Request"
+        variant="destructive"
+        pending={cancelMutation.isPending}
+        onConfirm={handleCancelRequest}
+      />
     </div>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Calendar,
@@ -15,7 +14,6 @@ import {
   Mail,
   MapPin,
   Phone,
-  RefreshCw,
   ShieldAlert,
   Sparkles,
   User,
@@ -26,11 +24,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
-import { toast } from "sonner";
 
 import { RejectRequestDialog } from "@/components/admin/reject-request-dialog";
+import { DetailNotFound } from "@/components/shared/detail-not-found";
 import { DueBadge } from "@/components/shared/due-badge";
 import { PriorityBadge } from "@/components/shared/priority-badge";
+import { QueryError } from "@/components/shared/query-error";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +53,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { getErrorMessage } from "@/lib/api-client";
 import { getAttachmentUrl } from "@/lib/attachments";
 import { safeFormatDate, safeFormatDateTime } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { adminService } from "@/services/admin.service";
 import { requestsService } from "@/services/requests.service";
@@ -119,9 +119,10 @@ export function RequestReviewClient({ id }: RequestReviewClientProps) {
       });
     },
     onSuccess: async () => {
-      toast.success("Request approved", {
-        description: "A work order has been created.",
-      });
+      notify.success(
+        messages.dispatch.approved.title,
+        messages.dispatch.approved.description,
+      );
 
       await queryClient.invalidateQueries({
         queryKey: ["admin", "dispatch-queue"],
@@ -143,15 +144,13 @@ export function RequestReviewClient({ id }: RequestReviewClientProps) {
         if (workOrderId) {
           router.push(`/admin/work-orders/${workOrderId}`);
         } else {
-          toast.warning("Redirecting to work orders list");
           router.push("/admin/work-orders");
         }
       } catch {
         router.push("/admin/work-orders");
       }
     },
-    onError: async (err) => {
-      toast.error(getErrorMessage(err));
+    onError: async () => {
       await refetch();
     },
     onSettled: () => {
@@ -196,71 +195,22 @@ export function RequestReviewClient({ id }: RequestReviewClientProps) {
 
   if (is404) {
     return (
-      <Card className="border-border bg-card p-8 text-center max-w-lg mx-auto shadow-xs">
-        <CardContent className="space-y-4 p-0">
-          <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
-            <AlertCircle className="size-6" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-foreground">
-              Request not found
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              The service request you are looking for does not exist or may have
-              been deleted.
-            </p>
-          </div>
-          <div className="pt-2">
-            <Link
-              href="/admin/dispatch"
-              className={cn(
-                buttonVariants({ variant: "default", size: "sm" }),
-                "gap-1.5",
-              )}
-            >
-              <ArrowLeft className="size-4" />
-              <span>Back to queue</span>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      <DetailNotFound
+        title="Request not found"
+        description="The service request you are looking for does not exist or may have been deleted."
+        backHref="/admin/dispatch"
+        backLabel="Back to queue"
+      />
     );
   }
 
   if (isError || !request) {
     return (
-      <Card className="border-destructive/30 bg-destructive/5 p-8 text-center max-w-lg mx-auto shadow-xs">
-        <CardContent className="space-y-4 p-0">
-          <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
-            <AlertCircle className="size-6" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-destructive">
-              Failed to load service request
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              {errorMessage ||
-                "An error occurred while loading this request. Please try again."}
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <Link
-              href="/admin/dispatch"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "gap-1.5",
-              )}
-            >
-              <ArrowLeft className="size-4" />
-              <span>Back to queue</span>
-            </Link>
-            <Button size="sm" onClick={() => refetch()} className="gap-1.5">
-              <RefreshCw className="size-3.5" />
-              <span>Retry</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <QueryError
+        error={error}
+        onRetry={() => refetch()}
+        title="Failed to load service request"
+      />
     );
   }
 
@@ -700,7 +650,11 @@ export function RequestReviewClient({ id }: RequestReviewClientProps) {
               {approveMutation.isPending && (
                 <Loader2 className="size-4 animate-spin" />
               )}
-              <span>Confirm Approval</span>
+              <span>
+                {approveMutation.isPending
+                  ? "Approving..."
+                  : "Confirm Approval"}
+              </span>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

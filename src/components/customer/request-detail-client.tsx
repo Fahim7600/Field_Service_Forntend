@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertTriangle,
   ArrowLeft,
   Calendar,
   ChevronDown,
@@ -28,13 +27,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { toast } from "sonner";
 import { CancelJobDialog } from "@/components/customer/cancel-job-dialog";
 import { FeedbackCard } from "@/components/customer/feedback-card";
 import { RescheduleJobDialog } from "@/components/customer/reschedule-job-dialog";
 import { ImagePicker, type PickedImage } from "@/components/forms/image-picker";
 import { UploadProgress } from "@/components/forms/upload-progress";
+import { DetailNotFound } from "@/components/shared/detail-not-found";
 import { PriorityBadge } from "@/components/shared/priority-badge";
+import { QueryError } from "@/components/shared/query-error";
 import { StatusTimeline } from "@/components/shared/status-timeline";
 import { WorkProgressStepper } from "@/components/shared/work-progress-stepper";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -62,9 +62,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useActivePolling } from "@/hooks/use-active-polling";
 import { usePremiumStatus } from "@/hooks/use-premium-status";
-import { getErrorMessage } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-client";
 import { getAttachmentUrl } from "@/lib/attachments";
 import { formatRelative, safeFormatDateTime } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { getDisplayStatus, isRequestEditable } from "@/lib/work-order-rules";
 import { requestsService } from "@/services/requests.service";
@@ -151,16 +152,12 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
   const deleteRequestMutation = useMutation({
     mutationFn: () => requestsService.deleteRequest(id),
     onSuccess: () => {
-      toast.success("Request deleted", {
-        description: "Your pending service request has been removed.",
-      });
+      notify.success(
+        messages.requests.cancelled.title,
+        "Your pending service request has been removed.",
+      );
       queryClient.invalidateQueries({ queryKey: ["customer", "requests"] });
       router.push("/customer/requests");
-    },
-    onError: (err: unknown) => {
-      toast.error("Failed to delete request", {
-        description: getErrorMessage(err),
-      });
     },
   });
 
@@ -177,15 +174,14 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
         setUploadProgress(percent);
       });
 
-      toast.success("Photos added", {
-        description: `Successfully attached ${newPhotos.length} image(s).`,
-      });
+      notify.success(
+        "Photos added",
+        `Successfully attached ${newPhotos.length} image(s).`,
+      );
       setNewPhotos([]);
       queryClient.invalidateQueries({ queryKey: ["customer", "request", id] });
     } catch (err: unknown) {
-      toast.error("Failed to upload photos", {
-        description: getErrorMessage(err),
-      });
+      notify.fromError(err, "Failed to upload photos");
     } finally {
       setIsUploadingAttachments(false);
     }
@@ -198,13 +194,11 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
     try {
       setIsDeletingAttachment(true);
       await requestsService.deleteAttachment(id, deleteAttachmentId);
-      toast.success("Attachment removed");
+      notify.success("Attachment removed", "The photo has been removed.");
       setDeleteAttachmentId(null);
       queryClient.invalidateQueries({ queryKey: ["customer", "request", id] });
     } catch (err: unknown) {
-      toast.error("Failed to remove attachment", {
-        description: getErrorMessage(err),
-      });
+      notify.fromError(err, "Failed to remove attachment");
     } finally {
       setIsDeletingAttachment(false);
     }
@@ -234,40 +228,23 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
 
   // 403 / 404 / Error state
   if (isRequestError || !request) {
-    const errorMsg = requestError
-      ? getErrorMessage(requestError)
-      : "The requested service request could not be found.";
+    if (requestError instanceof ApiError && requestError.status === 404) {
+      return (
+        <DetailNotFound
+          title="Service request not found"
+          description="We could not find the requested service request or you do not have permission to view it."
+          backHref="/customer/requests"
+          backLabel="Back to Requests"
+        />
+      );
+    }
     return (
-      <div className="max-w-xl mx-auto text-center p-8 bg-card rounded-2xl border border-border shadow-xs space-y-4">
-        <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
-          <AlertTriangle className="size-6 text-amber-500" />
-        </div>
-        <div className="space-y-1">
-          <h2 className="text-base font-bold text-foreground">
-            Service Request Not Found
-          </h2>
-          <p className="text-xs text-muted-foreground">{errorMsg}</p>
-        </div>
-        <div className="flex items-center justify-center gap-3 pt-2">
-          <Link
-            href="/customer/requests"
-            className={cn(
-              buttonVariants({ variant: "outline", size: "sm" }),
-              "gap-1.5 text-xs",
-            )}
-          >
-            <ArrowLeft className="size-3.5" />
-            <span>Back to Requests</span>
-          </Link>
-          <Button
-            size="sm"
-            onClick={() => refetchRequest()}
-            className="gap-1.5 text-xs"
-          >
-            <RefreshCw className="size-3.5" />
-            <span>Retry</span>
-          </Button>
-        </div>
+      <div className="max-w-xl mx-auto py-6">
+        <QueryError
+          error={requestError}
+          onRetry={refetchRequest}
+          title="Unable to load service request"
+        />
       </div>
     );
   }

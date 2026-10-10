@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Calendar,
@@ -11,13 +10,14 @@ import {
   Mail,
   MapPin,
   Phone,
-  RefreshCw,
   User,
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
 
 import { WorkOrderDispatchActions } from "@/components/admin/work-order-dispatch-actions";
+import { DetailNotFound } from "@/components/shared/detail-not-found";
+import { QueryError } from "@/components/shared/query-error";
 import { StatusTimeline } from "@/components/shared/status-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -138,71 +138,22 @@ export function WorkOrderDetailClient({ id }: WorkOrderDetailClientProps) {
 
   if (is404) {
     return (
-      <Card className="border-border bg-card p-8 text-center max-w-lg mx-auto shadow-xs">
-        <CardContent className="space-y-4 p-0">
-          <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
-            <AlertCircle className="size-6" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-foreground">
-              Work order not found
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              The work order with ID #{id.slice(0, 8)} does not exist or has
-              been removed.
-            </p>
-          </div>
-          <div className="pt-2">
-            <Link
-              href="/admin/work-orders"
-              className={cn(
-                buttonVariants({ variant: "default", size: "sm" }),
-                "gap-1.5",
-              )}
-            >
-              <ArrowLeft className="size-4" />
-              <span>Back to Work Orders</span>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      <DetailNotFound
+        title="Work order not found"
+        description={`The work order with ID #${id.slice(0, 8)} does not exist or has been removed.`}
+        backHref="/admin/work-orders"
+        backLabel="Back to Work Orders"
+      />
     );
   }
 
   if (isError || !workOrder) {
     return (
-      <Card className="border-destructive/30 bg-destructive/5 p-8 text-center max-w-lg mx-auto shadow-xs">
-        <CardContent className="space-y-4 p-0">
-          <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
-            <AlertCircle className="size-6" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-destructive">
-              Failed to load work order
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              {errorMessage ||
-                "An unexpected error occurred while loading this work order."}
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <Link
-              href="/admin/work-orders"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "gap-1.5",
-              )}
-            >
-              <ArrowLeft className="size-4" />
-              <span>Back to Work Orders</span>
-            </Link>
-            <Button size="sm" onClick={() => refetch()} className="gap-1.5">
-              <RefreshCw className="size-3.5" />
-              <span>Retry</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <QueryError
+        error={error}
+        onRetry={() => refetch()}
+        title="Failed to load work order"
+      />
     );
   }
 

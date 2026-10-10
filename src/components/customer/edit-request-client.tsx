@@ -1,9 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, Lock } from "lucide-react";
 import Link from "next/link";
 import { EditRequestForm } from "@/components/forms/edit-request-form";
+import { DetailNotFound } from "@/components/shared/detail-not-found";
+import { QueryError } from "@/components/shared/query-error";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +23,7 @@ export function EditRequestClient({ id }: EditRequestClientProps) {
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["customer-request", id],
     queryFn: () => requestsService.fetchRequestById(id),
@@ -45,36 +48,30 @@ export function EditRequestClient({ id }: EditRequestClientProps) {
     );
   }
 
-  const errStatus = (error as { statusCode?: number })?.statusCode;
-  if (isError || !request || errStatus === 404 || errStatus === 403) {
+  const errStatus =
+    (error as { statusCode?: number; status?: number })?.statusCode ||
+    (error as { statusCode?: number; status?: number })?.status;
+  if (!request && (errStatus === 404 || errStatus === 403)) {
     return (
       <div className="max-w-2xl mx-auto py-12">
-        <Card className="border-border/60 text-center p-8">
-          <CardContent className="flex flex-col items-center justify-center space-y-4 pt-6">
-            <div className="size-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-              <AlertCircle className="size-6 text-destructive" />
-            </div>
-            <div className="space-y-1">
-              <h2 className="text-xl font-bold tracking-tight">
-                Request Not Found
-              </h2>
-              <p className="text-sm text-muted-foreground max-w-md">
-                We couldn&apos;t find this service request or you don&apos;t
-                have permission to view it.
-              </p>
-            </div>
-            <Link
-              href="/customer/requests"
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "gap-2 mt-2",
-              )}
-            >
-              <ArrowLeft className="size-4" />
-              Back to Requests
-            </Link>
-          </CardContent>
-        </Card>
+        <DetailNotFound
+          title="Request Not Found"
+          description="We couldn't find this service request or you don't have permission to view it."
+          backHref="/customer/requests"
+          backLabel="Back to Requests"
+        />
+      </div>
+    );
+  }
+
+  if (isError || !request) {
+    return (
+      <div className="max-w-2xl mx-auto py-12">
+        <QueryError
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load request"
+        />
       </div>
     );
   }
