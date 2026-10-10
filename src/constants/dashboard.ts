@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BarChart3,
   Bell,
   Calendar,
   CalendarCheck,
@@ -90,6 +91,11 @@ export const TECHNICIAN_LINKS: DashboardLink[] = [
     label: "Schedule",
     href: "/technician/schedule",
     icon: Calendar,
+  },
+  {
+    label: "Performance",
+    href: "/technician/performance",
+    icon: BarChart3,
   },
   {
     label: "Notifications",

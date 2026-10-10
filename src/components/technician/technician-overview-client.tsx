@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { isToday } from "date-fns";
 import {
   ArrowRight,
+  BarChart3,
   Calendar,
   CheckCircle2,
   Clock,
@@ -173,7 +174,7 @@ export function TechnicianOverviewClient() {
         />
 
         {/* Quick Actions */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <Link
             href="/technician/tasks"
             className={cn(
@@ -193,6 +194,16 @@ export function TechnicianOverviewClient() {
           >
             <Calendar className="size-3.5" />
             <span>Open schedule</span>
+          </Link>
+          <Link
+            href="/technician/performance"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "gap-1.5 flex-1 sm:flex-none text-xs font-semibold shadow-xs",
+            )}
+          >
+            <BarChart3 className="size-3.5" />
+            <span>View performance</span>
           </Link>
         </div>
       </div>
