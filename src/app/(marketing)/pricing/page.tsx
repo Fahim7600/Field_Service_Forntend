@@ -1,165 +1,555 @@
-import { Check } from "lucide-react";
+import { ArrowRight, Check, X } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PageHeader } from "@/components/shared/page-header";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { buildFaqJsonLd, FaqSection } from "@/components/marketing/faq-section";
+import { JsonLd } from "@/components/shared/json-ld";
 import { buttonVariants } from "@/components/ui/button";
+import { FAQ_ITEMS } from "@/constants/faq";
+import { PREMIUM_BENEFITS } from "@/constants/premium";
+import { siteConfig } from "@/constants/site";
+import { formatMoney } from "@/lib/format";
+import { formatInterval, getYearlySavings } from "@/lib/plan-utils";
+import { getPublicPlans } from "@/lib/public-data";
 import { cn } from "@/lib/utils";
 
+export const revalidate = 300;
+
 export const metadata: Metadata = {
-  title: "Premium Membership | Field Service",
+  title: "Pricing",
   description:
-    "Unlock priority dispatch and exclusive discounts for your household.",
+    "Explore transparent pricing for Field Service. Standard booking is free, and optional Premium memberships offer priority dispatch, labor discounts, and free schedule changes.",
+  alternates: {
+    canonical: "/pricing",
+  },
+  openGraph: {
+    title: "Pricing | Field Service",
+    description:
+      "Simple, transparent pricing. Booking is free, and optional Premium memberships offer priority dispatch and invoice discounts.",
+    url: "/pricing",
+    siteName: siteConfig.name,
+    type: "website",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Field Service Membership Plans",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Pricing | Field Service",
+    description:
+      "Simple, transparent pricing. Booking is free, and optional Premium memberships offer priority dispatch and invoice discounts.",
+    images: ["/opengraph-image"],
+  },
 };
 
-export default function PricingPage() {
+interface TableFeature {
+  name: string;
+  free: string | boolean;
+  premium: string | boolean;
+}
+
+const COMPARISON_ROWS: TableFeature[] = [
+  {
+    name: "Request Review Turnaround",
+    free: "Within 24 hours",
+    premium: "Within 2 hours (Priority)",
+  },
+  {
+    name: "Invoice Labor Discount",
+    free: false,
+    premium: "10% off the labor charge",
+  },
+  {
+    name: "Cancel or Reschedule",
+    free: "Free > 24h prior, otherwise $5.00 late fee",
+    premium: "Free until technician arrives on site",
+  },
+  {
+    name: "Online Payments with Stripe",
+    free: true,
+    premium: true,
+  },
+  {
+    name: "Service History & Work Reports",
+    free: true,
+    premium: true,
+  },
+  {
+    name: "In-App Notifications",
+    free: true,
+    premium: true,
+  },
+];
+
+export default async function PricingPage() {
+  const { data: plans } = await getPublicPlans();
+
+  const monthlyPlan = plans.find((p) => {
+    const inv = String(p.interval || "").toUpperCase();
+    return inv === "MONTH" || inv === "MONTHLY";
+  });
+
+  const yearlyPlan = plans.find((p) => {
+    const inv = String(p.interval || "").toUpperCase();
+    return inv === "YEAR" || inv === "YEARLY" || inv === "ANNUAL";
+  });
+
+  const hasLivePlans = Boolean(monthlyPlan || yearlyPlan);
+
+  const yearlySavings =
+    monthlyPlan && yearlyPlan
+      ? getYearlySavings(monthlyPlan.priceCents, yearlyPlan.priceCents)
+      : null;
+
+  const pricingFaqItems = FAQ_ITEMS.filter(
+    (item) =>
+      item.category === "premium" ||
+      item.category === "payments" ||
+      item.id === "cancel-or-reschedule",
+  );
+
+  const faqLd = buildFaqJsonLd(pricingFaqItems);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-16">
-      <PageHeader
-        title="Premium Membership"
-        description="Unlock priority dispatch and exclusive discounts for your household."
-      />
-
-      {/* Pricing Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto mt-12 items-stretch">
-        {/* Card 1 (Free/Basic) */}
-        <div className="bg-white border border-gray-200 p-8 rounded-2xl flex flex-col justify-between shadow-sm">
-          <div>
-            <h2 className="text-2xl font-bold text-charcoal-900">Basic</h2>
-            <div className="mt-4 flex items-baseline">
-              <span className="text-4xl font-extrabold text-charcoal-900 tracking-tight">
-                $0
-              </span>
-              <span className="ml-1 text-charcoal-500 text-base">/mo</span>
+    <>
+      <JsonLd data={faqLd} />
+      <div className="flex flex-col min-h-screen">
+        {/* Header Section */}
+        <section
+          aria-labelledby="pricing-header-heading"
+          className="py-16 sm:py-20 bg-gradient-to-b from-charcoal-900 to-charcoal-950 text-white border-b border-charcoal-800"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:text-left">
+            <div className="max-w-3xl">
+              <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-amber-400 mb-2">
+                Membership & Plans
+              </p>
+              <h1
+                id="pricing-header-heading"
+                className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white"
+              >
+                Simple, transparent pricing
+              </h1>
+              <p className="text-base sm:text-lg text-ash mt-4 leading-relaxed">
+                Booking service visits is completely free. Premium membership is
+                optional for property owners who want priority review turnaround
+                and ongoing invoice labor savings.
+              </p>
             </div>
-            <p className="text-sm text-charcoal-600 mt-2">
-              Essential field service coverage for occasional repairs.
-            </p>
-
-            <ul className="mt-8 space-y-4">
-              <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-charcoal-900 shrink-0" />
-                <span className="text-charcoal-800 text-sm font-medium">
-                  Standard 24h review
-                </span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-charcoal-900 shrink-0" />
-                <span className="text-charcoal-800 text-sm font-medium">
-                  Pay standard labor rates
-                </span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-charcoal-900 shrink-0" />
-                <span className="text-charcoal-800 text-sm font-medium">
-                  Secure online payments
-                </span>
-              </li>
-            </ul>
           </div>
+        </section>
 
-          <div className="mt-8">
-            <Link
-              href="/register"
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "w-full h-11 text-base font-semibold border-gray-300 text-charcoal-900 hover:bg-gray-100 justify-center",
-              )}
-            >
-              Sign Up Free
-            </Link>
+        {/* Pricing Cards Grid */}
+        <section
+          aria-labelledby="plans-cards-heading"
+          className="py-16 sm:py-24 bg-background"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 id="plans-cards-heading" className="sr-only">
+              Available Service Plans
+            </h2>
+
+            {hasLivePlans ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+                {/* 1. Free Plan */}
+                <div className="flex flex-col rounded-2xl border border-border bg-card p-8 shadow-xs justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground">Free</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pay-as-you-go service
+                    </p>
+                    <div className="mt-6 flex items-baseline gap-1">
+                      <span className="text-4xl font-extrabold text-foreground tracking-tight">
+                        {formatMoney(0)}
+                      </span>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        /forever
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-3 leading-relaxed">
+                      Standard field service coverage for residential and
+                      commercial properties.
+                    </p>
+
+                    <ul className="mt-8 space-y-3.5 border-t border-border pt-6">
+                      <li className="flex items-start gap-3 text-xs sm:text-sm text-muted-foreground">
+                        <Check className="h-4 w-4 text-charcoal-700 dark:text-ash shrink-0 mt-0.5" />
+                        <span>Standard 24-hour review turnaround</span>
+                      </li>
+                      <li className="flex items-start gap-3 text-xs sm:text-sm text-muted-foreground">
+                        <Check className="h-4 w-4 text-charcoal-700 dark:text-ash shrink-0 mt-0.5" />
+                        <span>Standard transparent labor charges</span>
+                      </li>
+                      <li className="flex items-start gap-3 text-xs sm:text-sm text-muted-foreground">
+                        <Check className="h-4 w-4 text-charcoal-700 dark:text-ash shrink-0 mt-0.5" />
+                        <span>Free cancellation &gt; 24h before visit</span>
+                      </li>
+                      <li className="flex items-start gap-3 text-xs sm:text-sm text-muted-foreground">
+                        <Check className="h-4 w-4 text-charcoal-700 dark:text-ash shrink-0 mt-0.5" />
+                        <span>Detailed digital service reports</span>
+                      </li>
+                      <li className="flex items-start gap-3 text-xs sm:text-sm text-muted-foreground">
+                        <Check className="h-4 w-4 text-charcoal-700 dark:text-ash shrink-0 mt-0.5" />
+                        <span>Secure online checkout via Stripe</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="mt-8 pt-4">
+                    <Link
+                      href="/register"
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "lg" }),
+                        "w-full h-11 text-sm font-semibold justify-center",
+                      )}
+                    >
+                      Get started
+                    </Link>
+                  </div>
+                </div>
+
+                {/* 2. Premium Monthly */}
+                {monthlyPlan && (
+                  <div className="flex flex-col rounded-2xl border border-charcoal-700 bg-charcoal-900 text-white p-8 shadow-md justify-between">
+                    <div>
+                      <h3 className="text-2xl font-bold text-white">
+                        {monthlyPlan.name}
+                      </h3>
+                      <p className="text-xs text-ash mt-1">Billed monthly</p>
+                      <div className="mt-6 flex items-baseline gap-1">
+                        <span className="text-4xl font-extrabold text-white tracking-tight">
+                          {formatMoney(monthlyPlan.priceCents)}
+                        </span>
+                        <span className="text-sm font-medium text-ash">
+                          /{formatInterval(monthlyPlan.interval)}
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-ash mt-3 leading-relaxed">
+                        Flexible monthly VIP coverage. Cancel renewal anytime
+                        with zero lock-in.
+                      </p>
+
+                      <ul className="mt-8 space-y-3.5 border-t border-charcoal-800 pt-6">
+                        {PREMIUM_BENEFITS.map((benefit) => (
+                          <li
+                            key={benefit.id}
+                            className="flex items-start gap-3 text-xs sm:text-sm text-ash"
+                          >
+                            <Check className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                            <span>
+                              <strong className="text-white font-semibold">
+                                {benefit.title}:
+                              </strong>{" "}
+                              {benefit.description}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="mt-8 pt-4">
+                      <Link
+                        href="/customer/premium"
+                        className={cn(
+                          buttonVariants({ variant: "cta", size: "lg" }),
+                          "w-full h-11 text-sm font-semibold justify-center shadow-md",
+                        )}
+                      >
+                        Subscribe
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Premium Yearly */}
+                {yearlyPlan && (
+                  <div className="relative flex flex-col rounded-2xl border-2 border-amber-500 bg-charcoal-900 text-white p-8 shadow-xl shadow-amber-500/10 justify-between">
+                    <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full bg-amber-500 text-charcoal-950 font-extrabold text-xs tracking-wider uppercase shadow-sm">
+                      Best value
+                    </div>
+
+                    <div>
+                      <h3 className="text-2xl font-bold text-white">
+                        {yearlyPlan.name}
+                      </h3>
+                      <p className="text-xs text-ash mt-1">Billed annually</p>
+                      <div className="mt-6 flex items-baseline gap-2">
+                        <span className="text-4xl font-extrabold text-amber-400 tracking-tight">
+                          {formatMoney(yearlyPlan.priceCents)}
+                        </span>
+                        <span className="text-sm font-medium text-ash">
+                          /{formatInterval(yearlyPlan.interval)}
+                        </span>
+                        {yearlySavings && yearlySavings.percent > 0 && (
+                          <span className="text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-2 py-0.5 rounded-full">
+                            Save {yearlySavings.percent}%
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs sm:text-sm text-ash mt-3 leading-relaxed">
+                        Full-year priority review, ongoing labor discounts, and
+                        peace of mind.
+                      </p>
+
+                      <ul className="mt-8 space-y-3.5 border-t border-charcoal-800 pt-6">
+                        {PREMIUM_BENEFITS.map((benefit) => (
+                          <li
+                            key={benefit.id}
+                            className="flex items-start gap-3 text-xs sm:text-sm text-ash"
+                          >
+                            <Check className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                            <span>
+                              <strong className="text-white font-semibold">
+                                {benefit.title}:
+                              </strong>{" "}
+                              {benefit.description}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="mt-8 pt-4">
+                      <Link
+                        href="/customer/premium"
+                        className={cn(
+                          buttonVariants({ variant: "cta", size: "lg" }),
+                          "w-full h-11 text-sm font-semibold justify-center shadow-md",
+                        )}
+                      >
+                        Subscribe
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Fallback when backend plans are temporarily unreachable */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto items-stretch">
+                <div className="flex flex-col rounded-2xl border border-border bg-card p-8 shadow-xs justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground">Free</h3>
+                    <div className="mt-6 flex items-baseline gap-1">
+                      <span className="text-4xl font-extrabold text-foreground tracking-tight">
+                        {formatMoney(0)}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-3">
+                      Standard field service booking for occasional repairs.
+                    </p>
+                    <ul className="mt-8 space-y-3.5 border-t border-border pt-6">
+                      <li className="flex items-center gap-3 text-xs sm:text-sm text-muted-foreground">
+                        <Check className="h-4 w-4 text-charcoal-700 dark:text-ash shrink-0" />
+                        <span>Standard 24-hour review</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-xs sm:text-sm text-muted-foreground">
+                        <Check className="h-4 w-4 text-charcoal-700 dark:text-ash shrink-0" />
+                        <span>Standard labor charges</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-xs sm:text-sm text-muted-foreground">
+                        <Check className="h-4 w-4 text-charcoal-700 dark:text-ash shrink-0" />
+                        <span>Digital service reports</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="mt-8 pt-4">
+                    <Link
+                      href="/register"
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "lg" }),
+                        "w-full h-11 text-sm font-semibold justify-center",
+                      )}
+                    >
+                      Get started
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="flex flex-col rounded-2xl border border-charcoal-700 bg-charcoal-900 text-white p-8 shadow-md justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">Premium</h3>
+                    <p className="text-xs text-ash mt-1">VIP Service Tier</p>
+                    <p className="text-xs sm:text-sm text-ash mt-4 leading-relaxed">
+                      Priority dispatch turnaround and 10% discount on labor
+                      charges across all invoices.
+                    </p>
+                    <ul className="mt-8 space-y-3.5 border-t border-charcoal-800 pt-6">
+                      {PREMIUM_BENEFITS.map((benefit) => (
+                        <li
+                          key={benefit.id}
+                          className="flex items-start gap-3 text-xs sm:text-sm text-ash"
+                        >
+                          <Check className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                          <span>{benefit.description}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="mt-8 pt-4">
+                    <Link
+                      href="/customer/premium"
+                      className={cn(
+                        buttonVariants({ variant: "default", size: "lg" }),
+                        "w-full h-11 text-sm font-semibold justify-center",
+                      )}
+                    >
+                      See current plans
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        </section>
 
-        {/* Card 2 (Premium - High Contrast) */}
-        <div className="bg-charcoal-900 text-white border-2 border-brand-500 p-8 rounded-2xl relative shadow-xl shadow-brand-500/10 flex flex-col justify-between">
-          <div className="absolute top-0 right-0 bg-brand-500 text-white px-3 py-1 rounded-full text-sm font-bold -mt-3.5 mr-6 shadow-sm uppercase tracking-wide">
-            MOST POPULAR
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-bold text-white">Premium</h2>
-            <div className="mt-4 flex items-baseline">
-              <span className="text-4xl font-extrabold text-white tracking-tight">
-                $5
-              </span>
-              <span className="ml-1 text-charcoal-300 text-base">
-                /mo or $50/yr
-              </span>
+        {/* Feature Comparison Table */}
+        <section
+          aria-labelledby="comparison-heading"
+          className="py-16 sm:py-24 bg-panel border-t border-border"
+        >
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
+              <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                Plan Comparison
+              </p>
+              <h2
+                id="comparison-heading"
+                className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mt-2"
+              >
+                Compare Free vs. Premium
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground mt-3">
+                Review all policies and perks side by side before choosing your
+                coverage tier.
+              </p>
             </div>
-            <p className="text-sm text-charcoal-300 mt-2">
-              VIP priority dispatch and instant 10% discount on all service
-              work.
-            </p>
 
-            <ul className="mt-8 space-y-4">
-              <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-brand-500 shrink-0" />
-                <span className="text-white text-sm font-medium">
-                  Priority 2-hour review
-                </span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-brand-500 shrink-0" />
-                <span className="text-white text-sm font-medium">
-                  10% off all labor charges
-                </span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-brand-500 shrink-0" />
-                <span className="text-white text-sm font-medium">
-                  Zero cancellation fees
-                </span>
-              </li>
-            </ul>
+            <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-xs">
+              <table className="w-full text-left border-collapse text-sm">
+                <caption className="sr-only">
+                  Feature comparison between Free and Premium membership plans
+                </caption>
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th
+                      scope="col"
+                      className="py-4 px-6 font-bold text-foreground w-1/2 sm:w-2/5"
+                    >
+                      Feature
+                    </th>
+                    <th
+                      scope="col"
+                      className="py-4 px-6 font-bold text-foreground w-1/4 sm:w-3/10 text-center"
+                    >
+                      Free
+                    </th>
+                    <th
+                      scope="col"
+                      className="py-4 px-6 font-bold text-amber-600 dark:text-amber-400 w-1/4 sm:w-3/10 text-center"
+                    >
+                      Premium
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {COMPARISON_ROWS.map((row) => (
+                    <tr
+                      key={row.name}
+                      className="hover:bg-muted/30 transition-colors"
+                    >
+                      <th
+                        scope="row"
+                        className="py-4 px-6 font-medium text-foreground text-xs sm:text-sm"
+                      >
+                        {row.name}
+                      </th>
+                      <td className="py-4 px-6 text-center text-xs sm:text-sm text-muted-foreground">
+                        {typeof row.free === "boolean" ? (
+                          row.free ? (
+                            <span className="inline-flex items-center justify-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                              <Check className="h-4 w-4 shrink-0" />
+                              <span className="sr-only">Included</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center gap-1.5 text-muted-foreground font-medium">
+                              <X className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                              <span className="sr-only">Not included</span>
+                            </span>
+                          )
+                        ) : (
+                          <span>{row.free}</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-6 text-center text-xs sm:text-sm font-semibold text-foreground">
+                        {typeof row.premium === "boolean" ? (
+                          row.premium ? (
+                            <span className="inline-flex items-center justify-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                              <Check className="h-4 w-4 shrink-0" />
+                              <span className="sr-only">Included</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center gap-1.5 text-muted-foreground font-medium">
+                              <X className="h-4 w-4 shrink-0" />
+                              <span className="sr-only">Not included</span>
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-amber-600 dark:text-amber-400">
+                            {row.premium}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
+        </section>
 
-          <div className="mt-8">
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center w-full h-11 text-base font-semibold bg-brand-500 hover:bg-brand-600 text-white rounded-md transition-colors shadow-md"
+        {/* Pricing FAQ Section with id="faq" */}
+        <FaqSection
+          id="faq"
+          items={pricingFaqItems}
+          heading="Frequently Asked Questions about Pricing"
+          subheading="Everything you need to know about payments, invoices, cancellation fees, and Premium membership."
+        />
+
+        {/* Closing CTA Band */}
+        <section
+          aria-labelledby="pricing-cta-heading"
+          className="py-16 bg-charcoal-900 border-t border-charcoal-800 text-white text-center"
+        >
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+            <h2
+              id="pricing-cta-heading"
+              className="text-2xl sm:text-3xl font-bold tracking-tight text-white"
             >
-              Upgrade to Premium
-            </Link>
+              Need a certified technician today?
+            </h2>
+            <p className="text-sm sm:text-base text-ash max-w-xl mx-auto">
+              You do not need a paid subscription to schedule a service visit.
+              Book on-demand anytime with transparent pricing.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/customer/requests/new"
+                className={cn(
+                  buttonVariants({ variant: "cta", size: "lg" }),
+                  "h-12 px-8 text-base font-semibold shadow-md",
+                )}
+              >
+                Book a Service
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </div>
           </div>
-        </div>
+        </section>
       </div>
-
-      {/* FAQ Section */}
-      <section className="mt-24 max-w-3xl mx-auto">
-        <h2 className="text-3xl font-bold text-charcoal-900 mb-8 text-center">
-          Frequently Asked Questions
-        </h2>
-
-        <Accordion type="single" defaultValue="faq-1" collapsible>
-          <AccordionItem value="faq-1">
-            <AccordionTrigger className="text-lg">
-              Can I cancel anytime?
-            </AccordionTrigger>
-            <AccordionContent className="text-base text-charcoal-600">
-              Yes, you can cancel your Premium subscription from your dashboard
-              at any time. Benefits continue until the end of your billing
-              cycle.
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="faq-2">
-            <AccordionTrigger className="text-lg">
-              How does the 10% discount work?
-            </AccordionTrigger>
-            <AccordionContent className="text-base text-charcoal-600">
-              The 10% discount is automatically applied to the labor/service
-              charge of every invoice generated while your subscription is
-              active.
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </section>
-    </div>
+    </>
   );
 }
