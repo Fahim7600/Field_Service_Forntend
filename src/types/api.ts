@@ -32,7 +32,10 @@ export interface PaginatedResponse<T> {
   success: boolean;
   message: string;
   data: T[];
+  items: T[];
   pagination: PaginationMeta;
+  meta: PaginationMeta;
+  extra?: Record<string, unknown>;
 }
 
 export interface ServiceCategory {
@@ -371,37 +374,7 @@ export interface MySubscriptionResponse {
   } | null;
 }
 
-export interface DashboardTrendItem {
-  date: string;
-  revenue?: number;
-  revenueCents?: number;
-  requests?: number;
-  completed?: number;
-  [key: string]: string | number | undefined;
-}
-
-export interface StatusDistributionItem {
-  status: string;
-  count: number;
-  [key: string]: string | number;
-}
-
-export interface CategoryDistributionItem {
-  category: string;
-  count: number;
-  [key: string]: string | number;
-}
-
-export interface DashboardStats {
-  totalRevenueCents: number;
-  totalRequests: number;
-  activePremiumUsers: number;
-  pendingDispatchCount: number;
-  revenueTrend?: DashboardTrendItem[];
-  requestsTrend?: DashboardTrendItem[];
-  requestsByStatus?: StatusDistributionItem[];
-  requestsByCategory?: CategoryDistributionItem[];
-}
+export type { DashboardStats } from "./admin";
 
 export interface UserListItem {
   id: string;

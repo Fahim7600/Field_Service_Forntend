@@ -4,6 +4,7 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from "axios";
+import { normalizePaginated } from "@/lib/extract-data";
 import { clearSessionCookies } from "@/lib/session";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ApiResponse, FieldError, PaginatedResponse } from "@/types/api";
@@ -283,8 +284,8 @@ export async function apiGetPaginated<T>(
   url: string,
   config?: AxiosRequestConfig,
 ): Promise<PaginatedResponse<T>> {
-  const response = await apiClient.get<PaginatedResponse<T>>(url, config);
-  return response.data;
+  const response = await apiClient.get<unknown>(url, config);
+  return normalizePaginated<T>(response.data);
 }
 
 export async function apiPostForm<T>(
