@@ -8,6 +8,7 @@ import {
   CreditCard,
   FileText,
   History,
+  Layers,
   LayoutDashboard,
   Sparkles,
   UserCog,
@@ -123,6 +124,11 @@ export const ADMIN_LINKS: DashboardLink[] = [
     label: "Users",
     href: "/admin/users",
     icon: Users,
+  },
+  {
+    label: "Catalog",
+    href: "/admin/catalog",
+    icon: Layers,
   },
   {
     label: "Notifications",
