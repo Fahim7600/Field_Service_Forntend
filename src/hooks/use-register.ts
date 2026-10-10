@@ -2,7 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { authMessages, notify } from "@/lib/notify";
 import { syncSessionCookies } from "@/lib/session";
 import type { RegisterFormValues } from "@/lib/validations/auth";
 import { authService } from "@/services/auth.service";
@@ -31,6 +31,7 @@ export function useRegister() {
 
       return authService.register(payload);
     },
+    meta: { skipToast: true },
     onSuccess: async (data) => {
       // 1. Store session in memory Zustand store
       setSession(data.user, data.accessToken);
@@ -44,13 +45,15 @@ export function useRegister() {
 
       // 3. User feedback
       const firstName = data.user.name ? data.user.name.split(" ")[0] : "there";
-      toast.success("Account Created Successfully!", {
-        description: `Welcome aboard, ${firstName}! Your customer portal is ready.`,
-      });
+      const msg = authMessages.accountCreated(firstName);
+      notify.success(msg.title, msg.description);
 
       // 4. Default registration lands on customer portal
       router.replace("/customer");
       router.refresh();
+    },
+    onError: (error) => {
+      notify.fromError(error, "Registration failed");
     },
   });
 }

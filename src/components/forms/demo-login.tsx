@@ -2,11 +2,11 @@
 
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DEMO_ACCOUNTS } from "@/constants/demo-accounts";
 import { useLogin } from "@/hooks/use-login";
+import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types/auth";
 
@@ -16,7 +16,10 @@ export function DemoLogin() {
 
   const handleDemoLogin = (role: Role, email?: string, password?: string) => {
     if (!email || !password) {
-      toast.info("Demo credentials are not configured");
+      notify.info(
+        "Demo credentials unavailable",
+        "Credentials for this demo role are not configured.",
+      );
       return;
     }
 

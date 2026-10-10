@@ -87,7 +87,7 @@ export default function ServicesPage() {
               </div>
 
               <Link
-                href="/register"
+                href="/customer/requests/new"
                 className={cn(
                   buttonVariants({ variant: "default" }),
                   "w-full mt-6 h-10 font-semibold justify-center",

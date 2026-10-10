@@ -3,10 +3,10 @@
 import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ROLE_HOME } from "@/lib/auth-routes";
+import { notify } from "@/lib/notify";
 import { clearSessionCookies, syncSessionCookies } from "@/lib/session";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth-store";
@@ -30,7 +30,9 @@ export function OAuthCallbackHandler() {
       const errorParam = searchParams.get("error");
 
       if (errorParam || !token) {
-        toast.error("Google sign-in failed. Please try again.");
+        notify.error("Google sign-in failed", "Please try again.", {
+          id: "google-auth-error",
+        });
         router.replace("/login");
         return;
       }
@@ -58,8 +60,13 @@ export function OAuthCallbackHandler() {
         await syncSessionCookies(token, user.mustChangePassword, user.role);
 
         // 6. User feedback & redirection
-        const firstName = user.name ? user.name.split(" ")[0] : "there";
-        toast.success(`Welcome back, ${firstName}!`);
+        notify.success(
+          "Signed in with Google",
+          "You have successfully signed in.",
+          {
+            id: "google-auth-success",
+          },
+        );
 
         const target = ROLE_HOME[user.role] || "/";
         router.replace(target);
@@ -67,9 +74,9 @@ export function OAuthCallbackHandler() {
       } catch {
         await clearSessionCookies();
         useAuthStore.getState().logout();
-        toast.error(
-          "Failed to verify Google sign-in session. Please try again.",
-        );
+        notify.error("Google sign-in failed", "Please try again.", {
+          id: "google-auth-error",
+        });
         router.replace("/login");
       }
     }

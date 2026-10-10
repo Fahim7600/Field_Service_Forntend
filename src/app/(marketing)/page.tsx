@@ -25,7 +25,7 @@ export default function HomePage() {
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-4">
           <Link
-            href="/register"
+            href="/customer/requests/new"
             className={cn(
               buttonVariants({ variant: "cta", size: "lg" }),
               "h-12 px-6 text-base font-semibold",

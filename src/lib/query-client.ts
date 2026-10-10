@@ -5,8 +5,8 @@ import {
   QueryCache,
   QueryClient,
 } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { ApiError, getErrorMessage } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-client";
+import { notify } from "@/lib/notify";
 
 function makeQueryClient(): QueryClient {
   return new QueryClient({
@@ -19,16 +19,19 @@ function makeQueryClient(): QueryClient {
         if (error instanceof ApiError && error.status === 401) {
           return;
         }
-        toast.error(getErrorMessage(error));
+        notify.fromError(error, "Something went wrong");
       },
     }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
-        // Skip toast if explicitly opted out
+        // Skip toast if explicitly opted out or if it is an unauthenticated 401 error
         if (mutation.meta?.skipToast === true) {
           return;
         }
-        toast.error(getErrorMessage(error));
+        if (error instanceof ApiError && error.status === 401) {
+          return;
+        }
+        notify.fromError(error, "Something went wrong");
       },
     }),
     defaultOptions: {
