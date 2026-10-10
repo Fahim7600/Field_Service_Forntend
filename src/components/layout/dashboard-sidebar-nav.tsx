@@ -74,7 +74,7 @@ export function DashboardSidebarNav({
   // Grouped Navigation (for Admin)
   if (groups && groups.length > 0) {
     return (
-      <nav className="space-y-5 px-3 py-1">
+      <nav aria-label="Dashboard" className="space-y-5 px-3 py-1">
         {groups.map((group, groupIdx) => {
           const groupId = `nav-group-${group.label.toLowerCase().replace(/\s+/g, "-")}`;
 
@@ -111,7 +111,7 @@ export function DashboardSidebarNav({
 
   // Flat Navigation (for Customer & Technician)
   return (
-    <nav className="space-y-1 px-3 py-1">
+    <nav aria-label="Dashboard" className="space-y-1 px-3 py-1">
       {flatLinks.map((link) => (
         <NavLinkItem
           key={link.href}

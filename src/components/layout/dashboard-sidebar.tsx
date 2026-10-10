@@ -14,6 +14,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import type { Role } from "@/types/auth";
 
 export interface DashboardSidebarProps {
+  id?: string;
   role: Role;
   className?: string;
   onLinkClick?: () => void;
@@ -35,6 +36,7 @@ function getInitials(name?: string | null): string {
 }
 
 export function DashboardSidebar({
+  id,
   role,
   className,
   onLinkClick,
@@ -55,6 +57,7 @@ export function DashboardSidebar({
 
   return (
     <aside
+      id={id}
       className={cn(
         "flex h-full w-64 flex-col bg-panel border-r border-border",
         className,
