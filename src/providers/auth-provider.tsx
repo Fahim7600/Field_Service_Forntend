@@ -28,14 +28,6 @@ export function useAuthContext(): AuthContextValue {
   return useContext(AuthContext);
 }
 
-let globalRetryFn: (() => void) | null = null;
-
-export function retryAuth(): void {
-  if (globalRetryFn) {
-    globalRetryFn();
-  }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initialized = useRef(false);
   const isRunningRef = useRef(false);
@@ -114,13 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isRunningRef.current = false;
     }
   }, [setSession, setStatus]);
-
-  useEffect(() => {
-    globalRetryFn = initializeAuth;
-    return () => {
-      globalRetryFn = null;
-    };
-  }, [initializeAuth]);
 
   useEffect(() => {
     if (initialized.current) {

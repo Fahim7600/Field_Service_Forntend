@@ -18,7 +18,7 @@ import type {
 /**
  * Tracks whether the document tab is currently visible.
  */
-export function useDocumentVisibility(): boolean {
+function useDocumentVisibility(): boolean {
   const [isVisible, setIsVisible] = React.useState<boolean>(() => {
     if (typeof document !== "undefined") {
       return document.visibilityState === "visible";

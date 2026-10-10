@@ -57,10 +57,6 @@ export async function clearSessionCookies(): Promise<void> {
 
 let isLoggingOut = false;
 
-export function isLogoutActive(): boolean {
-  return isLoggingOut;
-}
-
 /**
  * Instant, safe logout flow:
  * 1. Read the access token from the auth store (needed for background revoke)

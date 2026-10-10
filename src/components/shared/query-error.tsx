@@ -14,7 +14,7 @@ export interface QueryErrorProps {
   className?: string;
 }
 
-export function getFriendlyError(error: unknown): {
+function getFriendlyError(error: unknown): {
   title: string;
   description: string;
   isNetworkOrTimeout: boolean;
