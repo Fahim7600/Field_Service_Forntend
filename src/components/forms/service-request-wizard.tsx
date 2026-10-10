@@ -20,7 +20,8 @@ import {
   Star,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { ImagePicker, type PickedImage } from "@/components/forms/image-picker";
 import { UploadProgress } from "@/components/forms/upload-progress";
@@ -93,6 +94,8 @@ const STEPS = [
 export function ServiceRequestWizard() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const { isPremium } = usePremiumStatus();
+  const searchParams = useSearchParams();
+  const categoryQuery = searchParams.get("category");
 
   // Fetch Categories
   const {
@@ -143,6 +146,20 @@ export function ServiceRequestWizard() {
   } = form;
 
   const watchedAttachments = watch("attachments") || [];
+
+  useEffect(() => {
+    if (!categoryQuery) return;
+    const currentCat = form.getValues("categoryId");
+    if (currentCat) return;
+    const match = availableCategories.find(
+      (c) =>
+        c.id === categoryQuery ||
+        c.id.toLowerCase() === categoryQuery.toLowerCase(),
+    );
+    if (match) {
+      form.setValue("categoryId", match.id, { shouldValidate: true });
+    }
+  }, [categoryQuery, availableCategories, form]);
 
   const handleNext = async () => {
     if (step === 1) {
