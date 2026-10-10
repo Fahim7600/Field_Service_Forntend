@@ -8,7 +8,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -33,9 +33,10 @@ function getInitials(name?: string | null): string {
 }
 
 export function UserMenu() {
-  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const { isPremium } = usePremiumStatus();
+
+  const [loggingOut, setLoggingOut] = useState(false);
 
   if (!user) return null;
 
@@ -43,8 +44,10 @@ export function UserMenu() {
   const dashboardHref = ROLE_HOME[user.role] || "/customer";
   const showPremiumBadge = user.role === "CUSTOMER" && isPremium === true;
 
-  const handleLogout = async () => {
-    await performLogout(router);
+  const handleLogout = () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    void performLogout();
   };
 
   return (
@@ -119,10 +122,11 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleLogout}
-          className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
+          disabled={loggingOut}
+          className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
         >
           <LogOut className="size-4" />
-          <span>Logout</span>
+          <span>{loggingOut ? "Logging out..." : "Logout"}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

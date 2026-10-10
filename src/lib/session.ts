@@ -1,5 +1,4 @@
 import { getQueryClient } from "@/lib/query-client";
-import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth-store";
 import type { Role } from "@/types/auth";
 
@@ -39,46 +38,91 @@ export async function syncSessionCookies(
 }
 
 /**
- * Deletes all frontend routing session cookies.
+ * Deletes all frontend routing session cookies with a 2-second timeout.
  */
 export async function clearSessionCookies(): Promise<void> {
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
     await fetch("/api/session", {
       method: "DELETE",
+      signal: controller.signal,
     });
+    clearTimeout(timer);
   } catch {
-    // Ignore network error during cookie deletion
+    // Ignore network error or abort during cookie deletion
   }
 }
 
+let isLoggingOut = false;
+
+export function isLogoutActive(): boolean {
+  return isLoggingOut;
+}
+
 /**
- * Full logout flow:
- * 1. Calls backend logout to invalidate refresh token
- * 2. Clears frontend session cookies
- * 3. Resets Zustand memory store
- * 4. Wipes TanStack Query cache
- * 5. Navigates user to /login
+ * Instant, safe logout flow:
+ * 1. Read the access token from the auth store (needed for background revoke)
+ * 2. Fire backend revocation WITHOUT awaiting it (keepalive: true allows completing after unload)
+ * 3. Clear local state immediately: Zustand auth store, TanStack Query cache, sessionStorage
+ * 4. Clear frontend routing cookies (fs_role, fs_hint, fs_must_change) with a 2s AbortController
+ * 5. Navigate with a HARD navigation to /login?reason=logged_out to prevent stale router state
  */
-export async function performLogout(router?: RouterLike | null): Promise<void> {
-  try {
-    await authService.logoutRequest();
-  } catch {
-    // Ignore backend logout failures (e.g. if already expired)
+export async function performLogout(
+  _router?: RouterLike | null,
+): Promise<void> {
+  if (isLoggingOut) {
+    return;
   }
-
-  await clearSessionCookies();
-  useAuthStore.getState().logout();
+  isLoggingOut = true;
 
   try {
-    getQueryClient().clear();
-  } catch {
-    // Ignore cache clear error if query client not instantiated
-  }
+    // 1. Read token before clearing store
+    const token = useAuthStore.getState().accessToken;
 
-  if (router) {
-    router.replace("/login");
-    router.refresh?.();
-  } else if (typeof window !== "undefined") {
-    window.location.assign("/login");
+    // 2. Fire backend revocation in the background without awaiting it
+    const baseURL = process.env.NEXT_PUBLIC_API_BASE || "/api/v1";
+    try {
+      void fetch(`${baseURL}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        keepalive: true,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      }).catch(() => {
+        // Ignore background revoke errors
+      });
+    } catch {
+      // Ignore synchronous fetch dispatch error
+    }
+
+    // 3. Clear local state immediately
+    useAuthStore.getState().logout();
+
+    try {
+      getQueryClient().clear();
+    } catch {
+      // Ignore cache clear error
+    }
+
+    try {
+      if (typeof window !== "undefined") {
+        window.sessionStorage.clear();
+      }
+    } catch {
+      // Ignore sessionStorage clear error
+    }
+
+    // 4. Clear routing cookies with 2-second timeout
+    await clearSessionCookies();
+
+    // 5. Hard navigation to clean up all client states
+    if (typeof window !== "undefined") {
+      window.location.assign("/login?reason=logged_out");
+    }
+  } finally {
+    // Guard will stay active until page unloads, but reset in case navigation was cancelled
+    setTimeout(() => {
+      isLoggingOut = false;
+    }, 5000);
   }
 }

@@ -42,8 +42,8 @@ export function TempSessionCard({
     }
   }, [isLoading, isAuthenticated, router, pathname]);
 
-  const handleLogout = async () => {
-    await performLogout(router);
+  const handleLogout = () => {
+    void performLogout();
   };
 
   if (isLoading) {

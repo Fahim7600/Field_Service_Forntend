@@ -1,7 +1,7 @@
 "use client";
 
 import { LogOut } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { DashboardSidebarNav } from "@/components/layout/dashboard-sidebar-nav";
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -39,13 +39,16 @@ export function DashboardSidebar({
   className,
   onLinkClick,
 }: DashboardSidebarProps) {
-  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const meta = ROLE_LABELS[role] || { title: "Workspace", badge: role };
 
-  const handleLogout = async () => {
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
     if (onLinkClick) onLinkClick();
-    await performLogout(router);
+    void performLogout();
   };
 
   const initials = getInitials(user?.name);
@@ -104,11 +107,12 @@ export function DashboardSidebar({
           type="button"
           variant="destructive"
           size="sm"
+          disabled={loggingOut}
           className="w-full justify-center gap-2 shadow-2xs h-9 font-semibold"
           onClick={handleLogout}
         >
           <LogOut className="size-4" />
-          <span>Log out</span>
+          <span>{loggingOut ? "Logging out..." : "Log out"}</span>
         </Button>
       </div>
     </aside>
