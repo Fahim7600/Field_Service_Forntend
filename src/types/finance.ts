@@ -129,25 +129,30 @@ export const PAYMENT_STATUSES: readonly PaymentStatus[] = [
   "REFUNDED",
 ];
 
+export interface PaymentInvoiceRef {
+  id: string;
+  invoiceNumber?: string;
+  type?: string;
+}
+
 /**
- * Payment as returned by GET /payments (list item) and GET /payments/{id}.
- * The list schema documents id, amountCents, status, stripePaymentIntentId
- * and createdAt. `invoiceId` is only documented on GET /payments/{id}, so it
- * is optional here and the UI only links to the invoice when it is present.
+ * Payment as returned by GET /payments.
+ * Live shape: { id, status, amountCents, currency, failureReason, refundedAt, createdAt, invoice: { id, invoiceNumber, type } }
  */
 export interface Payment {
   id: string;
   amountCents: number;
   status: PaymentStatus;
-  stripePaymentIntentId?: string | null;
+  currency?: string;
+  failureReason?: string | null;
+  refundedAt?: string | null;
   createdAt: string;
+  invoice?: PaymentInvoiceRef | null;
   invoiceId?: string;
 }
 
 /**
- * Admin list item. The spec returns the same item shape for both roles from
- * the same endpoint (role-based filtering happens on the server) and does NOT
- * include the invoice number or the customer, so no extra fields are typed.
+ * Admin list item.
  */
 export type AdminPayment = Payment;
 

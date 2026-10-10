@@ -22,6 +22,7 @@ import {
   type ColumnDef,
   ResponsiveDataList,
 } from "@/components/shared/responsive-data-list";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -36,6 +37,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { useUrlFilters } from "@/hooks/use-url-filters";
 import { extractArray } from "@/lib/extract-data";
 import { formatMoney, safeFormatDateTime } from "@/lib/format";
+import { humanizeEnum } from "@/lib/humanize";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
 import type { Payment, PaymentSortBy, PaymentStatus } from "@/types/finance";
@@ -102,8 +104,8 @@ export function PaymentsListClient({ variant }: PaymentsListClientProps) {
     staleTime: 15000,
   });
 
-  const items = extractArray<Payment>(data);
-  const pagination = data?.pagination;
+  const items = data?.items ?? extractArray<Payment>(data);
+  const pagination = data?.meta ?? data?.pagination;
 
   const handleSortChange = (value: string) => {
     if (value === "highest_amount") {
@@ -152,32 +154,37 @@ export function PaymentsListClient({ variant }: PaymentsListClientProps) {
       id: "invoice",
       header: "Invoice Reference",
       cell: (item) => {
-        if (item.invoiceId) {
+        const invoiceId = item.invoice?.id ?? item.invoiceId;
+        const invoiceNum =
+          item.invoice?.invoiceNumber ??
+          (invoiceId ? `INV-${invoiceId.slice(0, 8)}` : null);
+        const invoiceType = item.invoice?.type;
+        const isNonMain =
+          Boolean(invoiceType) && invoiceType?.toUpperCase() !== "MAIN";
+
+        if (invoiceId) {
           return (
-            <Link
-              href={`${invoiceBasePath}/${item.invoiceId}`}
-              className="font-mono text-xs font-semibold text-primary hover:underline"
-            >
-              INV-{item.invoiceId.slice(0, 8)}
-            </Link>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Link
+                href={`${invoiceBasePath}/${invoiceId}`}
+                className="font-mono text-xs font-semibold text-primary hover:underline"
+              >
+                {invoiceNum ?? "Invoice"}
+              </Link>
+              {isNonMain && invoiceType && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] py-0 px-1 font-normal text-muted-foreground bg-muted/50 border-border"
+                >
+                  {humanizeEnum(invoiceType)}
+                </Badge>
+              )}
+            </div>
           );
         }
         return <span className="text-xs text-muted-foreground">—</span>;
       },
     },
-    ...(variant === "admin"
-      ? [
-          {
-            id: "stripeReference",
-            header: "Payment Reference",
-            cell: (item: Payment) => (
-              <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[160px] block">
-                {item.stripePaymentIntentId || item.id}
-              </span>
-            ),
-          },
-        ]
-      : []),
     {
       id: "amount",
       header: "Amount",
@@ -198,22 +205,40 @@ export function PaymentsListClient({ variant }: PaymentsListClientProps) {
     {
       id: "status",
       header: "Status",
-      cell: (item) => <StatusBadge status={item.status} />,
+      cell: (item) => (
+        <div className="flex flex-col gap-0.5">
+          <StatusBadge status={item.status} />
+          {item.status === "FAILED" && item.failureReason && (
+            <span
+              className="text-[10px] text-destructive max-w-[160px] truncate"
+              title={item.failureReason}
+            >
+              {item.failureReason}
+            </span>
+          )}
+          {item.status === "REFUNDED" && item.refundedAt && (
+            <span className="text-[10px] text-muted-foreground">
+              {safeFormatDateTime(item.refundedAt)}
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       id: "actions",
       header: "Action",
       className: "text-right",
       cell: (item) => {
+        const invoiceId = item.invoice?.id ?? item.invoiceId;
         const isSucceeded = item.status === "SUCCEEDED";
         const isPending = item.status === "PENDING";
 
         if (variant === "admin") {
           return (
             <div className="flex items-center justify-end gap-2">
-              {item.invoiceId && (
+              {invoiceId && (
                 <Link
-                  href={`${invoiceBasePath}/${item.invoiceId}`}
+                  href={`${invoiceBasePath}/${invoiceId}`}
                   className={cn(
                     buttonVariants({ variant: "outline", size: "sm" }),
                     "h-8 px-2.5 text-xs gap-1.5 font-medium",
@@ -242,10 +267,10 @@ export function PaymentsListClient({ variant }: PaymentsListClientProps) {
         // Customer variant actions
         return (
           <div className="flex items-center justify-end gap-2">
-            {isPending && item.invoiceId ? (
+            {isPending && invoiceId ? (
               <div className="flex items-center gap-1.5">
                 <Link
-                  href={`${invoiceBasePath}/${item.invoiceId}`}
+                  href={`${invoiceBasePath}/${invoiceId}`}
                   className={cn(
                     buttonVariants({ variant: "default", size: "sm" }),
                     "h-8 px-3 text-xs gap-1.5 font-semibold shadow-xs",
@@ -255,9 +280,9 @@ export function PaymentsListClient({ variant }: PaymentsListClientProps) {
                   <span>Complete Payment</span>
                 </Link>
               </div>
-            ) : item.invoiceId ? (
+            ) : invoiceId ? (
               <Link
-                href={`${invoiceBasePath}/${item.invoiceId}`}
+                href={`${invoiceBasePath}/${invoiceId}`}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "sm" }),
                   "h-8 px-2.5 text-xs gap-1.5 font-medium",
@@ -279,22 +304,51 @@ export function PaymentsListClient({ variant }: PaymentsListClientProps) {
   const renderMobileCard = (item: Payment) => {
     const isSucceeded = item.status === "SUCCEEDED";
     const isPending = item.status === "PENDING";
+    const invoiceId = item.invoice?.id ?? item.invoiceId;
+    const invoiceNum =
+      item.invoice?.invoiceNumber ??
+      (invoiceId
+        ? `INV-${invoiceId.slice(0, 8)}`
+        : `TX-${item.id.slice(0, 8)}`);
+    const invoiceType = item.invoice?.type;
+    const isNonMain =
+      Boolean(invoiceType) && invoiceType?.toUpperCase() !== "MAIN";
 
     return (
       <Card className="border-border shadow-xs hover:border-border/80 transition-colors">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-0.5">
-              <span className="font-mono text-xs font-bold text-foreground">
-                {item.invoiceId
-                  ? `INV-${item.invoiceId.slice(0, 8)}`
-                  : `TX-${item.id.slice(0, 8)}`}
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-mono text-xs font-bold text-foreground">
+                  {invoiceNum}
+                </span>
+                {isNonMain && invoiceType && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] py-0 px-1 font-normal text-muted-foreground bg-muted/50 border-border"
+                  >
+                    {humanizeEnum(invoiceType)}
+                  </Badge>
+                )}
+              </div>
               <p className="text-[11px] text-muted-foreground">
                 {safeFormatDateTime(item.createdAt)}
               </p>
             </div>
-            <StatusBadge status={item.status} />
+            <div className="flex flex-col items-end gap-0.5">
+              <StatusBadge status={item.status} />
+              {item.status === "FAILED" && item.failureReason && (
+                <span className="text-[10px] text-destructive max-w-[140px] truncate text-right">
+                  {item.failureReason}
+                </span>
+              )}
+              {item.status === "REFUNDED" && item.refundedAt && (
+                <span className="text-[10px] text-muted-foreground text-right">
+                  {safeFormatDateTime(item.refundedAt)}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-between text-xs py-2 border-y border-border/50">
@@ -314,17 +368,6 @@ export function PaymentsListClient({ variant }: PaymentsListClientProps) {
                 {formatMoney(item.amountCents)}
               </span>
             </div>
-
-            {item.stripePaymentIntentId && (
-              <div className="text-right">
-                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">
-                  Reference
-                </span>
-                <span className="font-mono text-[10px] text-muted-foreground truncate max-w-[120px] block">
-                  {item.stripePaymentIntentId}
-                </span>
-              </div>
-            )}
           </div>
 
           {isPending && variant === "customer" && (
@@ -335,9 +378,9 @@ export function PaymentsListClient({ variant }: PaymentsListClientProps) {
           )}
 
           <div className="flex items-center justify-end gap-2 pt-1">
-            {item.invoiceId && (
+            {invoiceId && (
               <Link
-                href={`${invoiceBasePath}/${item.invoiceId}`}
+                href={`${invoiceBasePath}/${invoiceId}`}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "sm" }),
                   "h-8 px-3 text-xs gap-1.5 font-medium flex-1 sm:flex-initial justify-center",
@@ -348,9 +391,9 @@ export function PaymentsListClient({ variant }: PaymentsListClientProps) {
               </Link>
             )}
 
-            {isPending && variant === "customer" && item.invoiceId && (
+            {isPending && variant === "customer" && invoiceId && (
               <Link
-                href={`${invoiceBasePath}/${item.invoiceId}`}
+                href={`${invoiceBasePath}/${invoiceId}`}
                 className={cn(
                   buttonVariants({ variant: "default", size: "sm" }),
                   "h-8 px-3 text-xs gap-1.5 font-semibold shadow-xs flex-1 sm:flex-initial justify-center",
@@ -557,9 +600,12 @@ export function PaymentsListClient({ variant }: PaymentsListClientProps) {
           onOpenChange={setIsRefundDialogOpen}
           payment={selectedRefundPayment}
           invoiceNumber={
-            selectedRefundPayment?.invoiceId
-              ? `INV-${selectedRefundPayment.invoiceId.slice(0, 8)}`
-              : undefined
+            selectedRefundPayment?.invoice?.invoiceNumber ??
+            (selectedRefundPayment?.invoice?.id
+              ? `INV-${selectedRefundPayment.invoice.id.slice(0, 8)}`
+              : selectedRefundPayment?.invoiceId
+                ? `INV-${selectedRefundPayment.invoiceId.slice(0, 8)}`
+                : undefined)
           }
           onRefundSuccess={() => {
             refetch();
