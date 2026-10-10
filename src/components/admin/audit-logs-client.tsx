@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertCircle,
   Calendar,
   Check,
   ChevronDown,
@@ -15,14 +14,14 @@ import {
   Shield,
 } from "lucide-react";
 import * as React from "react";
-import { toast } from "sonner";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { PaginationControls } from "@/components/shared/pagination-controls";
+import { QueryError } from "@/components/shared/query-error";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUrlFilters } from "@/hooks/use-url-filters";
@@ -30,6 +29,7 @@ import { diffValues, maskSensitive } from "@/lib/audit-diff";
 import { extractArray } from "@/lib/extract-data";
 import { safeFormatDateTime } from "@/lib/format";
 import { humanizeEnum } from "@/lib/humanize";
+import { messages, notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { adminLogsService } from "@/services/admin-logs.service";
 import type { AuditLog, AuditLogParams } from "@/types/admin";
@@ -135,7 +135,10 @@ export function AuditLogsClient() {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(id);
       setCopiedId(id);
-      toast.success("ID Copied to clipboard");
+      notify.success(
+        messages.generic.copied.title,
+        messages.generic.copied.description,
+      );
       setTimeout(() => setCopiedId(null), 2000);
     }
   };
@@ -146,9 +149,7 @@ export function AuditLogsClient() {
 
   const handleDateChange = (fromVal: string, toVal: string) => {
     if (fromVal && toVal && new Date(fromVal) > new Date(toVal)) {
-      toast.error("Invalid Date Range", {
-        description: "'From' date cannot be after 'To' date.",
-      });
+      notify.error("Invalid date range", "From date cannot be after to date.");
       return;
     }
     updateFilters({
@@ -271,26 +272,13 @@ export function AuditLogsClient() {
         </div>
       )}
 
-      {/* Error Card */}
+      {/* Error State */}
       {isError && (
-        <Card className="border-destructive/30 bg-destructive/5 p-6 text-center">
-          <CardContent className="space-y-3 p-0">
-            <AlertCircle className="size-8 text-destructive mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-destructive">
-                Failed to load audit logs
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {error instanceof Error
-                  ? error.message
-                  : "An unexpected error occurred while loading audit events."}
-              </p>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => refetch()}>
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
+        <QueryError
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load audit logs"
+        />
       )}
 
       {/* Audit Log Table & Expandable Cards */}

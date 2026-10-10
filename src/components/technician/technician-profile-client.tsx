@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { AccountDetailsForm } from "@/components/forms/account-details-form";
 import { SecurityCard } from "@/components/forms/security-card";
 import { PageHeader } from "@/components/shared/page-header";
@@ -43,8 +42,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { getErrorMessage } from "@/lib/api-client";
 import { extractArray } from "@/lib/extract-data";
+import { messages, notify } from "@/lib/notify";
 import { loadSkills, saveSkills } from "@/lib/skills-cache";
 import { cn } from "@/lib/utils";
 import {
@@ -147,14 +146,12 @@ export function TechnicianProfileClient() {
       });
 
       profileForm.reset(values);
-      toast.success("Professional profile saved", {
-        description:
-          "Your bio, service area, and working hours have been updated.",
-      });
+      notify.success(
+        messages.profile.updated.title,
+        "Your bio, service area, and working hours have been updated.",
+      );
     } catch (err: unknown) {
-      toast.error("Failed to save profile", {
-        description: getErrorMessage(err),
-      });
+      notify.fromError(err, "Failed to save profile");
     } finally {
       setIsSavingProfile(false);
     }
@@ -167,7 +164,7 @@ export function TechnicianProfileClient() {
         return prev.filter((id) => id !== skillId);
       }
       if (prev.length >= 10) {
-        toast.warning("Maximum of 10 skills allowed.");
+        notify.warning("Skills limit reached", "Maximum of 10 skills allowed.");
         return prev;
       }
       return [...prev, skillId];
@@ -180,7 +177,7 @@ export function TechnicianProfileClient() {
 
   const executeSaveSkills = async () => {
     if (selectedSkillIds.length === 0) {
-      toast.warning("Please select at least one skill.");
+      notify.warning("No skills selected", "Please select at least one skill.");
       return;
     }
 
@@ -196,13 +193,12 @@ export function TechnicianProfileClient() {
         setHasSkillsCache(true);
       }
 
-      toast.success("Skills updated", {
-        description: `Successfully assigned ${updatedIds.length} service skills.`,
-      });
+      notify.success(
+        messages.profile.skillsSaved.title,
+        messages.profile.skillsSaved.description,
+      );
     } catch (err: unknown) {
-      toast.error("Failed to update skills", {
-        description: getErrorMessage(err),
-      });
+      notify.fromError(err, "Failed to update skills");
     } finally {
       setIsSavingSkills(false);
       setShowConfirmDialog(false);
@@ -211,7 +207,7 @@ export function TechnicianProfileClient() {
 
   const onSaveSkillsClick = () => {
     if (selectedSkillIds.length === 0) {
-      toast.warning("Select at least one skill.");
+      notify.warning("No skills selected", "Select at least one skill.");
       return;
     }
 

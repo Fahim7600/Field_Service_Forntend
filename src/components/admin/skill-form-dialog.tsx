@@ -2,10 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, Loader2, Wrench } from "lucide-react";
+import { CheckCircle2, Loader2, Wrench } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, getErrorMessage } from "@/lib/api-client";
+import { messages, notify } from "@/lib/notify";
 import { catalogService } from "@/services/catalog.service";
 import type { SkillPayload } from "@/types/admin";
 
@@ -63,17 +63,18 @@ export function SkillFormDialog({ open, onOpenChange }: SkillFormDialogProps) {
   }, [open, reset]);
 
   const mutation = useMutation({
+    meta: { silent: true },
     mutationFn: async (values: SkillFormValues) => {
       const payload: SkillPayload = {
         name: values.name.trim(),
       };
       return catalogService.createSkill(payload);
     },
-    onSuccess: (newSkill) => {
-      toast.success("Skill Created", {
-        description: `Skill "${newSkill.name}" has been added to the catalog.`,
-        icon: <CheckCircle2 className="size-4 text-emerald-600" />,
-      });
+    onSuccess: () => {
+      notify.success(
+        messages.admin.skillSaved.title,
+        messages.admin.skillSaved.description,
+      );
       queryClient.invalidateQueries({ queryKey: ["skills"] });
       queryClient.invalidateQueries({ queryKey: ["service-categories"] });
       onOpenChange(false);
@@ -90,10 +91,7 @@ export function SkillFormDialog({ open, onOpenChange }: SkillFormDialogProps) {
           message: "A skill with this name already exists.",
         });
       } else {
-        toast.error("Failed to Create Skill", {
-          description: errMsg,
-          icon: <AlertCircle className="size-4 text-destructive" />,
-        });
+        notify.fromError(err);
       }
     },
   });
@@ -165,7 +163,7 @@ export function SkillFormDialog({ open, onOpenChange }: SkillFormDialogProps) {
               ) : (
                 <CheckCircle2 className="size-4 mr-1.5" />
               )}
-              <span>Create Skill</span>
+              <span>{mutation.isPending ? "Creating..." : "Create Skill"}</span>
             </Button>
           </DialogFooter>
         </form>

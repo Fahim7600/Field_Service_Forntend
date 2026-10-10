@@ -7,7 +7,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -21,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { extractArray } from "@/lib/extract-data";
+import { messages, notify } from "@/lib/notify";
 import { combinePreferredAt, splitPreferredAt } from "@/lib/preferred-time";
 import { cn } from "@/lib/utils";
 import {
@@ -161,9 +161,10 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
       return requestsService.updateRequest(request.id, diff);
     },
     onSuccess: () => {
-      toast.success("Request updated", {
-        description: "Your changes have been saved.",
-      });
+      notify.success(
+        messages.requests.updated.title,
+        messages.requests.updated.description,
+      );
       queryClient.invalidateQueries({
         queryKey: ["customer-request", request.id],
       });
@@ -171,10 +172,8 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
       router.push(`/customer/requests/${request.id}`);
     },
     onError: (error: unknown) => {
-      const err = error as { message?: string; statusCode?: number };
-      const message = err.message || "Failed to update service request";
-      toast.error(message);
-
+      const err = error as { statusCode?: number };
+      // Note: MutationCache already toasts the error globally via notify.fromError.
       // If backend rejects because status was already approved/reviewed, invalidate and navigate back
       if (err.statusCode === 400 || err.statusCode === 409) {
         queryClient.invalidateQueries({

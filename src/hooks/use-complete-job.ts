@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { toast } from "sonner";
+import { messages, notify } from "@/lib/notify";
 import { clearDraft } from "@/lib/report-draft";
 import type { ServiceReportFormValues } from "@/lib/validations/service-report";
 import { technicianService } from "@/services/technician.service";
@@ -79,9 +79,10 @@ export function useCompleteJob({
       clearDraft(workOrderId);
       await invalidateQueries();
 
-      toast.success("Job completed", {
-        description: "Your report was submitted. Billing will follow.",
-      });
+      notify.success(
+        messages.tasks.reportSubmitted.title,
+        messages.tasks.reportSubmitted.description,
+      );
 
       onSuccess?.();
       router.push("/technician/tasks?status=COMPLETED");
@@ -97,7 +98,7 @@ export function useCompleteJob({
       }
 
       updateState("error-complete", msg);
-      toast.error("Failed to complete job", { description: msg });
+      notify.fromError(err, "Failed to complete job");
 
       // Always refetch task in case backend state changed
       if (refetchTask) {
@@ -175,7 +176,7 @@ export function useCompleteJob({
             updateState("report-saved");
           } else {
             updateState("error-report", msg);
-            toast.error("Failed to save report", { description: msg });
+            notify.fromError(err, messages.tasks.reportRetry.title);
 
             if (refetchTask) {
               await refetchTask().catch(() => {});

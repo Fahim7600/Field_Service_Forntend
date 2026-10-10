@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
-import { getErrorMessage } from "@/lib/api-client";
+import { messages, notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import {
   type AccountDetailsFormValues,
@@ -89,7 +88,10 @@ export function AccountDetailsForm({
       }
 
       if (Object.keys(payload).length === 0) {
-        toast.info("No changes to save.");
+        notify.info(
+          "No changes to save",
+          "You haven't made any changes to your details.",
+        );
         return;
       }
 
@@ -113,13 +115,12 @@ export function AccountDetailsForm({
         address: updatedUser.address || values.address,
       });
 
-      toast.success("Profile updated", {
-        description: "Your details have been saved.",
-      });
+      notify.success(
+        messages.profile.updated.title,
+        messages.profile.updated.description,
+      );
     } catch (err: unknown) {
-      toast.error("Failed to update profile", {
-        description: getErrorMessage(err),
-      });
+      notify.fromError(err, "Failed to update profile");
     } finally {
       setIsSubmitting(false);
     }

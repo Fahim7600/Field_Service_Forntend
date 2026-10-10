@@ -6,9 +6,7 @@ import axios from "axios";
 import { CheckCircle2, Loader2, MessageSquare, Star } from "lucide-react";
 import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
-
 import { StarRating } from "@/components/shared/star-rating";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError, getErrorMessage } from "@/lib/api-client";
 import { loadFeedback, saveFeedback } from "@/lib/feedback-cache";
 import { safeFormatDateTime } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import { workOrdersService } from "@/services/work-orders.service";
 import { useAuthStore } from "@/stores/auth-store";
 import type { WorkOrderFeedback } from "@/types/work-order";
@@ -96,6 +95,7 @@ export function FeedbackCard({
   const watchedComment = watch("comment") || "";
 
   const submitMutation = useMutation({
+    meta: { silent: true },
     mutationFn: (values: FeedbackFormValues) =>
       workOrdersService.submitFeedback(workOrderId, {
         rating: values.rating,
@@ -103,9 +103,10 @@ export function FeedbackCard({
       }),
     onSuccess: (data, variables) => {
       const now = new Date().toISOString();
-      toast.success("Thank you for your feedback", {
-        description: "Your review has been successfully submitted.",
-      });
+      notify.success(
+        messages.feedback.submitted.title,
+        messages.feedback.submitted.description,
+      );
 
       const newFeedback: WorkOrderFeedback = {
         id: data?.id || "feedback-submitted",
@@ -140,18 +141,17 @@ export function FeedbackCard({
         (axios.isAxiosError(err) && err.response?.status === 400);
 
       if (is409) {
-        toast.info("You already rated this job");
+        notify.info(
+          messages.feedback.alreadyRated.title,
+          messages.feedback.alreadyRated.description,
+        );
         setAlreadyRated(true);
         queryClient.invalidateQueries({ queryKey: ["customer", "request"] });
       } else if (is400) {
-        toast.error("Unable to submit feedback", {
-          description: getErrorMessage(err),
-        });
+        notify.fromError(err, "Unable to submit feedback");
         onRequestRefresh?.();
       } else {
-        toast.error("Failed to submit feedback", {
-          description: getErrorMessage(err),
-        });
+        notify.fromError(err, "Failed to submit feedback");
       }
     },
   });

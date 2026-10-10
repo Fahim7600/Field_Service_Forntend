@@ -1,9 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-
-import { getErrorMessage } from "@/lib/api-client";
+import { messages, notify } from "@/lib/notify";
 import { technicianService } from "@/services/technician.service";
 
 interface UseTaskActionsOptions {
@@ -40,15 +38,14 @@ export function useTaskActions({
       return technicianService.acceptTask(taskId);
     },
     onSuccess: async () => {
-      toast.success("Job accepted", {
-        description:
-          "The dispatcher has been notified to schedule the visit window.",
-      });
+      notify.success(
+        messages.tasks.accepted.title,
+        messages.tasks.accepted.description,
+      );
       await invalidateAll();
       onSuccess?.();
     },
-    onError: async (err) => {
-      toast.error(getErrorMessage(err));
+    onError: async () => {
       if (refetchTask) await refetchTask();
     },
   });
@@ -59,14 +56,14 @@ export function useTaskActions({
       return technicianService.rejectTask(taskId, reason);
     },
     onSuccess: async () => {
-      toast.success("Job rejected", {
-        description: "It has been sent back to the dispatcher.",
-      });
+      notify.success(
+        messages.tasks.rejected.title,
+        messages.tasks.rejected.description,
+      );
       await invalidateAll();
       onSuccess?.();
     },
-    onError: async (err) => {
-      toast.error(getErrorMessage(err));
+    onError: async () => {
       if (refetchTask) await refetchTask();
     },
   });
@@ -85,12 +82,11 @@ export function useTaskActions({
       const title =
         variables === "ARRIVED" ? "Arrival confirmed" : "Work started";
 
-      toast.success(title, { description });
+      notify.success(title, description);
       await invalidateAll();
       onSuccess?.();
     },
-    onError: async (err) => {
-      toast.error(getErrorMessage(err));
+    onError: async () => {
       if (refetchTask) await refetchTask();
     },
   });

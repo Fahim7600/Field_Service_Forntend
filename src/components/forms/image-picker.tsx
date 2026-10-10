@@ -3,7 +3,7 @@
 import { AlertCircle, Upload, X } from "lucide-react";
 import Image from "next/image";
 import * as React from "react";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { validateImageFile } from "@/lib/uploads";
 import { cn } from "@/lib/utils";
 
@@ -67,15 +67,17 @@ export function ImagePicker({
       if (fileList.length === 0) return;
 
       if (availableSlots <= 0) {
-        toast.warning(
-          `Maximum limit of ${maxFiles} photo${maxFiles === 1 ? "" : "s"} reached.`,
+        notify.warning(
+          "Maximum photos reached",
+          `You can attach up to ${maxFiles} photos.`,
         );
         return;
       }
 
       if (fileList.length > availableSlots) {
-        toast.warning(
-          `Only ${availableSlots} more photo${availableSlots === 1 ? "" : "s"} can be added. Extra files were ignored.`,
+        notify.warning(
+          "Extra photos ignored",
+          `Only ${availableSlots} more photo${availableSlots === 1 ? "" : "s"} can be added.`,
         );
       }
 
@@ -85,7 +87,7 @@ export function ImagePicker({
       for (const file of filesToProcess) {
         const validationError = validateImageFile(file);
         if (validationError) {
-          toast.error(validationError);
+          notify.error("Invalid photo", validationError);
           continue;
         }
 

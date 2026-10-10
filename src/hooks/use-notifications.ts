@@ -3,8 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import * as React from "react";
-import { toast } from "sonner";
-import { ApiError, getErrorMessage } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-client";
+import { messages, notify } from "@/lib/notify";
 import { notificationsService } from "@/services/notifications.service";
 import { useAuthStore } from "@/stores/auth-store";
 import type { PaginatedResponse } from "@/types/api";
@@ -254,7 +254,7 @@ export function useMarkNotificationRead() {
 
       return { previousPreview, previousUnread };
     },
-    onError: (err, _vars, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.previousPreview) {
         queryClient.setQueryData(
           ["notifications", "preview"],
@@ -267,9 +267,6 @@ export function useMarkNotificationRead() {
           context.previousUnread,
         );
       }
-      toast.error("Failed to mark notification as read", {
-        description: getErrorMessage(err),
-      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -293,6 +290,12 @@ export function useMarkAllRead() {
     }
   >({
     mutationFn: () => notificationsService.markAllNotificationsRead(),
+    onSuccess: () => {
+      notify.success(
+        messages.notifications.allRead.title,
+        messages.notifications.allRead.description,
+      );
+    },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ["notifications"] });
 
@@ -361,7 +364,7 @@ export function useMarkAllRead() {
 
       return { previousPreview, previousUnread };
     },
-    onError: (err, _vars, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.previousPreview) {
         queryClient.setQueryData(
           ["notifications", "preview"],
@@ -374,9 +377,6 @@ export function useMarkAllRead() {
           context.previousUnread,
         );
       }
-      toast.error("Failed to mark all as read", {
-        description: getErrorMessage(err),
-      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });

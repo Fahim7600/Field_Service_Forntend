@@ -4,8 +4,6 @@ import { Bell, CheckCircle2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -67,42 +65,6 @@ export function NotificationBell({ role }: NotificationBellProps) {
 
   const notifications =
     previewData?.items ?? extractArray<Notification>(previewData);
-
-  // New-notification toast tracking across polling cycles
-  const seenIdsRef = React.useRef<Set<string>>(new Set());
-  const isInitialSessionRef = React.useRef(true);
-
-  React.useEffect(() => {
-    const currentItems =
-      previewData?.items ?? extractArray<Notification>(previewData);
-    if (!currentItems || currentItems.length === 0) return;
-
-    if (isInitialSessionRef.current) {
-      for (const item of currentItems) {
-        seenIdsRef.current.add(item.id);
-      }
-      isInitialSessionRef.current = false;
-      return;
-    }
-
-    const newUnreadItems = currentItems.filter(
-      (item) => !item.isRead && !seenIdsRef.current.has(item.id),
-    );
-
-    for (const item of currentItems) {
-      seenIdsRef.current.add(item.id);
-    }
-
-    if (newUnreadItems.length === 1) {
-      toast.info(newUnreadItems[0].title, {
-        description: newUnreadItems[0].message,
-      });
-    } else if (newUnreadItems.length > 1) {
-      toast.info(`You have ${newUnreadItems.length} new notifications`, {
-        description: newUnreadItems[0].title,
-      });
-    }
-  }, [previewData]);
 
   const handleItemClick = (notification: Notification) => {
     if (!notification.isRead) {

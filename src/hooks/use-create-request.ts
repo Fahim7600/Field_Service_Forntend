@@ -4,8 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { toast } from "sonner";
 import type { PickedImage } from "@/components/forms/image-picker";
+import { messages, notify } from "@/lib/notify";
 import { combinePreferredAt } from "@/lib/preferred-time";
 import type { ServiceRequestFormValues } from "@/lib/validations/request";
 import { requestsService } from "@/services/requests.service";
@@ -56,9 +56,10 @@ export function useCreateRequest() {
 
         setState("success");
         await invalidateQueries();
-        toast.success("Request submitted", {
-          description: "We will review it shortly.",
-        });
+        notify.success(
+          messages.requests.submitted.title,
+          messages.requests.submitted.description,
+        );
         router.push(`/customer/requests/${requestId}`);
         router.refresh();
       } catch (err: unknown) {
@@ -75,7 +76,7 @@ export function useCreateRequest() {
 
         setState("error-attachments");
         setErrorMessage(msg);
-        toast.error("Photo upload failed", { description: msg });
+        notify.fromError(err, messages.requests.photosFailed.title);
       }
     },
     [invalidateQueries, router],
@@ -128,7 +129,7 @@ export function useCreateRequest() {
 
         setState("error-create");
         setErrorMessage(msg);
-        toast.error("Failed to create request", { description: msg });
+        notify.fromError(err, "Failed to create request");
         return;
       }
 
@@ -138,9 +139,10 @@ export function useCreateRequest() {
       } else {
         setState("success");
         await invalidateQueries();
-        toast.success("Request submitted", {
-          description: "We will review it shortly.",
-        });
+        notify.success(
+          messages.requests.submitted.title,
+          messages.requests.submitted.description,
+        );
         router.push(`/customer/requests/${newId}`);
         router.refresh();
       }
