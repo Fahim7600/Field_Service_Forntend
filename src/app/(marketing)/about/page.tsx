@@ -1,68 +1,98 @@
-import { CheckCircle2, Shield, Users } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
-import { PageHeader } from "@/components/shared/page-header";
+import Link from "next/link";
+import { AboutHero } from "@/components/marketing/about-hero";
+import { AudienceSection } from "@/components/marketing/audience-section";
+import { BuiltWithSection } from "@/components/marketing/built-with-section";
+import { HowItWorksSection } from "@/components/marketing/how-it-works-section";
+import { PrinciplesSection } from "@/components/marketing/principles-section";
+import { WhatWeDoSection } from "@/components/marketing/what-we-do-section";
+import { buttonVariants } from "@/components/ui/button";
+import { siteConfig } from "@/constants/site";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "About | Field Service",
+  title: "About",
   description:
-    "Learn how Field Service bridges the gap between skilled technicians and homeowners.",
+    "Learn about Field Service: a unified platform bringing transparent scheduling, verified dispatching, digital reporting, and secure payments to field maintenance operations.",
+  alternates: {
+    canonical: "/about",
+  },
+  openGraph: {
+    title: "About | Field Service",
+    description:
+      "One transparent process connecting property owners with skilled technicians, from request to payment.",
+    url: "/about",
+    siteName: siteConfig.name,
+    type: "website",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "About Field Service",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "About | Field Service",
+    description:
+      "One transparent process connecting property owners with skilled technicians, from request to payment.",
+    images: ["/opengraph-image"],
+  },
 };
 
 export default function AboutPage() {
   return (
-    <div className="max-w-7xl mx-auto px-4 py-16">
-      <PageHeader
-        title="About Field Service"
-        description="Our mission to modernize home and commercial maintenance."
-      />
+    <div className="flex flex-col min-h-screen">
+      <AboutHero />
+      <WhatWeDoSection />
+      <HowItWorksSection />
+      <AudienceSection />
+      <PrinciplesSection />
+      <BuiltWithSection />
 
-      <div className="mt-8 max-w-3xl mx-auto">
-        <p className="text-lg text-charcoal-600 leading-relaxed">
-          Founded in 2026, Field Service bridges the gap between skilled
-          technicians and homeowners. We believe that booking a repair should be
-          as easy as ordering food online. Our platform ensures that every
-          technician is verified, every job is tracked, and every payment is
-          secure.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto mt-16">
-        <div className="bg-white border border-gray-200 p-6 rounded-xl text-center shadow-xs">
-          <div className="inline-flex p-3 rounded-full bg-brand-50 text-brand-600 mb-4">
-            <Shield className="h-6 w-6" />
-          </div>
-          <h3 className="text-lg font-bold text-charcoal-900">
-            100% Vetted Pros
-          </h3>
-          <p className="text-sm text-charcoal-600 mt-2">
-            Every technician is background-checked, certified, and insured.
+      {/* Closing CTA Band */}
+      <section
+        aria-labelledby="about-cta-heading"
+        className="py-16 bg-charcoal-900 border-t border-charcoal-800 text-white text-center"
+      >
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+          <h2
+            id="about-cta-heading"
+            className="text-2xl sm:text-3xl font-bold tracking-tight text-white"
+          >
+            Ready to schedule a service visit?
+          </h2>
+          <p className="text-sm sm:text-base text-ash max-w-xl mx-auto">
+            Book online in under 3 minutes, or reach out to our team if you have
+            questions about our operational platform.
           </p>
-        </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+            <Link
+              href="/customer/requests/new"
+              className={cn(
+                buttonVariants({ variant: "cta", size: "lg" }),
+                "w-full sm:w-auto h-12 px-8 text-base font-semibold shadow-md",
+              )}
+            >
+              Book a Service
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
 
-        <div className="bg-white border border-gray-200 p-6 rounded-xl text-center shadow-xs">
-          <div className="inline-flex p-3 rounded-full bg-brand-50 text-brand-600 mb-4">
-            <CheckCircle2 className="h-6 w-6" />
+            <Link
+              href="/contact"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "w-full sm:w-auto h-12 px-8 text-base font-medium text-ash border-charcoal-700 bg-charcoal-800/60 hover:bg-charcoal-800 hover:text-white hover:border-charcoal-600",
+              )}
+            >
+              Contact us
+            </Link>
           </div>
-          <h3 className="text-lg font-bold text-charcoal-900">
-            Guaranteed Quality
-          </h3>
-          <p className="text-sm text-charcoal-600 mt-2">
-            Clear upfront estimates and guaranteed post-service support.
-          </p>
         </div>
-
-        <div className="bg-white border border-gray-200 p-6 rounded-xl text-center shadow-xs">
-          <div className="inline-flex p-3 rounded-full bg-brand-50 text-brand-600 mb-4">
-            <Users className="h-6 w-6" />
-          </div>
-          <h3 className="text-lg font-bold text-charcoal-900">
-            Customer First
-          </h3>
-          <p className="text-sm text-charcoal-600 mt-2">
-            Real-time tracking, seamless messaging, and 24/7 dedicated support.
-          </p>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }
