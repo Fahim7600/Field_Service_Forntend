@@ -50,7 +50,7 @@ export function PremiumTeaserSection({
                 Get priority dispatch and 10% off every service invoice
               </h2>
 
-              <p className="text-sm sm:text-base text-ash leading-relaxed max-w-xl">
+              <p className="text-sm sm:text-base text-[#E2E8F0] leading-relaxed max-w-xl">
                 Field Service Premium provides peace of mind for residential and
                 commercial property managers who need guaranteed fast turnaround
                 and flexible scheduling.
@@ -66,7 +66,7 @@ export function PremiumTeaserSection({
                       <benefit.icon className="h-4 w-4 shrink-0" />
                       <span>{benefit.title}</span>
                     </div>
-                    <p className="text-xs text-ash leading-relaxed">
+                    <p className="text-xs text-[#CBD5E1] leading-relaxed">
                       {benefit.description}
                     </p>
                   </div>
@@ -80,7 +80,7 @@ export function PremiumTeaserSection({
                 <h3 className="text-lg font-bold text-white mb-2">
                   Membership Plans
                 </h3>
-                <p className="text-xs sm:text-sm text-ash mb-6">
+                <p className="text-xs sm:text-sm text-[#CBD5E1] mb-6">
                   Cancel or pause anytime. No long-term lock-in.
                 </p>
 
@@ -92,11 +92,13 @@ export function PremiumTeaserSection({
                           <p className="text-xs font-medium text-white">
                             Monthly Plan
                           </p>
-                          <p className="text-xs text-ash">Billed monthly</p>
+                          <p className="text-xs text-[#CBD5E1]">
+                            Billed monthly
+                          </p>
                         </div>
                         <p className="text-base font-bold text-white">
                           {formatMoney(monthlyPlan.priceCents)}
-                          <span className="text-xs font-normal text-ash">
+                          <span className="text-xs font-normal text-[#CBD5E1]">
                             /mo
                           </span>
                         </p>
@@ -114,11 +116,13 @@ export function PremiumTeaserSection({
                           <p className="text-xs font-medium text-white">
                             Annual Plan
                           </p>
-                          <p className="text-xs text-ash">Billed annually</p>
+                          <p className="text-xs text-[#CBD5E1]">
+                            Billed annually
+                          </p>
                         </div>
                         <p className="text-base font-bold text-amber-400">
                           {formatMoney(yearlyPlan.priceCents)}
-                          <span className="text-xs font-normal text-ash">
+                          <span className="text-xs font-normal text-[#CBD5E1]">
                             /yr
                           </span>
                         </p>
@@ -126,7 +130,7 @@ export function PremiumTeaserSection({
                     )}
                   </div>
                 ) : (
-                  <div className="w-full py-4 mb-4 border-y border-charcoal-700/60 text-xs text-ash text-left space-y-2">
+                  <div className="w-full py-4 mb-4 border-y border-charcoal-700/60 text-xs text-[#CBD5E1] text-left space-y-2">
                     <div className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-amber-400 shrink-0" />
                       <span>Guaranteed 2-hour request review</span>

@@ -63,16 +63,16 @@ export function BuiltWithSection() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-          <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+          <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#C2410C]">
             Technical Architecture
           </p>
           <h2
             id="built-with-heading"
-            className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mt-2"
+            className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] mt-2"
           >
             Built With Modern Standards
           </h2>
-          <p className="text-sm sm:text-base text-muted-foreground mt-3">
+          <p className="text-sm sm:text-base text-[#334155] mt-3">
             Engineered for performance, strict type safety, and real-time
             operational workflows.
           </p>
@@ -82,10 +82,10 @@ export function BuiltWithSection() {
           {/* Frontend */}
           <div className="p-6 sm:p-8 rounded-2xl bg-card border border-border shadow-xs">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
-              <h3 className="text-lg font-bold text-foreground">
+              <h3 className="text-lg font-bold text-[#0F172A]">
                 Frontend Architecture
               </h3>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
                 Client & Server
               </span>
             </div>
@@ -96,10 +96,10 @@ export function BuiltWithSection() {
                   key={item.name}
                   className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1"
                 >
-                  <dt className="text-xs sm:text-sm font-semibold text-foreground">
+                  <dt className="text-xs sm:text-sm font-semibold text-[#0F172A]">
                     {item.name}
                   </dt>
-                  <dd className="text-xs text-muted-foreground sm:text-right">
+                  <dd className="text-xs text-[#334155] sm:text-right">
                     {item.purpose}
                   </dd>
                 </div>
@@ -110,7 +110,7 @@ export function BuiltWithSection() {
           {/* Backend */}
           <div className="p-6 sm:p-8 rounded-2xl bg-card border border-border shadow-xs">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
-              <h3 className="text-lg font-bold text-foreground">
+              <h3 className="text-lg font-bold text-[#0F172A]">
                 Backend Infrastructure
               </h3>
               <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-charcoal-800 text-ash">
@@ -124,10 +124,10 @@ export function BuiltWithSection() {
                   key={item.name}
                   className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1"
                 >
-                  <dt className="text-xs sm:text-sm font-semibold text-foreground">
+                  <dt className="text-xs sm:text-sm font-semibold text-[#0F172A]">
                     {item.name}
                   </dt>
-                  <dd className="text-xs text-muted-foreground sm:text-right">
+                  <dd className="text-xs text-[#334155] sm:text-right">
                     {item.purpose}
                   </dd>
                 </div>
@@ -138,7 +138,7 @@ export function BuiltWithSection() {
 
         {/* Footnote */}
         <div className="mt-12 text-center">
-          <p className="text-xs text-muted-foreground inline-flex items-center px-4 py-2 rounded-full bg-muted/60 border border-border">
+          <p className="text-xs text-[#475569] inline-flex items-center px-4 py-2 rounded-full bg-muted/60 border border-border">
             This is a demonstration platform. Payments run in Stripe test mode.
           </p>
         </div>

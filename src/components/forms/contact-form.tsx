@@ -115,14 +115,14 @@ export function ContactForm({ recipientEmail }: ContactFormProps) {
         className="block rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-xs space-y-6"
       >
         <div className="flex items-start gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
             <Mail className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-foreground">
+            <h3 className="text-lg font-bold text-[#0F172A]">
               Ready to Send in Your Email App
             </h3>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#334155] mt-1 leading-relaxed">
               Your email app should open with your message ready to send.
               Nothing is sent until you press Send there.
             </p>
@@ -178,8 +178,8 @@ export function ContactForm({ recipientEmail }: ContactFormProps) {
       className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-xs space-y-5"
     >
       <div>
-        <h2 className="text-xl font-bold text-foreground">Send a Message</h2>
-        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+        <h2 className="text-xl font-bold text-[#0F172A]">Send a Message</h2>
+        <p className="text-xs sm:text-sm text-[#334155] mt-1">
           Compose your message below. Submitting opens your default email client
           with everything pre-filled.
         </p>
@@ -269,7 +269,7 @@ export function ContactForm({ recipientEmail }: ContactFormProps) {
         Open Email Client
       </Button>
 
-      <p className="text-[11px] text-muted-foreground text-center">
+      <p className="text-[11px] text-[#475569] text-center">
         No message is sent automatically. Your email client handles delivery.
       </p>
     </form>

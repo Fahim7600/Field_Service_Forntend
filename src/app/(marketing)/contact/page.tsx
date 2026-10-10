@@ -79,7 +79,7 @@ export default function ContactPage() {
             >
               Contact us
             </h1>
-            <p className="text-base sm:text-lg text-ash mt-4 leading-relaxed">
+            <p className="text-base sm:text-lg text-[#E2E8F0] mt-4 leading-relaxed">
               Have questions regarding our service disciplines, dispatch
               reviews, or invoice billing? Reach out to our team directly.
             </p>
@@ -102,10 +102,10 @@ export default function ContactPage() {
             <div className="lg:col-span-5 space-y-6">
               <div className="p-6 sm:p-8 rounded-2xl border border-border bg-card shadow-xs space-y-6">
                 <div>
-                  <h3 className="text-xl font-bold text-foreground">
+                  <h3 className="text-xl font-bold text-[#0F172A]">
                     Direct Contact Channels
                   </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  <p className="text-xs sm:text-sm text-[#334155] mt-1">
                     Verified operational touchpoints for customers and property
                     managers.
                   </p>
@@ -124,23 +124,23 @@ export default function ContactPage() {
                           key={entry.label}
                           className="flex items-start gap-3.5"
                         >
-                          <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
                             <Icon className="h-5 w-5" />
                           </div>
                           <div className="space-y-0.5">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-[#475569]">
                               {entry.label}
                             </span>
                             <div>
                               {entry.href ? (
                                 <a
                                   href={entry.href}
-                                  className="text-sm sm:text-base font-medium text-foreground hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                                  className="text-sm sm:text-base font-medium text-[#0F172A] hover:text-[#C2410C] transition-colors"
                                 >
                                   {entry.value}
                                 </a>
                               ) : (
-                                <p className="text-sm sm:text-base font-medium text-foreground">
+                                <p className="text-sm sm:text-base font-medium text-[#0F172A]">
                                   {entry.value}
                                 </p>
                               )}
@@ -207,12 +207,12 @@ export default function ContactPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
             <div>
-              <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#C2410C]">
                 Self Service
               </p>
               <h2
                 id="quick-answers-heading"
-                className="text-2xl sm:text-3xl font-bold text-foreground mt-1"
+                className="text-2xl sm:text-3xl font-bold text-[#0F172A] mt-1"
               >
                 Quick Answers
               </h2>
@@ -235,11 +235,11 @@ export default function ContactPage() {
                 key={item.id}
                 className="p-6 rounded-2xl border border-border bg-card shadow-xs space-y-2.5"
               >
-                <div className="flex items-center gap-2 text-foreground font-semibold text-base">
-                  <HelpCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                <div className="flex items-center gap-2 text-[#0F172A] font-semibold text-base">
+                  <HelpCircle className="h-4 w-4 text-[#C2410C] shrink-0" />
                   <h3>{item.question}</h3>
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                <p className="text-xs sm:text-sm text-[#334155] leading-relaxed">
                   {item.answer}
                 </p>
               </div>

@@ -98,7 +98,7 @@ export default async function ServicesPage() {
             >
               Our services
             </h1>
-            <p className="text-base sm:text-lg text-ash mt-4 leading-relaxed">
+            <p className="text-base sm:text-lg text-[#E2E8F0] mt-4 leading-relaxed">
               Every job booked through Field Service is reviewed by our dispatch
               operations team and assigned to a qualified, background-checked
               technician.
@@ -135,18 +135,18 @@ export default async function ServicesPage() {
 
                 <div className="flex flex-col flex-1 p-6">
                   <div className="flex items-baseline justify-between gap-2 mb-2">
-                    <h3 className="text-xl font-bold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                    <h3 className="text-xl font-bold text-[#0F172A] group-hover:text-[#C2410C] transition-colors">
                       {service.title}
                     </h3>
                     {typeof service.priceCents === "number" &&
                       service.priceCents > 0 && (
-                        <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 shrink-0">
+                        <span className="text-xs font-semibold text-[#C2410C] shrink-0">
                           From {formatMoney(service.priceCents)}
                         </span>
                       )}
                   </div>
 
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                  <p className="text-sm text-[#334155] leading-relaxed mb-6">
                     {service.description}
                   </p>
 
@@ -178,11 +178,11 @@ export default async function ServicesPage() {
           <div className="text-center max-w-3xl mx-auto mb-12">
             <h2
               id="what-to-expect-heading"
-              className="text-2xl sm:text-3xl font-bold text-foreground"
+              className="text-2xl sm:text-3xl font-bold text-[#0F172A]"
             >
               What to expect when you book
             </h2>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm text-[#334155] mt-2">
               Our clear, end-to-end service cycle keeps you updated at every
               milestone.
             </p>
@@ -197,17 +197,17 @@ export default async function ServicesPage() {
                   className="p-5 rounded-xl bg-card border border-border shadow-xs flex flex-col"
                 >
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
                       <Icon className="h-4 w-4" />
                     </div>
-                    <span className="text-xs font-bold text-muted-foreground">
+                    <span className="text-xs font-bold text-[#475569]">
                       Step {step.step}
                     </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1">
+                  <h3 className="text-sm font-semibold text-[#0F172A] mb-1">
                     {step.title}
                   </h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  <p className="text-xs text-[#334155] leading-relaxed">
                     {step.description}
                   </p>
                 </div>
@@ -220,7 +220,7 @@ export default async function ServicesPage() {
       {/* Closing CTA Band */}
       <section
         aria-labelledby="services-cta-heading"
-        className="py-16 bg-charcoal-900 border-t border-charcoal-800 text-white text-center"
+        className="py-16 bg-[#111827] border-t border-[#1F2937] text-white text-center"
       >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
           <h2
@@ -229,7 +229,7 @@ export default async function ServicesPage() {
           >
             Need a certified technician today?
           </h2>
-          <p className="text-sm sm:text-base text-ash max-w-xl mx-auto">
+          <p className="text-sm sm:text-base text-[#E2E8F0] max-w-xl mx-auto">
             Book online in under 3 minutes. Attach photos and choose a time slot
             that fits your schedule.
           </p>

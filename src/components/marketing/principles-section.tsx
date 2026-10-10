@@ -35,16 +35,16 @@ export function PrinciplesSection() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-          <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+          <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#C2410C]">
             Core Values
           </p>
           <h2
             id="principles-heading"
-            className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mt-2"
+            className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] mt-2"
           >
             How the Platform Operates
           </h2>
-          <p className="text-sm sm:text-base text-muted-foreground mt-3">
+          <p className="text-sm sm:text-base text-[#334155] mt-3">
             Four foundational operational principles guide every workflow from
             dispatching to invoice approval.
           </p>
@@ -58,13 +58,13 @@ export function PrinciplesSection() {
                 key={principle.title}
                 className="flex flex-col p-6 rounded-2xl bg-card border border-border shadow-xs hover:border-amber-500/50 hover:shadow-md transition-all duration-200"
               >
-                <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center mb-4">
                   <Icon className="h-5 w-5" />
                 </div>
-                <h3 className="text-lg font-bold text-foreground mb-2">
+                <h3 className="text-lg font-bold text-[#0F172A] mb-2">
                   {principle.title}
                 </h3>
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                <p className="text-xs sm:text-sm text-[#334155] leading-relaxed">
                   {principle.description}
                 </p>
               </div>

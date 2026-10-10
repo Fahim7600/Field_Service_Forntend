@@ -9,16 +9,16 @@ export function AudienceSection() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-          <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+          <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#C2410C]">
             One Unified Platform
           </p>
           <h2
             id="audience-heading"
-            className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mt-2"
+            className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] mt-2"
           >
             Built for Customers, Technicians, and Operations
           </h2>
-          <p className="text-sm sm:text-base text-muted-foreground mt-3">
+          <p className="text-sm sm:text-base text-[#334155] mt-3">
             Every party involved in maintenance and repair stays connected in
             real-time with purpose-built tools and clear accountability.
           </p>
@@ -30,15 +30,15 @@ export function AudienceSection() {
               key={audience.badge}
               className="flex flex-col p-6 sm:p-8 rounded-2xl bg-card border border-border shadow-xs hover:border-amber-500/40 hover:shadow-md transition-all duration-200"
             >
-              <div className="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 mb-4">
+              <div className="inline-flex self-start items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 mb-4">
                 {audience.badge}
               </div>
 
-              <h3 className="text-xl font-bold text-foreground mb-3">
+              <h3 className="text-xl font-bold text-[#0F172A] mb-3">
                 {audience.title}
               </h3>
 
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+              <p className="text-sm text-[#334155] leading-relaxed mb-6">
                 {audience.description}
               </p>
 
@@ -46,9 +46,9 @@ export function AudienceSection() {
                 {audience.features.map((feature) => (
                   <li
                     key={feature}
-                    className="flex items-start gap-2.5 text-xs sm:text-sm text-muted-foreground"
+                    className="flex items-start gap-2.5 text-xs sm:text-sm text-[#334155]"
                   >
-                    <CheckCircle2 className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-4 w-4 text-[#C2410C] shrink-0 mt-0.5" />
                     <span>{feature}</span>
                   </li>
                 ))}

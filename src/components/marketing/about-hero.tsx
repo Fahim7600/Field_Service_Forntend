@@ -21,7 +21,7 @@ export function AboutHero() {
             >
               About Field Service
             </h1>
-            <p className="text-base sm:text-lg text-ash leading-relaxed max-w-2xl mx-auto lg:mx-0">
+            <p className="text-base sm:text-lg text-[#E2E8F0] leading-relaxed max-w-2xl mx-auto lg:mx-0">
               Field Service exists to provide one transparent, reliable process
               connecting people who need maintenance or repairs with skilled
               technicians — from the initial request and dispatch review to

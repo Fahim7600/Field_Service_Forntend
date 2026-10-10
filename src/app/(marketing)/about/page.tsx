@@ -56,7 +56,7 @@ export default function AboutPage() {
       {/* Closing CTA Band */}
       <section
         aria-labelledby="about-cta-heading"
-        className="py-16 bg-charcoal-900 border-t border-charcoal-800 text-white text-center"
+        className="py-16 bg-[#111827] border-t border-[#1F2937] text-white text-center"
       >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
           <h2
@@ -65,7 +65,7 @@ export default function AboutPage() {
           >
             Ready to schedule a service visit?
           </h2>
-          <p className="text-sm sm:text-base text-ash max-w-xl mx-auto">
+          <p className="text-sm sm:text-base text-[#E2E8F0] max-w-xl mx-auto">
             Book online in under 3 minutes, or reach out to our team if you have
             questions about our operational platform.
           </p>
@@ -85,7 +85,7 @@ export default function AboutPage() {
               href="/contact"
               className={cn(
                 buttonVariants({ variant: "outline", size: "lg" }),
-                "w-full sm:w-auto h-12 px-8 text-base font-medium text-ash border-charcoal-700 bg-charcoal-800/60 hover:bg-charcoal-800 hover:text-white hover:border-charcoal-600",
+                "w-full sm:w-auto h-12 px-8 text-base font-medium text-[#E2E8F0] border-charcoal-700 bg-charcoal-800/60 hover:bg-charcoal-800 hover:text-white hover:border-charcoal-600",
               )}
             >
               Contact us

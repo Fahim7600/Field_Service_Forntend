@@ -10,16 +10,16 @@ export function WhatWeDoSection() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-          <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+          <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#C2410C]">
             Specialized Disciplines
           </p>
           <h2
             id="what-we-do-heading"
-            className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mt-2"
+            className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] mt-2"
           >
             What We Do
           </h2>
-          <p className="text-sm sm:text-base text-muted-foreground mt-3">
+          <p className="text-sm sm:text-base text-[#334155] mt-3">
             Our platform supports the core mechanical, electrical, and plumbing
             trades required to keep properties functioning smoothly.
           </p>
@@ -44,10 +44,10 @@ export function WhatWeDoSection() {
                 </div>
 
                 <div className="flex flex-col flex-1 p-5">
-                  <h3 className="text-base font-semibold text-foreground mb-2">
+                  <h3 className="text-base font-semibold text-[#0F172A] mb-2">
                     {area.title}
                   </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-xs sm:text-sm text-[#334155] leading-relaxed">
                     {area.description}
                   </p>
                 </div>

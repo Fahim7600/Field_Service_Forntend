@@ -55,16 +55,16 @@ export function ServicesPreviewSection({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 sm:mb-16 gap-4">
           <div className="max-w-2xl">
-            <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+            <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#C2410C]">
               Expert Coverage
             </p>
             <h2
               id="services-preview-heading"
-              className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mt-2"
+              className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] mt-2"
             >
               Essential Field Services
             </h2>
-            <p className="text-sm sm:text-base text-muted-foreground mt-3">
+            <p className="text-sm sm:text-base text-[#334155] mt-3">
               Book skilled specialists across our core repair disciplines with
               transparent pricing and verified reporting.
             </p>
@@ -100,25 +100,25 @@ export function ServicesPreviewSection({
 
               <div className="flex flex-col flex-1 p-5">
                 <div className="flex items-baseline justify-between gap-2 mb-2">
-                  <h3 className="text-base font-semibold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                  <h3 className="text-base font-semibold text-[#0F172A] group-hover:text-[#C2410C] transition-colors">
                     {item.title}
                   </h3>
                   {typeof item.priceCents === "number" &&
                     item.priceCents > 0 && (
-                      <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 shrink-0">
+                      <span className="text-xs font-semibold text-[#C2410C] shrink-0">
                         From {formatMoney(item.priceCents)}
                       </span>
                     )}
                 </div>
 
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-3 mb-4">
+                <p className="text-xs sm:text-sm text-[#334155] leading-relaxed line-clamp-3 mb-4">
                   {item.description}
                 </p>
 
                 <div className="mt-auto pt-2">
                   <Link
                     href={item.href}
-                    className="inline-flex items-center text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                    className="inline-flex items-center text-xs font-semibold text-[#C2410C] hover:underline"
                   >
                     Learn more
                     <ArrowRight className="ml-1 h-3 w-3" />

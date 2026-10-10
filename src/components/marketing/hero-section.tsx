@@ -30,7 +30,7 @@ export function HeroSection() {
               Reliable field technicians scheduled, dispatched, and paid online.
             </h1>
 
-            <p className="text-base sm:text-lg text-ash leading-relaxed max-w-2xl mx-auto lg:mx-0">
+            <p className="text-base sm:text-lg text-[#E2E8F0] leading-relaxed max-w-2xl mx-auto lg:mx-0">
               Submit your maintenance or repair request with diagnostic photos.
               Our dispatch team reviews your job, matches a qualified
               technician, and tracks work to completion with transparent Stripe
@@ -53,7 +53,7 @@ export function HeroSection() {
                 href="#how-it-works"
                 className={cn(
                   buttonVariants({ variant: "outline", size: "lg" }),
-                  "w-full sm:w-auto h-12 px-6 text-base font-medium text-ash border-charcoal-700 bg-charcoal-800/50 hover:bg-charcoal-800 hover:text-white hover:border-charcoal-600",
+                  "w-full sm:w-auto h-12 px-6 text-base font-medium text-[#E2E8F0] border-charcoal-700 bg-charcoal-800/50 hover:bg-charcoal-800 hover:text-white hover:border-charcoal-600",
                 )}
               >
                 See how it works
@@ -85,7 +85,7 @@ export function HeroSection() {
                     <p className="text-xs font-semibold text-white tracking-wide">
                       Premium Membership Benefit
                     </p>
-                    <p className="text-xs text-ash leading-relaxed">
+                    <p className="text-xs text-[#CBD5E1] leading-relaxed">
                       Premium members get priority review within 2 hours, 10%
                       off labor, and free cancellation.
                     </p>
