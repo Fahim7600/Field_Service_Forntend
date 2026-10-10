@@ -7,7 +7,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="min-h-screen flex flex-col bg-[#F3F4F6]">
+    <div className="min-h-screen flex flex-col bg-[#F3F4F6] text-[#0F172A] [color-scheme:light]">
       {/* Slim top branding bar with gradient line */}
       <header className="bg-card border-b border-border shadow-xs sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">

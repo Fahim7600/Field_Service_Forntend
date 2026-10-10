@@ -6,6 +6,7 @@
   --color-brand-500: var(--brand-500);
   --color-brand-600: var(--brand-600);
   --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
   --color-terracotta: var(--terracotta);
 
   --color-charcoal-900: var(--charcoal-900);
@@ -63,6 +64,7 @@
   --brand-500: #f97316;
   --brand-600: #ea580c;
   --brand-700: #c2410c;
+  --brand-800: #9a3412;
   --terracotta: #a8442a;
 
   /* Charcoal scale */

@@ -3,13 +3,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all duration-200 cursor-pointer outline-none select-none hover:shadow-xs active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all duration-200 cursor-pointer outline-none select-none hover:shadow-xs active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
           "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
-        cta: "bg-gradient-to-r from-brand-500 to-brand-700 text-white shadow-sm hover:from-brand-600 hover:to-brand-700 active:scale-[0.98]",
+        cta: "bg-gradient-to-r from-brand-700 to-brand-800 text-white font-semibold shadow-sm hover:from-brand-800 hover:to-[#7C2D12] active:scale-[0.98]",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground hover:border-charcoal-300 dark:hover:border-charcoal-700 aria-expanded:bg-muted aria-expanded:text-foreground",
         secondary:

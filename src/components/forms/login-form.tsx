@@ -156,7 +156,7 @@ export function LoginForm() {
             </Label>
             <Link
               href="/forgot-password"
-              className="text-xs text-brand-600 hover:text-brand-700 hover:underline focus-visible:outline-hidden"
+              className="text-xs text-[#C2410C] hover:text-[#9A3412] hover:underline focus-visible:outline-hidden"
               tabIndex={-1}
             >
               Forgot password?
@@ -220,7 +220,7 @@ export function LoginForm() {
         Don&apos;t have an account?{" "}
         <Link
           href="/register"
-          className="font-semibold text-charcoal-900 hover:text-brand-600 underline-offset-4 hover:underline"
+          className="font-semibold text-charcoal-900 hover:text-[#C2410C] underline-offset-4 hover:underline"
         >
           Register
         </Link>
