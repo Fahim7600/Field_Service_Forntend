@@ -5,6 +5,7 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 import { normalizePaginated } from "@/lib/extract-data";
+import { authMessages, notify } from "@/lib/notify";
 import { clearSessionCookies } from "@/lib/session";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ApiResponse, FieldError, PaginatedResponse } from "@/types/api";
@@ -112,9 +113,52 @@ export const apiClient: AxiosInstance = axios.create({
   timeout: 60000,
 });
 
-// Request interceptor: add bearer token from memory Zustand store
+let activeSlowEligibleRequests = 0;
+let slowTimer: ReturnType<typeof setTimeout> | null = null;
+let isSlowToastShowing = false;
+
+function shouldSkipSlowNotice(url?: string): boolean {
+  if (!url) return false;
+  return url.includes("/notifications") || url.includes("/health");
+}
+
+function startSlowTracking(url?: string): void {
+  if (shouldSkipSlowNotice(url)) return;
+  activeSlowEligibleRequests += 1;
+  if (slowTimer === null && !isSlowToastShowing) {
+    slowTimer = setTimeout(() => {
+      if (activeSlowEligibleRequests > 0) {
+        notify.info(
+          authMessages.serverWaking.title,
+          authMessages.serverWaking.description,
+          { id: "server-waking", duration: Number.POSITIVE_INFINITY },
+        );
+        isSlowToastShowing = true;
+      }
+      slowTimer = null;
+    }, 6000);
+  }
+}
+
+function finishSlowTracking(url?: string): void {
+  if (shouldSkipSlowNotice(url)) return;
+  activeSlowEligibleRequests = Math.max(0, activeSlowEligibleRequests - 1);
+  if (activeSlowEligibleRequests === 0) {
+    if (slowTimer !== null) {
+      clearTimeout(slowTimer);
+      slowTimer = null;
+    }
+    if (isSlowToastShowing) {
+      notify.dismiss("server-waking");
+      isSlowToastShowing = false;
+    }
+  }
+}
+
+// Request interceptor: add bearer token from memory Zustand store and track slow requests
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    startSlowTracking(config.url);
     const token = useAuthStore.getState().accessToken;
     if (token && config.headers && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -124,7 +168,12 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error: unknown) => Promise.reject(error),
+  (error: unknown) => {
+    if (axios.isAxiosError(error) && error.config) {
+      finishSlowTracking(error.config.url);
+    }
+    return Promise.reject(error);
+  },
 );
 
 // Single shared in-flight refresh promise
@@ -144,10 +193,17 @@ function isAuthBypassEndpoint(url?: string): boolean {
   return AUTH_BYPASS_ENDPOINTS.some((endpoint) => url.includes(endpoint));
 }
 
-// Response interceptor: handle 401 silent token refresh
+// Response interceptor: handle 401 silent token refresh and dismiss slow request toast
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    finishSlowTracking(response.config.url);
+    return response;
+  },
   async (error: unknown) => {
+    if (axios.isAxiosError(error) && error.config) {
+      finishSlowTracking(error.config.url);
+    }
+
     if (!axios.isAxiosError(error) || !error.response) {
       return Promise.reject(error);
     }
@@ -182,22 +238,31 @@ apiClient.interceptors.response.use(
                 return newToken;
               }
               return null;
-            } catch {
-              useAuthStore.getState().logout();
-              try {
-                await clearSessionCookies();
-              } catch {
-                // Ignore cookie clearing error
+            } catch (refreshErr: unknown) {
+              const isExpired =
+                axios.isAxiosError(refreshErr) &&
+                (refreshErr.response?.status === 401 ||
+                  refreshErr.response?.status === 403);
+
+              if (isExpired) {
+                useAuthStore.getState().logout();
+                try {
+                  await clearSessionCookies();
+                } catch {
+                  // Ignore cookie clearing error
+                }
+                if (typeof window !== "undefined") {
+                  const currentPath = window.location.pathname;
+                  if (currentPath !== "/login" && currentPath !== "/register") {
+                    const fullPath = currentPath + window.location.search;
+                    const encodedRedirect = encodeURIComponent(fullPath);
+                    window.location.assign(
+                      `/login?redirect=${encodedRedirect}&reason=expired`,
+                    );
+                  }
+                }
               }
-              if (
-                typeof window !== "undefined" &&
-                (window.location.pathname.startsWith("/admin") ||
-                  window.location.pathname.startsWith("/customer") ||
-                  window.location.pathname.startsWith("/technician") ||
-                  window.location.pathname.startsWith("/dashboard"))
-              ) {
-                window.location.assign("/login");
-              }
+              // When the failure is a network or 5xx error, reject the request without logging the user out
               return null;
             } finally {
               refreshPromise = null;

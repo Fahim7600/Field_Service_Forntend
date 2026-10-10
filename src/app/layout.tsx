@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { BackendWarmup } from "@/components/shared/backend-warmup";
 import { Toaster } from "@/components/ui/sonner";
 import { siteConfig } from "@/constants/site";
 import { AuthProvider } from "@/providers/auth-provider";
@@ -39,6 +40,7 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>{children}</AuthProvider>
         </QueryProvider>
+        <BackendWarmup />
         <Toaster />
       </body>
     </html>
