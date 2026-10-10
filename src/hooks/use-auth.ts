@@ -6,6 +6,7 @@ export interface UseAuthReturn {
   role: Role | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isUnreachable: boolean;
   hasRole: (...roles: Role[]) => boolean;
   logout: () => void;
 }
@@ -17,6 +18,7 @@ export function useAuth(): UseAuthReturn {
 
   const isAuthenticated = status === "authenticated" && user !== null;
   const isLoading = status === "loading" || status === "idle";
+  const isUnreachable = status === "unreachable";
   const role = user?.role ?? null;
 
   const hasRole = (...roles: Role[]): boolean => {
@@ -29,6 +31,7 @@ export function useAuth(): UseAuthReturn {
     role,
     isAuthenticated,
     isLoading,
+    isUnreachable,
     hasRole,
     logout,
   };

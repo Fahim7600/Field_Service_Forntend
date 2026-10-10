@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import type React from "react";
+import { AuthGate } from "@/components/layout/auth-gate";
 import { DashboardLayout as DashboardShell } from "@/components/layout/dashboard-layout";
 import { FS_COOKIE_ROLE } from "@/lib/session-cookies";
 import type { Role } from "@/types/auth";
@@ -16,5 +17,9 @@ export default async function DashboardLayout({
       ? rawRole
       : "CUSTOMER";
 
-  return <DashboardShell role={role}>{children}</DashboardShell>;
+  return (
+    <DashboardShell role={role}>
+      <AuthGate role={role}>{children}</AuthGate>
+    </DashboardShell>
+  );
 }
