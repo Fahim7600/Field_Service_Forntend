@@ -91,7 +91,10 @@ export function EditRequestClient({ id }: EditRequestClientProps) {
               </h2>
               <p className="text-sm text-muted-foreground max-w-md">
                 Service request #
-                {request.requestNumber || request.id.slice(0, 8)} is in{" "}
+                {request.requestNumber ||
+                  request.id?.slice(0, 8) ||
+                  id.slice(0, 8)}{" "}
+                is in{" "}
                 <span className="font-semibold text-foreground">
                   {request.status}
                 </span>{" "}
@@ -99,7 +102,7 @@ export function EditRequestClient({ id }: EditRequestClientProps) {
               </p>
             </div>
             <Link
-              href={`/customer/requests/${request.id}`}
+              href={`/customer/requests/${request.id || id}`}
               className={cn(
                 buttonVariants({ variant: "outline" }),
                 "gap-2 mt-2",

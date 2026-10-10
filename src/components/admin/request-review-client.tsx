@@ -221,6 +221,11 @@ export function RequestReviewClient({ id }: RequestReviewClientProps) {
     request.priority === "HIGH" ||
     (request as { isPremium?: boolean }).isPremium;
 
+  const requestId = request.id || (request as { _id?: string })._id || id;
+  const requestNumber =
+    request.requestNumber ||
+    (requestId ? `#${requestId.slice(0, 8)}` : `#${id.slice(0, 8)}`);
+
   const workOrder = request.workOrder;
   const workOrderId = workOrder?.id || request.workOrderId;
 
@@ -273,7 +278,7 @@ export function RequestReviewClient({ id }: RequestReviewClientProps) {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="font-mono text-lg font-bold text-charcoal-900 dark:text-charcoal-100">
-                      {request.requestNumber || `#${request.id.slice(0, 8)}`}
+                      {requestNumber}
                     </h1>
                     <StatusBadge status={request.status} />
                     <PriorityBadge priority={request.priority} />
@@ -632,7 +637,7 @@ export function RequestReviewClient({ id }: RequestReviewClientProps) {
             <AlertDialogDescription>
               Approving request{" "}
               <span className="font-mono font-medium text-foreground">
-                {request.requestNumber || request.id.slice(0, 8)}
+                {requestNumber}
               </span>{" "}
               will create a new Work Order ready for technician assignment and
               visit scheduling.
@@ -665,7 +670,7 @@ export function RequestReviewClient({ id }: RequestReviewClientProps) {
         open={rejectModalOpen}
         onOpenChange={setRejectModalOpen}
         requestId={id}
-        requestNumber={request.requestNumber}
+        requestNumber={request.requestNumber || requestNumber}
       />
     </div>
   );

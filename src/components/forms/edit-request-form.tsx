@@ -200,7 +200,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground mt-1">
               Update the details for request #
-              {request.requestNumber || request.id.slice(0, 8)}.
+              {request.requestNumber || request.id?.slice(0, 8) || ""}.
             </CardDescription>
           </div>
           <Link
