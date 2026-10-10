@@ -173,15 +173,41 @@ export interface RequestsByStatusItem {
   count: number;
 }
 
-export interface DashboardStats {
-  totalRevenueCents: number;
-  activeWorkOrders: number;
-  pendingRequests: number;
-  totalTechnicians: number;
+export interface DashboardRevenueStats {
+  currency?: string;
+  revenueCents?: number;
+  refundedCents?: number;
+  paymentCount?: number;
+}
+
+export interface RawDashboardStats {
   requestsByStatus?: Record<string, number> | RequestsByStatusItem[] | null;
-  totalRequests?: number;
-  activePremiumUsers?: number;
-  lateReviews?: number;
+  workOrdersByStatus?: Record<string, number> | RequestsByStatusItem[] | null;
+  revenue?: DashboardRevenueStats | null;
+  activePremiumUsers?: number | null;
+  lateReviews?: number | null;
+  generatedAt?: string | null;
+  totalRevenueCents?: number | null;
+  revenueCents?: number | null;
+  totalRequests?: number | null;
+  totalTechnicians?: number | null;
+  activeWorkOrders?: number | null;
+  pendingRequests?: number | null;
+}
+
+export interface DashboardStats {
+  revenueCents: number;
+  refundedCents: number;
+  paymentCount: number;
+  currency: string;
+  requestsByStatus: RequestsByStatusItem[];
+  workOrdersByStatus: RequestsByStatusItem[];
+  totalRequests: number;
+  activeJobs: number;
+  activePremiumUsers: number;
+  lateReviews: number;
+  generatedAt?: string | null;
+  totalRevenueCents?: number;
 }
 
 export interface TechnicianAnalytics {

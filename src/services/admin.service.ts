@@ -1,10 +1,10 @@
 import {
   apiDelete,
-  apiGet,
   apiGetPaginated,
   apiPatch,
   apiPost,
 } from "@/lib/api-client";
+import { adminStatsService } from "@/services/admin-stats.service";
 import type {
   AssignTechnicianPayload,
   AvailableTechnician,
@@ -27,7 +27,7 @@ export const adminService = {
    * Retrieves high-level analytics, revenue, volume, and distribution stats for admin overview.
    */
   async fetchDashboardStats(): Promise<DashboardStats> {
-    return apiGet<DashboardStats>("/admin/dashboard-stats");
+    return adminStatsService.fetchDashboardStats();
   },
 
   /**

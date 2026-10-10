@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   BarChart3,
   CalendarCheck,
+  ClipboardCheck,
   ClipboardList,
   Clock,
   Crown,
@@ -14,6 +15,7 @@ import {
   Inbox,
   RefreshCw,
   UserCheck,
+  Wrench,
 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
@@ -24,8 +26,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatMoney } from "@/lib/format";
-import { normalizeRequestsByStatus } from "@/lib/stats-utils";
+import { formatMoney, formatRelative } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { adminService } from "@/services/admin.service";
 import { adminStatsService } from "@/services/admin-stats.service";
@@ -35,7 +36,7 @@ interface StatCardProps {
   title: string;
   value: React.ReactNode;
   icon: React.ComponentType<{ className?: string }>;
-  subtext?: string;
+  subtext?: React.ReactNode;
   href?: string;
   isLoading?: boolean;
   isError?: boolean;
@@ -122,7 +123,7 @@ function StatCard({
               {value}
             </div>
             {subtext && (
-              <p
+              <div
                 className={cn(
                   "text-[11px] mt-1 flex items-center gap-1 font-medium",
                   accent === "red"
@@ -134,9 +135,9 @@ function StatCard({
               >
                 <span>{subtext}</span>
                 {href && (
-                  <ArrowUpRight className="size-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  <ArrowUpRight className="size-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0" />
                 )}
-              </p>
+              </div>
             )}
           </div>
         )}
@@ -159,42 +160,55 @@ export function AdminDashboardClient() {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
-  // 1. Total Revenue Query
+  // 1. Full Dashboard Stats Query
+  const statsQuery = useQuery({
+    queryKey: ["admin-dashboard-stats"],
+    queryFn: () => adminStatsService.fetchDashboardStats(),
+    staleTime: 30000,
+  });
+
+  // Individual select queries sharing the single cache entry
   const revenueQuery = useQuery({
     queryKey: ["admin-dashboard-stats"],
     queryFn: () => adminStatsService.fetchDashboardStats(),
-    select: (data: DashboardStats) => data.totalRevenueCents ?? 0,
+    select: (data: DashboardStats) => ({
+      revenueCents: data.revenueCents,
+      refundedCents: data.refundedCents,
+      paymentCount: data.paymentCount,
+      currency: data.currency,
+    }),
     staleTime: 30000,
   });
 
-  // 2. Total Requests Query
   const requestsQuery = useQuery({
     queryKey: ["admin-dashboard-stats"],
     queryFn: () => adminStatsService.fetchDashboardStats(),
-    select: (data: DashboardStats) => {
-      if (typeof data.totalRequests === "number") return data.totalRequests;
-      return (data.activeWorkOrders ?? 0) + (data.pendingRequests ?? 0);
-    },
+    select: (data: DashboardStats) => data.totalRequests,
     staleTime: 30000,
   });
 
-  // 3. Active Premium Members Query
+  const activeJobsQuery = useQuery({
+    queryKey: ["admin-dashboard-stats"],
+    queryFn: () => adminStatsService.fetchDashboardStats(),
+    select: (data: DashboardStats) => data.activeJobs,
+    staleTime: 30000,
+  });
+
   const premiumQuery = useQuery({
     queryKey: ["admin-dashboard-stats"],
     queryFn: () => adminStatsService.fetchDashboardStats(),
-    select: (data: DashboardStats) => data.activePremiumUsers ?? 0,
+    select: (data: DashboardStats) => data.activePremiumUsers,
     staleTime: 30000,
   });
 
-  // 4. Late Reviews Query
   const lateReviewsQuery = useQuery({
     queryKey: ["admin-dashboard-stats"],
     queryFn: () => adminStatsService.fetchDashboardStats(),
-    select: (data: DashboardStats) => data.lateReviews ?? 0,
+    select: (data: DashboardStats) => data.lateReviews,
     staleTime: 30000,
   });
 
-  // 5. Awaiting Review (from Dispatch Queue type=REQUEST_REVIEW)
+  // Awaiting Review (from Dispatch Queue type=REQUEST_REVIEW)
   const awaitingReviewQuery = useQuery({
     queryKey: ["admin-dispatch-queue-count", "REQUEST_REVIEW"],
     queryFn: () =>
@@ -202,11 +216,11 @@ export function AdminDashboardClient() {
         type: "REQUEST_REVIEW",
         limit: 1,
       }),
-    select: (res) => res.pagination?.total ?? 0,
+    select: (res) => res.meta?.total ?? res.pagination?.total ?? 0,
     staleTime: 30000,
   });
 
-  // 6. Needs Technician (from Dispatch Queue type=NEEDS_TECHNICIAN)
+  // Needs Technician (from Dispatch Queue type=NEEDS_TECHNICIAN)
   const needsTechQuery = useQuery({
     queryKey: ["admin-dispatch-queue-count", "NEEDS_TECHNICIAN"],
     queryFn: () =>
@@ -214,28 +228,7 @@ export function AdminDashboardClient() {
         type: "NEEDS_TECHNICIAN",
         limit: 1,
       }),
-    select: (res) => res.pagination?.total ?? 0,
-    staleTime: 30000,
-  });
-
-  // 7. Status Chart Data Query
-  const statusChartQuery = useQuery({
-    queryKey: ["admin-dashboard-stats"],
-    queryFn: () => adminStatsService.fetchDashboardStats(),
-    select: (data: DashboardStats) => {
-      if (data.requestsByStatus) {
-        return normalizeRequestsByStatus(data.requestsByStatus);
-      }
-      // Fallback distribution from pending / active if available
-      const items = [];
-      if (data.pendingRequests) {
-        items.push({ status: "SUBMITTED", count: data.pendingRequests });
-      }
-      if (data.activeWorkOrders) {
-        items.push({ status: "IN_PROGRESS", count: data.activeWorkOrders });
-      }
-      return normalizeRequestsByStatus(items);
-    },
+    select: (res) => res.meta?.total ?? res.pagination?.total ?? 0,
     staleTime: 30000,
   });
 
@@ -253,7 +246,13 @@ export function AdminDashboardClient() {
     }
   };
 
-  const chartData = (statusChartQuery.data ?? []).map((item) => ({
+  const stats = statsQuery.data;
+  const requestsChartData = (stats?.requestsByStatus ?? []).map((item) => ({
+    label: item.status,
+    value: item.count,
+  }));
+
+  const workOrdersChartData = (stats?.workOrdersByStatus ?? []).map((item) => ({
     label: item.status,
     value: item.count,
   }));
@@ -262,12 +261,29 @@ export function AdminDashboardClient() {
   const awaitingReviewCount = awaitingReviewQuery.data ?? 0;
   const needsTechCount = needsTechQuery.data ?? 0;
 
+  const revData = revenueQuery.data;
+  const revenueSubtext = React.useMemo(() => {
+    if (!revData) return "Invoiced revenue";
+    const parts: string[] = [];
+    if (revData.refundedCents > 0) {
+      parts.push(`Refunded ${formatMoney(revData.refundedCents)}`);
+    }
+    if (revData.paymentCount > 0) {
+      parts.push(`${revData.paymentCount} payments`);
+    }
+    return parts.length > 0 ? parts.join(" • ") : "Invoiced revenue";
+  }, [revData]);
+
+  const headerDescription = stats?.generatedAt
+    ? `High-level operational metrics, dispatch activity, and platform status. Updated ${formatRelative(stats.generatedAt)}.`
+    : "High-level operational metrics, dispatch activity, and platform status.";
+
   return (
     <div className="space-y-6">
       {/* Page Header with Refresh Button */}
       <PageHeader
         title="Admin dashboard"
-        description="High-level operational metrics, dispatch activity, and platform status."
+        description={headerDescription}
         actions={
           <Button
             variant="outline"
@@ -284,14 +300,14 @@ export function AdminDashboardClient() {
         }
       />
 
-      {/* 6 Independent Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      {/* Independent Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
         {/* Card 1: Total Revenue */}
         <StatCard
           title="Total revenue"
-          value={formatMoney(revenueQuery.data)}
+          value={formatMoney(revData?.revenueCents ?? 0)}
           icon={DollarSign}
-          subtext="Invoiced revenue"
+          subtext={revenueSubtext}
           isLoading={revenueQuery.isLoading}
           isError={revenueQuery.isError}
           onRetry={() => revenueQuery.refetch()}
@@ -302,25 +318,37 @@ export function AdminDashboardClient() {
           title="Total requests"
           value={(requestsQuery.data ?? 0).toLocaleString()}
           icon={ClipboardList}
-          subtext="Lifetime requests"
+          subtext="Lifetime tickets"
           isLoading={requestsQuery.isLoading}
           isError={requestsQuery.isError}
           onRetry={() => requestsQuery.refetch()}
         />
 
-        {/* Card 3: Active Premium Members */}
+        {/* Card 3: Active Jobs */}
+        <StatCard
+          title="Active jobs"
+          value={(activeJobsQuery.data ?? 0).toLocaleString()}
+          icon={Wrench}
+          subtext="In execution"
+          href="/admin/work-orders"
+          isLoading={activeJobsQuery.isLoading}
+          isError={activeJobsQuery.isError}
+          onRetry={() => activeJobsQuery.refetch()}
+        />
+
+        {/* Card 4: Active Premium Members */}
         <StatCard
           title="Active premium"
           value={(premiumQuery.data ?? 0).toLocaleString()}
           icon={Crown}
-          subtext="View subscriptions"
+          subtext="VIP members"
           href="/admin/subscriptions"
           isLoading={premiumQuery.isLoading}
           isError={premiumQuery.isError}
           onRetry={() => premiumQuery.refetch()}
         />
 
-        {/* Card 4: Late Reviews */}
+        {/* Card 5: Late Reviews */}
         <StatCard
           title="Late reviews"
           value={lateReviewsCount.toLocaleString()}
@@ -333,7 +361,7 @@ export function AdminDashboardClient() {
           onRetry={() => lateReviewsQuery.refetch()}
         />
 
-        {/* Card 5: Awaiting Review */}
+        {/* Card 6: Awaiting Review */}
         <StatCard
           title="Awaiting review"
           value={awaitingReviewCount.toLocaleString()}
@@ -346,7 +374,7 @@ export function AdminDashboardClient() {
           onRetry={() => awaitingReviewQuery.refetch()}
         />
 
-        {/* Card 6: Needs Technician */}
+        {/* Card 7: Needs Technician */}
         <StatCard
           title="Needs technician"
           value={needsTechCount.toLocaleString()}
@@ -360,78 +388,92 @@ export function AdminDashboardClient() {
         />
       </div>
 
-      {/* Requests by Status Chart Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <ChartCard
-            title="Requests by status"
-            description="Breakdown of service requests across current operational stages."
-            icon={BarChart3}
-          >
-            <StatusBarChartLazy
-              data={chartData}
-              height={260}
-              ariaLabel="Requests categorized by operational status"
-              emptyTitle="No request status data"
-              emptyDescription="Status distribution will populate as service requests are created."
-            />
-          </ChartCard>
-        </div>
+      {/* Two Real Status Charts: Requests & Work Orders */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Chart 1: Requests by Status */}
+        <ChartCard
+          title="Requests by status"
+          description="Breakdown of customer service requests across initial lifecycle stages."
+          icon={BarChart3}
+        >
+          <StatusBarChartLazy
+            data={requestsChartData}
+            height={260}
+            ariaLabel="Requests categorized by operational status"
+            emptyTitle="No request status data"
+            emptyDescription="Status distribution will populate as service requests are created."
+          />
+        </ChartCard>
 
-        {/* Quick Actions Card */}
-        <div>
-          <Card className="border-border bg-card shadow-xs h-full flex flex-col justify-between">
-            <CardHeader className="pb-3 border-b border-border/50 bg-panel/30">
-              <CardTitle className="text-sm font-semibold text-foreground font-heading">
-                Quick actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-3 flex-1 flex flex-col justify-center">
-              <Link
-                href="/admin/dispatch"
-                className={cn(
-                  buttonVariants({ variant: "default" }),
-                  "w-full justify-between gap-2 shadow-2xs",
-                )}
-              >
-                <span className="flex items-center gap-2">
-                  <CalendarCheck className="size-4" />
-                  <span>Dispatch Queue</span>
-                </span>
-                <ArrowUpRight className="size-4 opacity-70" />
-              </Link>
-
-              <Link
-                href="/admin/work-orders"
-                className={cn(
-                  buttonVariants({ variant: "outline" }),
-                  "w-full justify-between gap-2 shadow-2xs",
-                )}
-              >
-                <span className="flex items-center gap-2">
-                  <ClipboardList className="size-4" />
-                  <span>Work Orders</span>
-                </span>
-                <ArrowUpRight className="size-4 opacity-70" />
-              </Link>
-
-              <Link
-                href="/admin/invoices"
-                className={cn(
-                  buttonVariants({ variant: "outline" }),
-                  "w-full justify-between gap-2 shadow-2xs",
-                )}
-              >
-                <span className="flex items-center gap-2">
-                  <FileText className="size-4" />
-                  <span>Invoices & Billing</span>
-                </span>
-                <ArrowUpRight className="size-4 opacity-70" />
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Chart 2: Work Orders by Status */}
+        <ChartCard
+          title="Work orders by status"
+          description="Operational progression across all assigned, in-progress, and completed work orders."
+          icon={ClipboardCheck}
+        >
+          <StatusBarChartLazy
+            data={workOrdersChartData}
+            height={260}
+            ariaLabel="Work orders categorized by operational status"
+            emptyTitle="No work order data"
+            emptyDescription="Work order distribution will populate as jobs progress through dispatch."
+          />
+        </ChartCard>
       </div>
+
+      {/* Quick Actions Card */}
+      <Card className="border-border bg-card shadow-xs">
+        <CardHeader className="pb-3 border-b border-border/50 bg-panel/30">
+          <CardTitle className="text-sm font-semibold text-foreground font-heading">
+            Quick management shortcuts
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Link
+              href="/admin/dispatch"
+              className={cn(
+                buttonVariants({ variant: "default" }),
+                "justify-between gap-2 shadow-2xs",
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <CalendarCheck className="size-4" />
+                <span>Dispatch Queue</span>
+              </span>
+              <ArrowUpRight className="size-4 opacity-70" />
+            </Link>
+
+            <Link
+              href="/admin/work-orders"
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "justify-between gap-2 shadow-2xs",
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <ClipboardList className="size-4" />
+                <span>Work Orders</span>
+              </span>
+              <ArrowUpRight className="size-4 opacity-70" />
+            </Link>
+
+            <Link
+              href="/admin/invoices"
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "justify-between gap-2 shadow-2xs",
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <FileText className="size-4" />
+                <span>Invoices & Billing</span>
+              </span>
+              <ArrowUpRight className="size-4 opacity-70" />
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
