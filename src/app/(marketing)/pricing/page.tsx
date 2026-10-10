@@ -1,7 +1,7 @@
 import { ArrowRight, Check, X } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { buildFaqJsonLd, FaqSection } from "@/components/marketing/faq-section";
+import { FaqSection } from "@/components/marketing/faq-section";
 import { JsonLd } from "@/components/shared/json-ld";
 import { buttonVariants } from "@/components/ui/button";
 import { FAQ_ITEMS } from "@/constants/faq";
@@ -10,6 +10,7 @@ import { siteConfig } from "@/constants/site";
 import { formatMoney } from "@/lib/format";
 import { formatInterval, getYearlySavings } from "@/lib/plan-utils";
 import { getPublicPlans } from "@/lib/public-data";
+import { buildFaqJsonLd } from "@/lib/seo/faq-json-ld";
 import { cn } from "@/lib/utils";
 
 export const revalidate = 300;
@@ -134,7 +135,7 @@ export default async function PricingPage() {
               >
                 Simple, transparent pricing
               </h1>
-              <p className="text-base sm:text-lg text-ash mt-4 leading-relaxed">
+              <p className="text-base sm:text-lg text-[#E2E8F0] mt-4 leading-relaxed">
                 Booking service visits is completely free. Premium membership is
                 optional for property owners who want priority review turnaround
                 and ongoing invoice labor savings.
@@ -413,16 +414,16 @@ export default async function PricingPage() {
         >
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-              <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#C2410C]">
                 Plan Comparison
               </p>
               <h2
                 id="comparison-heading"
-                className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mt-2"
+                className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] mt-2"
               >
                 Compare Free vs. Premium
               </h2>
-              <p className="text-sm sm:text-base text-muted-foreground mt-3">
+              <p className="text-sm sm:text-base text-[#334155] mt-3">
                 Review all policies and perks side by side before choosing your
                 coverage tier.
               </p>
@@ -437,19 +438,19 @@ export default async function PricingPage() {
                   <tr className="border-b border-border bg-muted/50">
                     <th
                       scope="col"
-                      className="py-4 px-6 font-bold text-foreground w-1/2 sm:w-2/5"
+                      className="py-4 px-6 font-bold text-[#0F172A] w-1/2 sm:w-2/5"
                     >
                       Feature
                     </th>
                     <th
                       scope="col"
-                      className="py-4 px-6 font-bold text-foreground w-1/4 sm:w-3/10 text-center"
+                      className="py-4 px-6 font-bold text-[#0F172A] w-1/4 sm:w-3/10 text-center"
                     >
                       Free
                     </th>
                     <th
                       scope="col"
-                      className="py-4 px-6 font-bold text-amber-600 dark:text-amber-400 w-1/4 sm:w-3/10 text-center"
+                      className="py-4 px-6 font-bold text-[#C2410C] w-1/4 sm:w-3/10 text-center"
                     >
                       Premium
                     </th>
@@ -463,11 +464,11 @@ export default async function PricingPage() {
                     >
                       <th
                         scope="row"
-                        className="py-4 px-6 font-medium text-foreground text-xs sm:text-sm"
+                        className="py-4 px-6 font-medium text-[#0F172A] text-xs sm:text-sm"
                       >
                         {row.name}
                       </th>
-                      <td className="py-4 px-6 text-center text-xs sm:text-sm text-muted-foreground">
+                      <td className="py-4 px-6 text-center text-xs sm:text-sm text-[#334155]">
                         {typeof row.free === "boolean" ? (
                           row.free ? (
                             <span className="inline-flex items-center justify-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
@@ -475,8 +476,8 @@ export default async function PricingPage() {
                               <span className="sr-only">Included</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center justify-center gap-1.5 text-muted-foreground font-medium">
-                              <X className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                            <span className="inline-flex items-center justify-center gap-1.5 text-[#475569] font-medium">
+                              <X className="h-4 w-4 shrink-0 text-[#475569]/60" />
                               <span className="sr-only">Not included</span>
                             </span>
                           )
@@ -484,7 +485,7 @@ export default async function PricingPage() {
                           <span>{row.free}</span>
                         )}
                       </td>
-                      <td className="py-4 px-6 text-center text-xs sm:text-sm font-semibold text-foreground">
+                      <td className="py-4 px-6 text-center text-xs sm:text-sm font-semibold text-[#0F172A]">
                         {typeof row.premium === "boolean" ? (
                           row.premium ? (
                             <span className="inline-flex items-center justify-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
@@ -492,15 +493,13 @@ export default async function PricingPage() {
                               <span className="sr-only">Included</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center justify-center gap-1.5 text-muted-foreground font-medium">
-                              <X className="h-4 w-4 shrink-0" />
+                            <span className="inline-flex items-center justify-center gap-1.5 text-[#475569] font-medium">
+                              <X className="h-4 w-4 shrink-0 text-[#475569]/60" />
                               <span className="sr-only">Not included</span>
                             </span>
                           )
                         ) : (
-                          <span className="text-amber-600 dark:text-amber-400">
-                            {row.premium}
-                          </span>
+                          <span className="text-[#C2410C]">{row.premium}</span>
                         )}
                       </td>
                     </tr>
@@ -522,7 +521,7 @@ export default async function PricingPage() {
         {/* Closing CTA Band */}
         <section
           aria-labelledby="pricing-cta-heading"
-          className="py-16 bg-charcoal-900 border-t border-charcoal-800 text-white text-center"
+          className="py-16 bg-[#111827] border-t border-[#1F2937] text-white text-center"
         >
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
             <h2
@@ -531,7 +530,7 @@ export default async function PricingPage() {
             >
               Need a certified technician today?
             </h2>
-            <p className="text-sm sm:text-base text-ash max-w-xl mx-auto">
+            <p className="text-sm sm:text-base text-[#E2E8F0] max-w-xl mx-auto">
               You do not need a paid subscription to schedule a service visit.
               Book on-demand anytime with transparent pricing.
             </p>
