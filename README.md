@@ -132,8 +132,24 @@ Field Service uses a purpose-built **Industrial Amber** color system engineered 
 ### UI Rules & Button Variants
 
 - **Primary Button Rule**: Standard action buttons use `charcoal-800` (`#1F2937`) as the primary fill to maintain an authoritative, high-contrast industrial look.
-- **Exclusive CTA Rule**: The `cta` button variant (`bg-gradient-to-r from-brand-500 to-brand-700 text-white shadow-sm`) is the **ONLY** place bold orange gradient styling is applied to buttons, reserved exclusively for primary transactional actions (e.g., *"Book Service"*, *"Pay Invoice"*).
-- **Gradient Line**: The utility class `.gradient-line` provides a 3px amber-to-terracotta border used at the base of the navigation bar and hero accents.
+- **Exclusive CTA Rule & WCAG Compliance**: The `cta` button variant uses a deep terracotta gradient `from-brand-700 (#C2410C) to-brand-800 (#9A3412)` with white semibold text and visible 2px focus ring. This guarantees a minimum 5.18:1 contrast ratio across the whole gradient (avoiding the lighter `#F97316` stop which failed WCAG AA with white text).
+- **Public Page Color Rules**:
+  - Light background: `#FFFFFF` with alternating sections in `#F8FAFC`.
+  - Headings: `#0F172A` (16.08:1 contrast).
+  - Body text: `#334155` (9.66:1 contrast; never lighter than `#475569`).
+  - Text links & eyebrows: `#C2410C` (5.89:1 contrast; `#F97316` is never used for text on white).
+  - Dark bands & navbar: `#111827` background with `#FFFFFF` headings, `#E2E8F0` body text (12.42:1), and `#CBD5E1` secondary labels (10.02:1). Active links use `#FBBF24` (9.28:1).
+  - Borders: `#E2E8F0` (light) and `#1F2937` (dark).
+- **Automated Contrast Checker Script**:
+  - Located at `scripts/check-contrast.mjs`.
+  - Run via:
+    ```bash
+    npm run check:contrast
+    ```
+  - Calculates WCAG 2.1 relative luminance and contrast ratios across 16 explicit token pairs, exiting with code 1 if any token pair fails the 4.5:1 (normal text) or 3.0:1 (large text) threshold.
+- **Server/Client Component Boundary Rule**:
+  - Files marked with `"use client"` must export **components only**.
+  - Pure functions, JSON-LD builders (such as `buildFaqJsonLd` in `src/lib/seo/faq-json-ld.ts`), runtime constants, and schemas needed by Server Components must reside in modules without `"use client"`. Server components cannot call non-component runtime functions exported from client modules.
 
 ---
 
@@ -316,6 +332,7 @@ One-click demo login buttons are integrated into the login page (`/login`) for f
 | `npm run fix` | `biome check --write .` | Automatically fixes linting and formatting issues |
 | `npm run typecheck`| `tsc --noEmit` | Validates TypeScript types across the project |
 | `npm run check:links`| `node scripts/check-links.mjs` | Audits sidebar dashboard links against physical App Router pages |
+| `npm run check:contrast`| `node scripts/check-contrast.mjs` | Audits WCAG 2.1 AA contrast ratios across design tokens |
 
 ---
 
