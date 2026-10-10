@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Bell,
   Calendar,
   CalendarCheck,
   ClipboardCheck,
@@ -53,6 +54,11 @@ export const CUSTOMER_LINKS: DashboardLink[] = [
     icon: History,
   },
   {
+    label: "Notifications",
+    href: "/customer/notifications",
+    icon: Bell,
+  },
+  {
     label: "Profile",
     href: "/customer/profile",
     icon: UserCog,
@@ -74,6 +80,11 @@ export const TECHNICIAN_LINKS: DashboardLink[] = [
     label: "Schedule",
     href: "/technician/schedule",
     icon: Calendar,
+  },
+  {
+    label: "Notifications",
+    href: "/technician/notifications",
+    icon: Bell,
   },
   {
     label: "Profile",
@@ -112,6 +123,11 @@ export const ADMIN_LINKS: DashboardLink[] = [
     label: "Users",
     href: "/admin/users",
     icon: Users,
+  },
+  {
+    label: "Notifications",
+    href: "/admin/notifications",
+    icon: Bell,
   },
   {
     label: "Profile",
