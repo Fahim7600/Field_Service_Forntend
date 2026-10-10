@@ -28,13 +28,32 @@ export function NavLinks({
           : "flex items-center space-x-1 lg:space-x-2",
         className,
       )}
-      aria-label="Main Navigation"
+      aria-label={isVertical ? "Mobile Navigation" : "Main Navigation"}
     >
       {mainNav.map((item) => {
         const isActive =
           item.href === "/"
             ? pathname === "/"
             : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+        if (isVertical) {
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onLinkClick}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "h-12 flex items-center px-4 rounded-md text-base font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#FBBF24] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111827]",
+                isActive
+                  ? "bg-white/10 text-white font-semibold border-l-4 border-[#FBBF24] pl-3 rounded-l-none"
+                  : "text-[#E2E8F0] hover:text-white hover:bg-white/5",
+              )}
+            >
+              {item.title}
+            </Link>
+          );
+        }
 
         return (
           <Link
@@ -43,22 +62,20 @@ export function NavLinks({
             onClick={onLinkClick}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "text-sm font-medium transition-colors relative py-2 px-3 rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
+              "group relative py-2 px-3 text-sm font-medium transition-colors rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#FBBF24] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111827]",
               isActive
-                ? "text-charcoal-900 font-semibold"
-                : "text-charcoal-600 hover:text-charcoal-900 hover:bg-muted/50",
-              isVertical &&
-                isActive &&
-                "bg-muted/70 text-charcoal-900 border-l-2 border-brand-500 pl-3 rounded-l-none",
+                ? "text-white font-semibold"
+                : "text-[#E2E8F0] hover:text-white",
             )}
           >
             {item.title}
-            {!isVertical && isActive && (
-              <span
-                className="absolute bottom-0 left-3 right-3 h-[2px] bg-brand-500 rounded-full"
-                aria-hidden="true"
-              />
-            )}
+            <span
+              className={cn(
+                "absolute bottom-0 left-3 right-3 h-[2px] bg-[#FBBF24] rounded-full transition-transform duration-200 origin-center",
+                isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
+              )}
+              aria-hidden="true"
+            />
           </Link>
         );
       })}

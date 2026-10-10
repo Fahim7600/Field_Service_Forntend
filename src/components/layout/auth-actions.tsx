@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { UserMenu } from "@/components/layout/user-menu";
-import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -43,14 +42,18 @@ export function AuthActions({ className, onActionClick }: AuthActionsProps) {
       <Link
         href="/login"
         onClick={onActionClick}
-        className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+        className={cn(
+          "inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-3.5 transition-colors border border-white/20 text-white hover:bg-white/10 hover:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#FBBF24] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111827]",
+        )}
       >
         Login
       </Link>
       <Link
         href="/register"
         onClick={onActionClick}
-        className={cn(buttonVariants({ variant: "default", size: "sm" }))}
+        className={cn(
+          "inline-flex items-center justify-center rounded-md text-sm font-semibold h-9 px-3.5 transition-colors bg-white text-[#111827] hover:bg-slate-100 shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#FBBF24] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111827]",
+        )}
       >
         Register
       </Link>

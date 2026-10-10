@@ -17,11 +17,11 @@ export function Navbar() {
         Skip to main content
       </a>
 
-      <header className="sticky top-0 z-40 w-full bg-card border-b border-border shadow-xs">
+      <header className="sticky top-0 z-40 w-full bg-[#111827] border-b border-[#1F2937] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Logo on Left */}
           <div className="flex items-center gap-6">
-            <Logo />
+            <Logo variant="light" />
           </div>
 
           {/* Center Navigation Links (Desktop) */}
@@ -47,8 +47,8 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* 3px amber-to-terracotta gradient line at bottom edge */}
-        <div className="gradient-line w-full" aria-hidden="true" />
+        {/* 2px amber accent line along the very bottom edge */}
+        <div className="h-[2px] w-full bg-[#F97316]" aria-hidden="true" />
       </header>
     </>
   );
