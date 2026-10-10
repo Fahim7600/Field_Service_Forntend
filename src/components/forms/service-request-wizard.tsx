@@ -16,7 +16,10 @@ import {
   MapPin,
   Plus,
   RefreshCw,
+  Sparkles,
+  Star,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { ImagePicker, type PickedImage } from "@/components/forms/image-picker";
@@ -28,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCreateRequest } from "@/hooks/use-create-request";
+import { usePremiumStatus } from "@/hooks/use-premium-status";
 import { extractArray } from "@/lib/extract-data";
 import { cn } from "@/lib/utils";
 import {
@@ -88,6 +92,7 @@ const STEPS = [
 
 export function ServiceRequestWizard() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const { isPremium } = usePremiumStatus();
 
   // Fetch Categories
   const {
@@ -574,6 +579,32 @@ export function ServiceRequestWizard() {
                       </span>
                     </div>
                   </div>
+                </div>
+
+                {/* Priority Review Status Note */}
+                <div className="rounded-xl border border-border/80 bg-muted/30 px-3.5 py-2.5 text-xs">
+                  {isPremium ? (
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-medium">
+                      <Star className="size-3.5 fill-emerald-600 text-emerald-600 shrink-0" />
+                      <span>
+                        Premium: your request is reviewed first (target within 2
+                        hours).
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2 text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="size-3.5 text-brand-600 shrink-0" />
+                        <span>Premium members get priority review.</span>
+                      </div>
+                      <Link
+                        href="/customer/premium"
+                        className="font-semibold text-brand-600 hover:underline shrink-0 text-[11px]"
+                      >
+                        Upgrade
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

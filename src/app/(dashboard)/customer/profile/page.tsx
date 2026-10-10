@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { CustomerMembershipCard } from "@/components/customer/customer-membership-card";
 import { AccountDetailsForm } from "@/components/forms/account-details-form";
 import { SecurityCard } from "@/components/forms/security-card";
 import { Container } from "@/components/shared/container";
@@ -23,12 +24,14 @@ export default function CustomerProfilePage() {
       <Suspense
         fallback={
           <div className="space-y-6">
+            <Skeleton className="h-44 w-full rounded-xl" />
             <Skeleton className="h-64 w-full rounded-xl" />
             <Skeleton className="h-44 w-full rounded-xl" />
           </div>
         }
       >
         <div className="space-y-6">
+          <CustomerMembershipCard />
           <AccountDetailsForm />
           <SecurityCard />
         </div>
