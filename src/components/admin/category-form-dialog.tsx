@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertCircle,
   AlertTriangle,
   CheckCircle2,
   Layers,
@@ -12,7 +11,6 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 
 import { MoneyInput } from "@/components/forms/money-input";
@@ -39,6 +37,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, getErrorMessage } from "@/lib/api-client";
 import { centsToInputString, parseMoneyToCents } from "@/lib/money";
+import { messages, notify } from "@/lib/notify";
 import { catalogService } from "@/services/catalog.service";
 import type { CategoryPayload, ServiceCategory, Skill } from "@/types/admin";
 
@@ -120,6 +119,7 @@ export function CategoryFormDialog({
   }, [open, defaultValues, reset]);
 
   const mutation = useMutation({
+    meta: { silent: true },
     mutationFn: async (values: CategoryFormValues) => {
       const basePriceCents = parseMoneyToCents(values.priceString) ?? 0;
 
@@ -159,13 +159,10 @@ export function CategoryFormDialog({
 
       return catalogService.createCategory(payload);
     },
-    onSuccess: (savedCategory) => {
-      toast.success(
-        isEditing ? "Service Type Updated" : "Service Type Created",
-        {
-          description: `${savedCategory?.name || "Service type"} has been successfully saved to the catalog.`,
-          icon: <CheckCircle2 className="size-4 text-emerald-600" />,
-        },
+    onSuccess: () => {
+      notify.success(
+        messages.admin.categorySaved.title,
+        messages.admin.categorySaved.description,
       );
       queryClient.invalidateQueries({ queryKey: ["service-categories"] });
       queryClient.invalidateQueries({ queryKey: ["skills"] });
@@ -183,10 +180,7 @@ export function CategoryFormDialog({
           message: "A service category with this name already exists.",
         });
       } else {
-        toast.error(isEditing ? "Update Failed" : "Creation Failed", {
-          description: errMsg,
-          icon: <AlertCircle className="size-4 text-destructive" />,
-        });
+        notify.fromError(err);
       }
     },
   });
@@ -378,7 +372,13 @@ export function CategoryFormDialog({
               ) : (
                 <CheckCircle2 className="size-4 mr-1.5" />
               )}
-              <span>{isEditing ? "Save Changes" : "Create Service Type"}</span>
+              <span>
+                {mutation.isPending
+                  ? "Saving..."
+                  : isEditing
+                    ? "Save Changes"
+                    : "Create Service Type"}
+              </span>
             </Button>
           </DialogFooter>
         </form>

@@ -18,7 +18,6 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
-import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -48,6 +47,7 @@ import {
 import { usePremiumStatus } from "@/hooks/use-premium-status";
 import { ApiError, getErrorMessage } from "@/lib/api-client";
 import { formatMoney, safeFormatDate } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import { formatInterval, getYearlySavings } from "@/lib/plan-utils";
 import { isSafeCheckoutUrl, redirectToCheckout } from "@/lib/stripe-redirect";
 import { cn } from "@/lib/utils";
@@ -120,9 +120,7 @@ export function PremiumPricingClient() {
         if (current && current.status === "ACTIVE") {
           window.clearInterval(intervalId);
           setReturnStatus(null);
-          toast.success("Welcome to Premium", {
-            description: "Your benefits are now active.",
-          });
+          notify.success("Welcome to Premium", "Your benefits are now active.");
           queryClient.invalidateQueries({ queryKey: ["my-subscription"] });
           return;
         }
@@ -157,19 +155,24 @@ export function PremiumPricingClient() {
 
   // Stripe Checkout Initiation Mutation
   const checkoutMutation = useMutation({
+    meta: { silent: true },
     mutationFn: async (planId: string) => {
       setSelectedPlanId(planId);
       return subscriptionsService.startCheckout(planId);
     },
     onSuccess: (data) => {
       if (isSafeCheckoutUrl(data.url)) {
-        toast.info("Redirecting to secure Stripe Checkout...");
+        notify.info(
+          messages.payments.redirectingToStripe.title,
+          messages.payments.redirectingToStripe.description,
+        );
         redirectToCheckout(data.url);
       } else {
         setSelectedPlanId(null);
-        toast.error("Could not start checkout", {
-          description: "Invalid checkout redirect URL received from server.",
-        });
+        notify.error(
+          "Could not start checkout",
+          "Invalid checkout redirect URL received from server.",
+        );
       }
     },
     onError: (err: unknown) => {
@@ -180,12 +183,10 @@ export function PremiumPricingClient() {
         getErrorMessage(err).toLowerCase().includes("already subscribed");
 
       if (isConflict) {
-        toast.error(getErrorMessage(err));
+        notify.fromError(err);
         refetchSub();
       } else {
-        toast.error("Could not start checkout", {
-          description: getErrorMessage(err),
-        });
+        notify.fromError(err, "Could not start checkout");
       }
     },
   });
@@ -195,17 +196,12 @@ export function PremiumPricingClient() {
     mutationFn: () => subscriptionsService.cancelRenewal(),
     onSuccess: () => {
       setIsCancelDialogOpen(false);
-      toast.success("Renewal cancelled", {
-        description:
-          "You keep all Premium benefits until the end of your current period.",
-      });
+      notify.success(
+        messages.premium.renewalCancelled.title,
+        messages.premium.renewalCancelled.description,
+      );
       queryClient.invalidateQueries({ queryKey: ["my-subscription"] });
       refetchSub();
-    },
-    onError: (err: unknown) => {
-      toast.error("Failed to cancel renewal", {
-        description: getErrorMessage(err),
-      });
     },
   });
 

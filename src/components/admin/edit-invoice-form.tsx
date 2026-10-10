@@ -5,7 +5,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Info, Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import * as React from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 
 import { MoneyInput } from "@/components/forms/money-input";
@@ -22,12 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { getErrorMessage } from "@/lib/api-client";
 import {
   centsToInputString,
   MAX_ALLOWED_CENTS,
   parseMoneyToCents,
 } from "@/lib/money";
+import { messages, notify } from "@/lib/notify";
 import { financeService } from "@/services/finance.service";
 import type { Invoice, InvoiceItemType } from "@/types/api";
 
@@ -131,9 +130,10 @@ export function EditInvoiceForm({
         notes: values.notes?.trim() || undefined,
       });
 
-      toast.success("Invoice updated", {
-        description: "Totals were recalculated by the server.",
-      });
+      notify.success(
+        messages.invoices.updated.title,
+        messages.invoices.updated.description,
+      );
 
       await queryClient.invalidateQueries({
         queryKey: ["invoices", invoice.id],
@@ -142,9 +142,7 @@ export function EditInvoiceForm({
 
       onSuccess();
     } catch (err: unknown) {
-      toast.error("Failed to update invoice charges", {
-        description: getErrorMessage(err),
-      });
+      notify.fromError(err);
       // Invalidate in case status changed
       queryClient.invalidateQueries({ queryKey: ["invoices", invoice.id] });
     } finally {

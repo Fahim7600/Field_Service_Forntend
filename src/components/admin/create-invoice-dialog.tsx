@@ -15,7 +15,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 
 import { MoneyInput } from "@/components/forms/money-input";
@@ -42,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/api-client";
 import { safeFormatDate } from "@/lib/format";
 import { MAX_ALLOWED_CENTS, parseMoneyToCents } from "@/lib/money";
+import { messages, notify } from "@/lib/notify";
 import { financeService } from "@/services/finance.service";
 import { workOrdersService } from "@/services/work-orders.service";
 import type { InvoiceItemType, WorkOrder } from "@/types/api";
@@ -178,9 +178,10 @@ export function CreateInvoiceDialog({
         notes: values.notes?.trim() || undefined,
       });
 
-      toast.success("Invoice created", {
-        description: "A draft invoice is ready for review.",
-      });
+      notify.success(
+        messages.invoices.created.title,
+        messages.invoices.created.description,
+      );
 
       await queryClient.invalidateQueries({ queryKey: ["invoices"] });
       await queryClient.invalidateQueries({ queryKey: ["work-orders"] });
@@ -211,9 +212,7 @@ export function CreateInvoiceDialog({
           existingInvoiceId: matchedWO?.invoiceId || undefined,
         });
       } else {
-        toast.error("Failed to create invoice", {
-          description: msg,
-        });
+        notify.fromError(err);
       }
     } finally {
       setIsSubmitting(false);
