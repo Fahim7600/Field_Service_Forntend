@@ -42,7 +42,7 @@ export default function GlobalError({
               onClick={() => window.location.assign("/")}
               className="px-5 py-2.5 border border-[#E5E7EB] text-[#1F2937] rounded-xl text-sm font-semibold hover:bg-[#F9FAFB] transition-all cursor-pointer"
             >
-              Reload Application
+              Return to Home
             </button>
           </div>
         </div>
