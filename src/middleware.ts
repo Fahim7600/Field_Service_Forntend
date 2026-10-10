@@ -55,7 +55,10 @@ export function middleware(req: NextRequest) {
   // 2. Guard /change-password route
   if (isChangePasswordRoute) {
     if (!role) {
-      const loginUrl = new URL("/login?redirect=%2Fchange-password", req.url);
+      const loginUrl = new URL(
+        "/login?redirect=%2Fchange-password&reason=login_required",
+        req.url,
+      );
       return NextResponse.redirect(loginUrl);
     }
     return NextResponse.next();
@@ -74,11 +77,14 @@ export function middleware(req: NextRequest) {
   if (isDashboardRoute) {
     const requiredRole = PATH_ROLE_MAP[firstSegment];
 
-    // If no role cookie exists, redirect to login with encoded redirect param
+    // If no role cookie exists, redirect to login with encoded redirect param and reason
     if (!role) {
       const fullPath = pathname + search;
       const encodedRedirect = encodeURIComponent(fullPath);
-      const loginUrl = new URL(`/login?redirect=${encodedRedirect}`, req.url);
+      const loginUrl = new URL(
+        `/login?redirect=${encodedRedirect}&reason=login_required`,
+        req.url,
+      );
       return NextResponse.redirect(loginUrl);
     }
 
