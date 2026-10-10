@@ -546,6 +546,13 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
   - [x] Technician Performance page (`/technician/performance`) with task completion summary, status chart, next visits, and recently completed tasks
   - [x] Pure statistics computation helper (`computeTechnicianStats`) aggregating real task lifecycle data and service report hours
   - [x] Quick performance navigation shortcut in technician overview dashboard and flat sidebar link
+- [x] **Phase 16: Unified UX Notifications, Query State Consistency & Action Protection**
+  - [x] Centralized typed message catalog (`src/lib/messages.ts`) with succinct statements (<40 chars) and actionable next steps (<100 chars)
+  - [x] Standardized notification wrapper (`src/lib/notify.ts`) with automatic HTTP error code normalization, deduplication, and silent 401 suppression
+  - [x] Global TanStack Query policy (`src/lib/query-client.ts`) eliminating background query failure toasts and duplicate mutation errors
+  - [x] Shared state primitives: `<QueryError />` (friendly messaging, network wake-up notice, and retry action), `<EmptyState />`, and `<DetailNotFound />`
+  - [x] Accessible `<ConfirmDialog />` (AlertDialog primitive) for destructive actions (invoice voiding, payment refunds, cancellations, role changes)
+  - [x] Complete double-submit prevention and loading button indicators across all mutations and Stripe checkout redirects
 
 
 ---
@@ -844,6 +851,59 @@ Field Service is engineered for high resilience against slow or sleeping server 
 - **`src/app/robots.ts`**: Allows indexing of public routes while blocking internal dashboards and API routes (`/admin`, `/customer`, `/technician`, `/api`, `/payment`, etc.).
 - **`src/app/opengraph-image.tsx` & `src/app/twitter-image.tsx`**: Dynamic 1200x630 social preview image generated using `next/og` `ImageResponse` with system fonts and industrial charcoal/amber branding.
 - **Route Error Boundary**: Dedicated `src/app/(marketing)/error.tsx` providing graceful recovery, retry button, and home navigation if an unexpected runtime failure occurs.
+
+---
+
+## 🎨 UX Conventions
+
+The application adheres to a unified UX design language governing toasts, query states, destructive confirmations, and button submit protections:
+
+### 1. Toast Notification Rules
+- **User-Initiated Actions Only**: Successful mutations (create, update, submit, assign, schedule, pay start, refund, cancel, mark all read, copy) trigger exactly **one** short success toast via `notify.success(title, description)`.
+- **Silent Background Operations**: Background polling (notifications bell, active work order status polling), client navigation, and automatic refetches **never** display toasts.
+- **Failed Mutations**: Mutation errors produce exactly **one** error toast via `notify.fromError(error, fallbackTitle)`. Handled globally by `MutationCache.onError`, preventing duplicate toasts across components and hooks.
+- **Copy & Formatting Style**:
+  - Titles are concise statements (<40 characters) without exclamation marks or emojis (e.g., `"Request submitted"`).
+  - Descriptions explain the immediate next step or consequence (<100 characters, e.g., `"Our team will review it shortly."`).
+  - Raw HTTP status codes, error dumps, and stack traces are never exposed to users.
+
+### 2. Centralized Message Catalog (`src/lib/messages.ts`)
+- All user-facing notification strings are strictly typed and centralized across functional domains:
+  - `requests`: `submitted`, `updated`, `cancelled`, `rescheduled`, `photosFailed`
+  - `dispatch`: `approved`, `rejected`, `assigned`, `scheduleSet`, `scheduleConflict`, `reassigned`
+  - `tasks`: `accepted`, `rejected`, `statusUpdated`, `reportSubmitted`, `reportRetry`
+  - `invoices`: `created`, `updated`, `issued`, `voided`
+  - `payments`: `redirectingToStripe`, `refunded`, `refundFailed`
+  - `premium`: `checkoutStarted`, `renewalCancelled`, `renewalResumed`
+  - `feedback`: `submitted`, `alreadyRated`
+  - `profile`: `updated`, `passwordChanged`, `skillsSaved`
+  - `admin`: `userRoleChanged`, `userStatusChanged`, `categorySaved`, `skillSaved`, `deleted`
+  - `notifications`: `allRead`
+  - `generic`: `saved`, `deleted`, `copied`, `networkProblem`, `forbidden`, `notFound`, `tryAgain`, `validation`
+
+### 3. Page & Query State Components
+- **Failed Page Loads (`<QueryError />`)**: Failed queries render an inline error card with an outline `Retry` button (with refetch loading spinner), never an intrusive toast. For network or timeout failures, displays a reassuring note: *"The server may be waking up. This can take up to a minute."*
+- **Empty Datasets (`<EmptyState />`)**: Rendered when query results contain 0 items, featuring a domain icon, title, description, and contextual primary action (e.g. *"Book a service"* on an empty customer request list).
+- **Missing Entities (`<DetailNotFound />`)**: Detail routes (`/requests/[id]`, `/work-orders/[id]`, `/invoices/[id]`, `/technicians/[id]`) render a structured not-found view with a primary back-navigation link when the entity does not exist or yields a 404/403.
+- **Cached Revalidation**: Failed background refetches while valid data exists in cache silently preserve the existing view.
+
+### 4. Confirm Dialogs for Destructive / Costly Actions (`<ConfirmDialog />`)
+- Browser dialogs (`window.alert`, `window.confirm`) are strictly forbidden across the codebase.
+- Destructive and high-impact operations require explicit confirmation via `<ConfirmDialog />` (shadcn/ui `AlertDialog` primitive):
+  - Customer request cancellation & cancellation with fee (estimating late fees)
+  - Rescheduling with late fees
+  - Admin voiding an invoice (*"The invoice will be voided and can no longer be paid."*)
+  - Admin refunding a customer payment with audit reason
+  - Admin issuing a draft invoice
+  - Admin suspending an active user account or changing roles
+  - Customer cancelling VIP subscription auto-renewal
+  - Technician declining a dispatched task (with mandatory reason)
+- Dialog confirm buttons lock during pending mutations with a spinner, and dialog dismiss is prevented until completion.
+
+### 5. Double-Submit & Mutation Button States
+- All form submit buttons and mutation actions disable automatically while pending (`disabled={isPending}`).
+- Submit buttons display a loading spinner (`<Loader2 className="animate-spin" />`) and transition copy to an active verb (*"Saving..."*, *"Submitting..."*, *"Issuing..."*, *"Paying..."*).
+- Stripe Checkout redirect buttons (*"Pay Now"*, *"Subscribe"*) remain disabled from the moment the session URL is received until the browser leaves the page, preventing duplicate checkout session generation.
 
 ---
 
