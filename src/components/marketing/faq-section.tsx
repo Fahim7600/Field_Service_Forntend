@@ -18,21 +18,6 @@ export interface FaqSectionProps {
   type?: "single" | "multiple";
 }
 
-export function buildFaqJsonLd(items: FaqItem[]): Record<string, unknown> {
-  return {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: items.map((item) => ({
-      "@type": "Question",
-      name: item.question,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: item.answer,
-      },
-    })),
-  };
-}
-
 export function FaqSection({
   items,
   heading = "Frequently Asked Questions",
@@ -51,17 +36,17 @@ export function FaqSection({
     >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10 sm:mb-14">
-          <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+          <p className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#C2410C]">
             Common Questions
           </p>
           <h2
             id={`${id}-heading`}
-            className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mt-2"
+            className="text-3xl sm:text-4xl font-bold tracking-tight text-[#0F172A] mt-2"
           >
             {heading}
           </h2>
           {subheading && (
-            <p className="text-sm sm:text-base text-muted-foreground mt-3 max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-[#334155] mt-3 max-w-2xl mx-auto">
               {subheading}
             </p>
           )}
@@ -71,10 +56,10 @@ export function FaqSection({
           <Accordion type={type} collapsible className="w-full">
             {items.map((item) => (
               <AccordionItem key={item.id} value={item.id}>
-                <AccordionTrigger className="text-left text-base sm:text-lg font-semibold text-foreground hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                <AccordionTrigger className="text-left text-base sm:text-lg font-semibold text-[#0F172A] hover:text-[#C2410C] transition-colors">
                   {item.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-sm sm:text-base text-muted-foreground leading-relaxed pt-2">
+                <AccordionContent className="text-sm sm:text-base text-[#334155] leading-relaxed pt-2">
                   {item.answer}
                 </AccordionContent>
               </AccordionItem>
