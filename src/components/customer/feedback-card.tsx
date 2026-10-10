@@ -20,8 +20,10 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, getErrorMessage } from "@/lib/api-client";
+import { loadFeedback, saveFeedback } from "@/lib/feedback-cache";
 import { safeFormatDateTime } from "@/lib/format";
 import { workOrdersService } from "@/services/work-orders.service";
+import { useAuthStore } from "@/stores/auth-store";
 import type { WorkOrderFeedback } from "@/types/work-order";
 
 const feedbackFormSchema = z.object({
@@ -52,11 +54,30 @@ export function FeedbackCard({
   onRequestRefresh,
 }: FeedbackCardProps) {
   const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
   const normalizedStatus = (workOrderStatus || "").toUpperCase();
 
   const [localFeedback, setLocalFeedback] =
     React.useState<WorkOrderFeedback | null>(existingFeedback ?? null);
   const [alreadyRated, setAlreadyRated] = React.useState(false);
+
+  // Load from local storage cache on mount
+  React.useEffect(() => {
+    if (existingFeedback) {
+      setLocalFeedback(existingFeedback);
+      return;
+    }
+    const cached = loadFeedback(user?.id, workOrderId);
+    if (cached) {
+      setLocalFeedback({
+        id: `cached-${workOrderId}`,
+        workOrderId,
+        rating: cached.rating,
+        comment: cached.comment,
+        createdAt: cached.createdAt,
+      });
+    }
+  }, [user?.id, workOrderId, existingFeedback]);
 
   const {
     control,
@@ -81,15 +102,28 @@ export function FeedbackCard({
         comment: values.comment?.trim() || undefined,
       }),
     onSuccess: (data, variables) => {
+      const now = new Date().toISOString();
       toast.success("Thank you for your feedback", {
         description: "Your review has been successfully submitted.",
       });
-      setLocalFeedback({
+
+      const newFeedback: WorkOrderFeedback = {
         id: data?.id || "feedback-submitted",
+        workOrderId,
         rating: variables.rating,
         comment: variables.comment?.trim() || null,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
+      };
+
+      setLocalFeedback(newFeedback);
+
+      // Save to localStorage
+      saveFeedback(user?.id, workOrderId, {
+        rating: variables.rating,
+        comment: variables.comment?.trim() || null,
+        createdAt: now,
       });
+
       queryClient.invalidateQueries({ queryKey: ["customer", "request"] });
       queryClient.invalidateQueries({ queryKey: ["work-order"] });
       queryClient.invalidateQueries({ queryKey: ["service-history"] });
@@ -144,10 +178,10 @@ export function FeedbackCard({
     );
   }
 
-  // Read-only state if feedback was submitted or found
+  // Read-only state if feedback exists
   const activeFeedback = localFeedback || existingFeedback;
 
-  if (activeFeedback || alreadyRated) {
+  if (activeFeedback) {
     return (
       <Card className="border border-border bg-card shadow-xs">
         <CardHeader className="pb-3 border-b border-border/60">
@@ -165,30 +199,49 @@ export function FeedbackCard({
           </div>
         </CardHeader>
         <CardContent className="pt-4 space-y-3 text-xs">
-          {activeFeedback?.rating ? (
-            <div className="space-y-1.5">
-              <StarRating
-                value={activeFeedback.rating}
-                readOnly
-                showLabel
-                size="sm"
-              />
-              {activeFeedback.comment && (
-                <p className="text-foreground bg-muted/40 p-3 rounded-xl border border-border/60 whitespace-pre-wrap leading-relaxed">
-                  &ldquo;{activeFeedback.comment}&rdquo;
-                </p>
-              )}
-              {activeFeedback.createdAt && (
-                <p className="text-[11px] text-muted-foreground">
-                  Submitted on {safeFormatDateTime(activeFeedback.createdAt)}
-                </p>
-              )}
+          <div className="space-y-1.5">
+            <StarRating
+              value={activeFeedback.rating}
+              readOnly
+              showLabel
+              size="sm"
+            />
+            {activeFeedback.comment && (
+              <p className="text-foreground bg-muted/40 p-3 rounded-xl border border-border/60 whitespace-pre-wrap leading-relaxed">
+                &ldquo;{activeFeedback.comment}&rdquo;
+              </p>
+            )}
+            {activeFeedback.createdAt && (
+              <p className="text-[11px] text-muted-foreground">
+                Submitted on {safeFormatDateTime(activeFeedback.createdAt)}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // 409 already rated when no stars / comment cached in local storage
+  if (alreadyRated) {
+    return (
+      <Card className="border border-border bg-card shadow-xs">
+        <CardHeader className="pb-3 border-b border-border/60">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Star className="size-4 fill-amber-400 text-amber-400 shrink-0" />
+              <CardTitle className="text-sm font-bold text-foreground">
+                Your Service Feedback
+              </CardTitle>
             </div>
-          ) : (
-            <p className="text-muted-foreground">
-              Thank you for rating this service visit.
-            </p>
-          )}
+            <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+              <CheckCircle2 className="size-3.5" />
+              <span>Rated</span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4 text-xs text-muted-foreground">
+          <p>You already rated this job. Thank you for your feedback.</p>
         </CardContent>
       </Card>
     );
