@@ -1,3 +1,4 @@
+import axios from "axios";
 import {
   CheckCircle2,
   Info,
@@ -7,8 +8,9 @@ import {
 } from "lucide-react";
 import React from "react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/api-client";
+import { ApiError, getErrorMessage } from "@/lib/api-client";
 import { authMessages } from "@/lib/auth-messages";
+import { messages } from "@/lib/messages";
 
 export interface NotifyAction {
   label: string;
@@ -27,6 +29,122 @@ const DURATIONS = {
   warning: 5500,
   error: 6000,
 } as const;
+
+export function normalizeError(error: unknown): {
+  title: string;
+  description: string;
+  status?: number;
+} | null {
+  if (error instanceof ApiError) {
+    if (error.status === 401) {
+      return null; // Session layer handles it, do not toast
+    }
+    if (error.status === 403) {
+      return {
+        title: messages.generic.forbidden.title,
+        description: messages.generic.forbidden.description,
+        status: 403,
+      };
+    }
+    if (error.status === 404) {
+      return {
+        title: messages.generic.notFound.title,
+        description: messages.generic.notFound.description,
+        status: 404,
+      };
+    }
+    if (error.status === 409) {
+      return {
+        title: "Action conflict",
+        description: error.message || "A conflicting record already exists.",
+        status: 409,
+      };
+    }
+    if (error.status === 429) {
+      return {
+        title: "Too many attempts",
+        description: "Please wait a moment before trying again.",
+        status: 429,
+      };
+    }
+    if (error.status >= 500) {
+      return {
+        title: "Server error",
+        description: "Something went wrong on our side. Please try again.",
+        status: error.status,
+      };
+    }
+    return {
+      title: "Action failed",
+      description: error.message || "Please check your inputs and try again.",
+      status: error.status,
+    };
+  }
+
+  if (axios.isAxiosError(error)) {
+    if (
+      error.code === "ECONNABORTED" ||
+      error.message?.includes("timeout") ||
+      !error.response
+    ) {
+      return {
+        title: messages.generic.networkProblem.title,
+        description: messages.generic.networkProblem.description,
+      };
+    }
+    const status = error.response.status;
+    if (status === 401) return null;
+    if (status === 403) {
+      return {
+        title: messages.generic.forbidden.title,
+        description: messages.generic.forbidden.description,
+        status: 403,
+      };
+    }
+    if (status === 404) {
+      return {
+        title: messages.generic.notFound.title,
+        description: messages.generic.notFound.description,
+        status: 404,
+      };
+    }
+    if (status === 429) {
+      return {
+        title: "Too many attempts",
+        description: "Please wait a moment before trying again.",
+        status: 429,
+      };
+    }
+    if (status >= 500) {
+      return {
+        title: "Server error",
+        description: "Something went wrong on our side. Please try again.",
+        status,
+      };
+    }
+    const apiMsg = getErrorMessage(error);
+    return { title: "Action failed", description: apiMsg, status };
+  }
+
+  if (error instanceof Error) {
+    if (
+      error.message.includes("fetch") ||
+      error.message.includes("network") ||
+      error.message.includes("Failed to fetch")
+    ) {
+      return {
+        title: messages.generic.networkProblem.title,
+        description: messages.generic.networkProblem.description,
+      };
+    }
+    return { title: "Action failed", description: error.message };
+  }
+
+  return {
+    title: "Action failed",
+    description: "An unexpected error occurred. Please try again.",
+  };
+}
 
 export const notify = {
   success(title: string, description?: string, options?: NotifyOptions) {
@@ -79,10 +197,11 @@ export const notify = {
   },
 
   error(title: string, description?: string, options?: NotifyOptions) {
+    const id = options?.id ?? `err-${title}-${description || ""}`;
     return toast.error(title, {
       description,
       duration: options?.duration ?? DURATIONS.error,
-      id: options?.id,
+      id,
       icon: React.createElement(XCircle, { className: "size-4 text-rose-500" }),
       action: options?.action
         ? {
@@ -93,11 +212,18 @@ export const notify = {
     });
   },
 
-  fromError(error: unknown, fallbackTitle = "Error", options?: NotifyOptions) {
-    const message = getErrorMessage(error);
-    const id = options?.id ?? `err-${message}`;
-    return toast.error(fallbackTitle, {
-      description: message,
+  fromError(error: unknown, fallbackTitle?: string, options?: NotifyOptions) {
+    const normalized = normalizeError(error);
+    if (!normalized) {
+      return; // 401 error or suppressed
+    }
+
+    const title = fallbackTitle ?? normalized.title;
+    const description = normalized.description;
+    const id = options?.id ?? `err-${title}-${description}`;
+
+    return toast.error(title, {
+      description,
       duration: options?.duration ?? DURATIONS.error,
       id,
       icon: React.createElement(XCircle, { className: "size-4 text-rose-500" }),
@@ -136,4 +262,4 @@ export const notify = {
   },
 };
 
-export { authMessages };
+export { authMessages, messages };
