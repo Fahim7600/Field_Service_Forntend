@@ -29,7 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { extractArray } from "@/lib/extract-data";
 import { safeFormatDate } from "@/lib/format";
-import { formatDuration, toPercent } from "@/lib/stats-utils";
+import { formatDuration } from "@/lib/stats-utils";
 import { cn } from "@/lib/utils";
 import { adminLogsService } from "@/services/admin-logs.service";
 import { adminStatsService } from "@/services/admin-stats.service";
@@ -128,10 +128,24 @@ export function TechnicianAnalyticsClient({
     );
   }
 
-  const displayName = technicianUser?.name || `Technician #${id.slice(0, 8)}`;
+  const displayName =
+    analytics?.technician?.name ||
+    technicianUser?.name ||
+    `Technician #${id.slice(0, 8)}`;
   const displayEmail = technicianUser?.email;
-  const onTimePct = toPercent(analytics?.onTimeRate);
-  const durationFormatted = formatDuration(analytics?.averageJobTimeMinutes);
+
+  // onTimeRate is ALREADY a percentage (e.g. 92.5) per shape 2
+  const rawOnTime = analytics?.onTimeRate;
+  const onTimePct =
+    typeof rawOnTime === "number" && Number.isFinite(rawOnTime)
+      ? Math.min(100, Math.max(0, Math.round(rawOnTime * 10) / 10))
+      : null;
+
+  const durationFormatted = formatDuration(analytics?.averageJobMinutes);
+
+  const jobsDoneCount = analytics?.jobsDone ?? 0;
+  const ratingCount = analytics?.ratingCount ?? null;
+  const measuredJobs = analytics?.measuredJobs ?? null;
 
   return (
     <div className="space-y-6">
@@ -218,11 +232,11 @@ export function TechnicianAnalyticsClient({
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Completed Jobs */}
+          {/* Card 1: Jobs Done */}
           <Card className="border-border bg-card shadow-xs">
             <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Completed Jobs
+                Jobs Done
               </CardTitle>
               <div className="size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                 <CheckCircle2 className="size-4" />
@@ -237,10 +251,10 @@ export function TechnicianAnalyticsClient({
               ) : (
                 <div>
                   <div className="text-2xl font-bold font-heading text-foreground tabular-nums">
-                    {(analytics?.completedJobs ?? 0).toLocaleString()}
+                    {jobsDoneCount.toLocaleString()}
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Total finished assignments
+                    Finished assignments
                   </p>
                 </div>
               )}
@@ -263,7 +277,9 @@ export function TechnicianAnalyticsClient({
                   <Skeleton className="h-7 w-24" />
                   <Skeleton className="h-3 w-32" />
                 </div>
-              ) : analytics?.averageRating && analytics.averageRating > 0 ? (
+              ) : ratingCount &&
+                ratingCount > 0 &&
+                typeof analytics?.averageRating === "number" ? (
                 <div>
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-2xl font-bold font-heading text-foreground tabular-nums">
@@ -278,6 +294,10 @@ export function TechnicianAnalyticsClient({
                       size="sm"
                     />
                   </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Based on {ratingCount}{" "}
+                    {ratingCount === 1 ? "rating" : "ratings"}
+                  </p>
                 </div>
               ) : (
                 <div>
@@ -321,6 +341,11 @@ export function TechnicianAnalyticsClient({
                       }}
                     />
                   </div>
+                  {measuredJobs ? (
+                    <p className="text-[11px] text-muted-foreground mt-1.5">
+                      Based on {measuredJobs} measured jobs
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <div>
@@ -469,12 +494,12 @@ export function TechnicianAnalyticsClient({
                     <span>
                       Customer:{" "}
                       <span className="font-medium text-foreground">
-                        {item.customerName || item.customer?.name || "Customer"}
+                        {item.customer?.name || "Customer"}
                       </span>
                     </span>
-                    {item.workOrderNumber && (
+                    {item.workOrder?.id && (
                       <span className="font-mono">
-                        WO: {item.workOrderNumber}
+                        WO: #{item.workOrder.id.slice(0, 8)}
                       </span>
                     )}
                   </div>

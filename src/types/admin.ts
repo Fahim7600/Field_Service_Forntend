@@ -211,10 +211,14 @@ export interface DashboardStats {
 }
 
 export interface TechnicianAnalytics {
-  technicianId: string;
-  completedJobs: number;
-  averageRating: number;
+  technician?: {
+    id: string;
+    name?: string | null;
+  } | null;
+  jobsDone?: number | null;
+  averageRating?: number | null;
+  ratingCount?: number | null;
   onTimeRate?: number | null;
-  averageJobTimeMinutes?: number | null;
-  totalJobs?: number | null;
+  measuredJobs?: number | null;
+  averageJobMinutes?: number | null;
 }
