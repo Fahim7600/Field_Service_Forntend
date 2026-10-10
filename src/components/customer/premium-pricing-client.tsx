@@ -1,20 +1,35 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import {
+  AlertCircle,
+  AlertTriangle,
   Check,
   CheckCircle2,
   Crown,
-  Flame,
+  Info,
   Loader2,
-  Percent,
-  ShieldCheck,
+  Minus,
+  RefreshCw,
   Sparkles,
-  Zap,
+  X,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,99 +41,196 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-
-import { getErrorMessage } from "@/lib/api-client";
-import { extractArray } from "@/lib/extract-data";
+import {
+  PLAN_COMPARISON_FEATURES,
+  PREMIUM_BENEFITS,
+} from "@/constants/premium";
+import { usePremiumStatus } from "@/hooks/use-premium-status";
+import { ApiError, getErrorMessage } from "@/lib/api-client";
 import { formatMoney, safeFormatDate } from "@/lib/format";
+import { formatInterval, getYearlySavings } from "@/lib/plan-utils";
+import { isSafeCheckoutUrl, redirectToCheckout } from "@/lib/stripe-redirect";
 import { cn } from "@/lib/utils";
-import { financeService } from "@/services/finance.service";
-import type { SubscriptionPlan } from "@/types/api";
-
-const DEFAULT_BENEFITS = [
-  "Priority Dispatch & Fast-Track Queue",
-  "10% Automatic Discount on all labor charges",
-  "Zero cancellation fees on scheduled visits",
-  "Dedicated 24/7 priority customer support",
-  "Complimentary annual system health inspection",
-];
-
-const FALLBACK_PLANS: SubscriptionPlan[] = [
-  {
-    id: "plan_monthly_standard",
-    name: "Monthly Premium",
-    interval: "MONTH",
-    priceCents: 1999,
-    description:
-      "Flexible month-to-month priority coverage for your home or business.",
-    features: DEFAULT_BENEFITS,
-  },
-  {
-    id: "plan_yearly_pro",
-    name: "Annual VIP",
-    interval: "YEAR",
-    priceCents: 19999,
-    description:
-      "Best value with 2 months free and VIP dispatch guarantees all year.",
-    features: [
-      ...DEFAULT_BENEFITS,
-      "VIP Dedicated Account Manager",
-      "Two months free (17% savings)",
-    ],
-  },
-];
+import { subscriptionsService } from "@/services/subscriptions.service";
+import type { SubscriptionPlan } from "@/types/subscription";
 
 export function PremiumPricingClient() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+
+  const {
+    isPremium,
+    subscription,
+    status: subStatus,
+    isLoading: isSubLoading,
+    isUnknown,
+    refetch: refetchSub,
+  } = usePremiumStatus();
+
+  // Return query parameters from Stripe redirect
+  const [returnStatus, setReturnStatus] = React.useState<
+    "success" | "cancelled" | "timeout" | null
+  >(null);
   const [selectedPlanId, setSelectedPlanId] = React.useState<string | null>(
     null,
   );
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = React.useState(false);
 
-  // Fetch plans from backend
-  const { data: plansData, isLoading: isPlansLoading } = useQuery({
+  // Read return params once on mount and clean the URL
+  React.useEffect(() => {
+    const checkoutParam = searchParams.get("checkout");
+    if (checkoutParam === "success") {
+      setReturnStatus("success");
+      router.replace(pathname, { scroll: false });
+    } else if (checkoutParam === "cancelled") {
+      setReturnStatus("cancelled");
+      router.replace(pathname, { scroll: false });
+    }
+  }, [searchParams, pathname, router]);
+
+  // Listen to browser pageshow for back-forward cache restoration
+  React.useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setSelectedPlanId(null);
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, []);
+
+  // Poll for subscription activation when Stripe checkout returns success
+  React.useEffect(() => {
+    if (returnStatus !== "success") return;
+
+    let attempts = 0;
+    const maxAttempts = 22; // ~44-45 seconds at 2s interval
+    let isCancelled = false;
+
+    const intervalId = window.setInterval(async () => {
+      if (isCancelled) return;
+      attempts += 1;
+
+      try {
+        const current = await subscriptionsService.fetchMySubscription();
+        if (current && current.status === "ACTIVE") {
+          window.clearInterval(intervalId);
+          setReturnStatus(null);
+          toast.success("Welcome to Premium", {
+            description: "Your benefits are now active.",
+          });
+          queryClient.invalidateQueries({ queryKey: ["my-subscription"] });
+          return;
+        }
+      } catch {
+        // Continue polling silently
+      }
+
+      if (attempts >= maxAttempts) {
+        window.clearInterval(intervalId);
+        setReturnStatus("timeout");
+      }
+    }, 2000);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [returnStatus, queryClient]);
+
+  // Fetch available subscription plans
+  const {
+    data: plans = [],
+    isLoading: isPlansLoading,
+    isError: isPlansError,
+    error: plansError,
+    refetch: refetchPlans,
+  } = useQuery<SubscriptionPlan[]>({
     queryKey: ["subscription-plans"],
-    queryFn: () => financeService.fetchSubscriptionPlans(),
-    staleTime: 60000,
+    queryFn: () => subscriptionsService.fetchPlans(),
+    staleTime: 60_000,
   });
 
-  // Fetch current user subscription
-  const { data: mySubscription, isLoading: isSubLoading } = useQuery({
-    queryKey: ["my-subscription"],
-    queryFn: () => financeService.fetchMySubscription(),
-    staleTime: 30000,
-  });
-
+  // Stripe Checkout Initiation Mutation
   const checkoutMutation = useMutation({
     mutationFn: async (planId: string) => {
       setSelectedPlanId(planId);
-      return financeService.createSubscriptionCheckout({ planId });
+      return subscriptionsService.startCheckout(planId);
     },
-    onSuccess: (res) => {
-      const redirectUrl = res.url || res.checkoutUrl || res.paymentUrl;
-      if (redirectUrl) {
+    onSuccess: (data) => {
+      if (isSafeCheckoutUrl(data.url)) {
         toast.info("Redirecting to secure Stripe Checkout...");
-        window.location.href = redirectUrl;
+        redirectToCheckout(data.url);
       } else {
-        toast.error("Stripe checkout URL was not returned by server.");
         setSelectedPlanId(null);
+        toast.error("Could not start checkout", {
+          description: "Invalid checkout redirect URL received from server.",
+        });
       }
     },
-    onError: (err) => {
+    onError: (err: unknown) => {
       setSelectedPlanId(null);
-      toast.error(getErrorMessage(err));
+      const isConflict =
+        (err instanceof ApiError && err.status === 409) ||
+        (axios.isAxiosError(err) && err.response?.status === 409) ||
+        getErrorMessage(err).toLowerCase().includes("already subscribed");
+
+      if (isConflict) {
+        toast.error(getErrorMessage(err));
+        refetchSub();
+      } else {
+        toast.error("Could not start checkout", {
+          description: getErrorMessage(err),
+        });
+      }
     },
   });
 
-  const plansList = extractArray<SubscriptionPlan>(plansData);
-  const plans = plansList.length > 0 ? plansList : FALLBACK_PLANS;
-  const isMemberActive = mySubscription?.status === "ACTIVE";
+  // Cancel Renewal Mutation
+  const cancelRenewalMutation = useMutation({
+    mutationFn: () => subscriptionsService.cancelRenewal(),
+    onSuccess: () => {
+      setIsCancelDialogOpen(false);
+      toast.success("Renewal cancelled", {
+        description:
+          "You keep all Premium benefits until the end of your current period.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["my-subscription"] });
+      refetchSub();
+    },
+    onError: (err: unknown) => {
+      toast.error("Failed to cancel renewal", {
+        description: getErrorMessage(err),
+      });
+    },
+  });
 
-  if (isPlansLoading || isSubLoading) {
+  // Monthly and yearly plans for savings computation
+  const monthlyPlan = plans.find((p) => formatInterval(p.interval) === "month");
+  const yearlyPlan = plans.find((p) => formatInterval(p.interval) === "year");
+
+  let yearlySavingsPercent = 0;
+  if (monthlyPlan && yearlyPlan) {
+    const { percent } = getYearlySavings(
+      monthlyPlan.priceCents,
+      yearlyPlan.priceCents,
+    );
+    yearlySavingsPercent = percent;
+  }
+
+  // Skeletons during initial load
+  if (isSubLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-4xl mx-auto py-6">
         <div className="text-center space-y-2 max-w-xl mx-auto">
-          <Skeleton className="h-8 w-64 mx-auto" />
+          <Skeleton className="h-9 w-64 mx-auto" />
           <Skeleton className="h-4 w-96 mx-auto" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
           <Skeleton className="h-96 rounded-2xl" />
           <Skeleton className="h-96 rounded-2xl" />
         </div>
@@ -127,228 +239,509 @@ export function PremiumPricingClient() {
   }
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      {/* Hero Header */}
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-          <Sparkles className="size-3.5" />
-          <span>Field Service VIP Membership</span>
-        </div>
-        <h1 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight">
-          Upgrade to Premium
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-          Get priority technician dispatch, 10% instant discount on all labor
-          charges, and dedicated VIP support on every service request.
-        </p>
-      </div>
-
-      {/* Active Member Banner */}
-      {isMemberActive && (
-        <Card className="border-emerald-500/40 bg-emerald-500/5 shadow-sm overflow-hidden">
-          <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <Crown className="size-6" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-heading text-base font-bold text-foreground">
-                    You are an Active Premium Member!
-                  </h3>
-                  <Badge
-                    variant="outline"
-                    className="border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold"
-                  >
-                    ACTIVE
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Your VIP membership perks (10% labor discount & priority
-                  dispatch) are automatically applied to all your service
-                  orders.
-                </p>
-                {mySubscription.currentPeriodEnd && (
-                  <p className="text-xs text-charcoal-600 dark:text-charcoal-400 pt-1">
-                    Current period renews on:{" "}
-                    <span className="font-medium text-foreground">
-                      {safeFormatDate(mySubscription.currentPeriodEnd)}
-                    </span>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <Badge
-              variant="outline"
-              className="text-xs font-medium border-emerald-500/30 text-emerald-700 dark:text-emerald-300 py-1.5 px-3"
-            >
-              Perks Active
-            </Badge>
-          </CardContent>
-        </Card>
+    <div className="space-y-8 max-w-4xl mx-auto py-4">
+      {/* Return Status Banners */}
+      {returnStatus === "success" && (
+        <Alert className="border-brand-500/30 bg-brand-50/50 dark:bg-brand-950/20 text-brand-950 dark:text-brand-200">
+          <Loader2 className="size-4 animate-spin text-brand-600 dark:text-brand-400" />
+          <AlertTitle className="font-semibold text-sm">
+            Payment received
+          </AlertTitle>
+          <AlertDescription className="text-xs pt-1">
+            Activating your premium membership... Please wait while your status
+            is updated.
+          </AlertDescription>
+        </Alert>
       )}
 
-      {/* Pricing Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 items-stretch">
-        {plans.map((plan, _index) => {
-          const isYearly =
-            plan.interval?.toUpperCase() === "YEAR" ||
-            plan.name.toLowerCase().includes("year") ||
-            plan.name.toLowerCase().includes("annual");
-          const isPopular = isYearly;
-          const planFeatures =
-            plan.features && plan.features.length > 0
-              ? plan.features
-              : isYearly
-                ? FALLBACK_PLANS[1].features || DEFAULT_BENEFITS
-                : DEFAULT_BENEFITS;
-
-          const isSubmitting =
-            checkoutMutation.isPending && selectedPlanId === plan.id;
-
-          return (
-            <Card
-              key={plan.id || plan.name}
-              className={cn(
-                "relative flex flex-col justify-between border-2 transition-all duration-200 bg-card rounded-2xl shadow-xs",
-                isPopular
-                  ? "border-primary shadow-md md:scale-[1.02]"
-                  : "border-border hover:border-primary/40",
-              )}
+      {returnStatus === "timeout" && (
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+          <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
+          <AlertTitle className="font-semibold text-sm">
+            Activation in progress
+          </AlertTitle>
+          <AlertDescription className="text-xs pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span>
+              Still activating. This can take a minute. You will not be charged
+              twice.
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setReturnStatus("success");
+                refetchSub();
+              }}
+              className="h-7 text-xs border-amber-500/40 hover:bg-amber-500/20 shrink-0"
             >
-              {isPopular && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-primary text-primary-foreground font-semibold px-3 py-1 shadow-sm gap-1 text-xs">
-                    <Flame className="size-3.5 fill-current" />
-                    <span>Best Value • 2 Months Free</span>
-                  </Badge>
-                </div>
-              )}
+              <RefreshCw className="size-3 mr-1" />
+              Check again
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
-              <CardHeader className={cn("pb-6", isPopular && "pt-7")}>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="font-heading text-xl font-bold text-foreground">
-                    {plan.name}
-                  </CardTitle>
-                  {isPopular && <Crown className="size-5 text-amber-500" />}
-                </div>
-                <CardDescription className="text-xs text-muted-foreground mt-1">
-                  {plan.description ||
-                    (isYearly
-                      ? "Year-round priority and maximum savings."
-                      : "Month-to-month VIP protection.")}
-                </CardDescription>
+      {returnStatus === "cancelled" && (
+        <Alert className="border-border bg-muted/40 text-foreground">
+          <Info className="size-4 text-charcoal-500" />
+          <div className="flex-1">
+            <AlertTitle className="font-semibold text-sm">
+              Checkout cancelled
+            </AlertTitle>
+            <AlertDescription className="text-xs pt-0.5 text-muted-foreground">
+              Checkout cancelled. No charge was made.
+            </AlertDescription>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-6 text-muted-foreground hover:text-foreground"
+            onClick={() => setReturnStatus(null)}
+            aria-label="Dismiss banner"
+          >
+            <X className="size-3.5" />
+          </Button>
+        </Alert>
+      )}
 
-                {/* Price Display */}
-                <div className="pt-4 flex items-baseline gap-1.5">
-                  <span className="font-heading text-3xl sm:text-4xl font-extrabold text-foreground">
-                    {formatMoney(plan.priceCents)}
-                  </span>
-                  <span className="text-xs text-muted-foreground font-medium">
-                    /{isYearly ? "year" : "month"}
-                  </span>
+      {/* 1. UNKNOWN ERROR STATE */}
+      {isUnknown ? (
+        <Card className="border-border bg-card shadow-xs text-center py-10 px-6">
+          <CardHeader className="space-y-2 pb-4">
+            <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
+              <AlertCircle className="size-6" />
+            </div>
+            <CardTitle className="text-lg font-bold">
+              We could not load your membership
+            </CardTitle>
+            <CardDescription className="text-xs max-w-md mx-auto">
+              We were unable to retrieve your current membership status from the
+              server. Please check your connection and try again.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="justify-center pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => refetchSub()}
+            >
+              <RefreshCw className="size-3.5 mr-1.5" />
+              Retry
+            </Button>
+          </CardFooter>
+        </Card>
+      ) : subStatus === "PAST_DUE" ? (
+        /* 2. PAST_DUE STATE */
+        <Card className="border-amber-500/40 bg-amber-500/5 shadow-xs">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-amber-600" />
+              <CardTitle className="text-base font-bold text-foreground">
+                Payment Past Due
+              </CardTitle>
+            </div>
+            <CardDescription className="text-xs text-amber-800 dark:text-amber-300">
+              Your last payment failed. Premium benefits are paused until the
+              payment is fixed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2 text-xs text-muted-foreground space-y-3">
+            <p>
+              Please update your billing method to restore your priority queue
+              access and 10% labor discounts.
+            </p>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/contact"
+                className="inline-flex items-center justify-center rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-1.5 text-xs font-semibold text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
+              >
+                Contact support
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      ) : isPremium && subscription ? (
+        /* 3. ACTIVE PREMIUM STATE */
+        <div className="space-y-6">
+          <Card className="border-emerald-500/40 bg-emerald-500/5 shadow-xs overflow-hidden">
+            <CardContent className="p-6 sm:p-8 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <Crown className="size-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-heading text-lg sm:text-xl font-bold text-foreground">
+                        You are a Premium member
+                      </h2>
+                      <Badge className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5">
+                        ACTIVE
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {subscription.plan?.name || "Premium Plan"}
+                      {subscription.plan?.priceCents
+                        ? ` • ${formatMoney(subscription.plan.priceCents)}/${formatInterval(subscription.plan.interval)}`
+                        : ""}
+                    </p>
+                  </div>
                 </div>
-              </CardHeader>
 
-              <CardContent className="space-y-4 flex-1">
-                <div className="border-t border-border/80 pt-4">
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
-                    Included Benefits:
-                  </p>
-                  <ul className="space-y-2.5">
-                    {planFeatures.map((benefit) => (
-                      <li
-                        key={benefit}
-                        className="flex items-start gap-2.5 text-xs text-muted-foreground"
-                      >
-                        <div className="size-4 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                          <Check className="size-3 stroke-[2.5]" />
-                        </div>
-                        <span className="text-foreground/90">{benefit}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </CardContent>
-
-              <CardFooter className="pt-4 pb-6">
-                {isMemberActive ? (
-                  <Button
-                    disabled
-                    variant="outline"
-                    className="w-full justify-center text-xs font-semibold"
-                  >
-                    <CheckCircle2 className="size-4 text-emerald-600 mr-1.5" />
-                    <span>Currently Active</span>
-                  </Button>
-                ) : (
+                {!subscription.cancelAtPeriodEnd && (
                   <Button
                     type="button"
-                    variant={isPopular ? "default" : "outline"}
-                    className={cn(
-                      "w-full justify-center font-semibold h-11 text-sm shadow-xs",
-                      isPopular &&
-                        "bg-primary hover:bg-primary/90 text-primary-foreground",
-                    )}
-                    disabled={checkoutMutation.isPending}
-                    onClick={() => checkoutMutation.mutate(plan.id)}
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10 text-xs shrink-0 self-start sm:self-center"
+                    onClick={() => setIsCancelDialogOpen(true)}
                   >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="size-4 animate-spin mr-2" />
-                        <span>Connecting to Stripe...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="size-4 mr-2" />
-                        <span>Subscribe Now</span>
-                      </>
-                    )}
+                    Cancel renewal
                   </Button>
                 )}
-              </CardFooter>
-            </Card>
-          );
-        })}
-      </div>
+              </div>
 
-      {/* Value Guarantee / Trust Badges */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-border">
-        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border">
-          <Zap className="size-5 text-amber-500 shrink-0" />
-          <div className="text-xs">
-            <span className="font-semibold text-foreground block">
-              Fast Dispatch
-            </span>
-            <span className="text-muted-foreground">
-              Jump to top of review queue
-            </span>
+              {/* Renewal or Expiration Notice */}
+              <div className="rounded-xl border border-emerald-500/20 bg-card p-4 text-xs">
+                {subscription.cancelAtPeriodEnd ? (
+                  <div className="flex items-start gap-2 text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                    <span>
+                      Your renewal is cancelled. Premium ends on{" "}
+                      <strong className="font-semibold text-foreground">
+                        {safeFormatDate(subscription.currentPeriodEnd)}
+                      </strong>
+                      .
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2 text-muted-foreground">
+                    <span>Next automatic renewal date:</span>
+                    <span className="font-semibold text-foreground">
+                      {safeFormatDate(subscription.currentPeriodEnd)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Benefit Recap */}
+              <div className="space-y-3 pt-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Your Active Benefits
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {PREMIUM_BENEFITS.map((b) => {
+                    const Icon = b.icon;
+                    return (
+                      <div
+                        key={b.id}
+                        className="p-3 rounded-xl border border-border bg-card flex flex-col gap-1.5"
+                      >
+                        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
+                          <Icon className="size-4" />
+                          <span>{b.title}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          {b.description}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cancel Renewal Confirmation Dialog */}
+          <AlertDialog
+            open={isCancelDialogOpen}
+            onOpenChange={setIsCancelDialogOpen}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Cancel your renewal?</AlertDialogTitle>
+                <AlertDialogDescription className="text-xs leading-relaxed">
+                  Cancel your renewal? You keep all Premium benefits until{" "}
+                  <strong>
+                    {safeFormatDate(subscription.currentPeriodEnd)}
+                  </strong>
+                  . After that you return to the free plan.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel
+                  disabled={cancelRenewalMutation.isPending}
+                  className="text-xs"
+                >
+                  Keep Membership
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={cancelRenewalMutation.isPending}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    cancelRenewalMutation.mutate();
+                  }}
+                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-semibold"
+                >
+                  {cancelRenewalMutation.isPending ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin mr-1.5" />
+                      Cancelling...
+                    </>
+                  ) : (
+                    "Confirm Cancellation"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      ) : (
+        /* 4. UNSUBSCRIBED / EXPIRED / ENDED CANCELLED STATE: PRICING VIEW */
+        <div className="space-y-10">
+          {/* Hero Section */}
+          <div className="text-center space-y-2.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20">
+              <Sparkles className="size-3.5" />
+              <span>Priority Customer Membership</span>
+            </div>
+            <h1 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight">
+              Upgrade to Premium
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto">
+              Get priority review within 2 hours, 10% discount on labor charges,
+              and zero late fees on rescheduled visits.
+            </p>
+          </div>
+
+          {/* Pricing Cards Grid */}
+          {isPlansLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Skeleton className="h-96 rounded-2xl" />
+              <Skeleton className="h-96 rounded-2xl" />
+            </div>
+          ) : isPlansError ? (
+            <div className="p-8 border border-border rounded-2xl bg-card text-center space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Unable to load subscription plans (
+                {plansError instanceof Error
+                  ? plansError.message
+                  : "Network error"}
+                ).
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => refetchPlans()}
+              >
+                <RefreshCw className="size-3.5 mr-1.5" />
+                Retry
+              </Button>
+            </div>
+          ) : plans.length === 0 ? (
+            <div className="p-8 border border-border rounded-2xl bg-card text-center text-xs text-muted-foreground">
+              No subscription plans are currently available. Please check back
+              later.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+              {plans.map((plan) => {
+                const intervalNoun = formatInterval(plan.interval);
+                const isYearly = intervalNoun === "year";
+                const isSubmitting =
+                  checkoutMutation.isPending && selectedPlanId === plan.id;
+                const anyPending = checkoutMutation.isPending;
+
+                return (
+                  <Card
+                    key={plan.id}
+                    className={cn(
+                      "relative flex flex-col justify-between border-2 transition-all duration-200 bg-card rounded-2xl shadow-xs",
+                      isYearly
+                        ? "border-brand-500 shadow-md md:scale-[1.02]"
+                        : "border-border hover:border-brand-500/40",
+                    )}
+                  >
+                    {isYearly && (
+                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                        <Badge className="bg-brand-600 text-white font-semibold px-3 py-0.5 shadow-sm text-xs">
+                          Best value
+                          {yearlySavingsPercent > 0
+                            ? ` • Save ${yearlySavingsPercent}% compared with monthly`
+                            : ""}
+                        </Badge>
+                      </div>
+                    )}
+
+                    <CardHeader className={cn("pb-4", isYearly && "pt-7")}>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="font-heading text-lg font-bold text-foreground">
+                          {plan.name}
+                        </CardTitle>
+                        {isYearly && (
+                          <Crown className="size-5 text-amber-500" />
+                        )}
+                      </div>
+                      <CardDescription className="text-xs text-muted-foreground">
+                        {isYearly
+                          ? "Maximum annual savings with year-round priority."
+                          : "Flexible month-to-month coverage."}
+                      </CardDescription>
+
+                      {/* Price Display */}
+                      <div className="pt-3 flex items-baseline gap-1.5">
+                        <span className="font-heading text-3xl sm:text-4xl font-extrabold text-foreground">
+                          {formatMoney(plan.priceCents)}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-medium">
+                          /{intervalNoun}
+                        </span>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4 flex-1">
+                      <div className="border-t border-border pt-4">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                          Included Membership Perks:
+                        </p>
+                        <ul className="space-y-2.5">
+                          {PREMIUM_BENEFITS.map((benefit) => (
+                            <li
+                              key={benefit.id}
+                              className="flex items-start gap-2.5 text-xs text-foreground/90"
+                            >
+                              <div className="size-4 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center shrink-0 mt-0.5">
+                                <Check className="size-3 stroke-[2.5]" />
+                              </div>
+                              <div>
+                                <span className="font-semibold block">
+                                  {benefit.title}
+                                </span>
+                                <span className="text-muted-foreground text-[11px]">
+                                  {benefit.description}
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </CardContent>
+
+                    <CardFooter className="pt-4 pb-6">
+                      <Button
+                        type="button"
+                        variant="cta"
+                        className="w-full justify-center font-bold h-11 text-sm shadow-xs"
+                        disabled={anyPending}
+                        onClick={() => checkoutMutation.mutate(plan.id)}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="size-4 animate-spin mr-2" />
+                            <span>Redirecting to secure checkout...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="size-4 mr-2" />
+                            <span>Subscribe</span>
+                          </>
+                        )}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Test Mode Note */}
+          <p className="text-center text-xs text-muted-foreground">
+            Test mode: use card 4242 4242 4242 4242
+          </p>
+
+          {/* Comparison Table Free vs Premium */}
+          <div className="space-y-3 pt-6 border-t border-border">
+            <div className="text-center space-y-1">
+              <h2 className="font-heading text-lg font-bold text-foreground">
+                Compare Plans
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                See how Premium membership enhances your service experience.
+              </p>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-border bg-card">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="p-3.5 font-bold text-foreground w-1/2">
+                      Feature
+                    </th>
+                    <th className="p-3.5 font-bold text-muted-foreground w-1/4">
+                      Free Plan
+                    </th>
+                    <th className="p-3.5 font-bold text-brand-600 dark:text-brand-400 w-1/4">
+                      Premium
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {PLAN_COMPARISON_FEATURES.map((item) => (
+                    <tr
+                      key={item.name}
+                      className="hover:bg-muted/10 transition-colors"
+                    >
+                      <td className="p-3.5">
+                        <span className="font-semibold text-foreground block">
+                          {item.name}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {item.description}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-muted-foreground">
+                        {typeof item.free === "boolean" ? (
+                          item.free ? (
+                            <Check className="size-4 text-emerald-600" />
+                          ) : (
+                            <Minus
+                              className="size-4 text-muted-foreground"
+                              aria-label="Not included"
+                            />
+                          )
+                        ) : (
+                          <span>{item.free}</span>
+                        )}
+                      </td>
+                      <td className="p-3.5 font-semibold text-foreground">
+                        {typeof item.premium === "boolean" ? (
+                          item.premium ? (
+                            <Check className="size-4 text-emerald-600" />
+                          ) : (
+                            <Minus
+                              className="size-4 text-muted-foreground"
+                              aria-label="Not included"
+                            />
+                          )
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-brand-600 dark:text-brand-400">
+                            <CheckCircle2 className="size-3.5 shrink-0" />
+                            <span>{item.premium}</span>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border">
-          <Percent className="size-5 text-emerald-500 shrink-0" />
-          <div className="text-xs">
-            <span className="font-semibold text-foreground block">
-              10% Labor Off
-            </span>
-            <span className="text-muted-foreground">
-              Applied on every single invoice
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border">
-          <ShieldCheck className="size-5 text-blue-500 shrink-0" />
-          <div className="text-xs">
-            <span className="font-semibold text-foreground block">
-              Cancel Anytime
-            </span>
-            <span className="text-muted-foreground">
-              No long term commitments
-            </span>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
