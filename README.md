@@ -705,6 +705,26 @@ The Audit Logs console (`/admin/audit-logs`) provides complete compliance and ac
 
 ---
 
+## 📡 API Response Shapes & Normalization
+
+The live backend provides richer responses and slightly different structures than the initial `docs/openapi.json` specification:
+
+1. **Dual Paginated Response Envelopes**:
+   - **Shape A**: `data` as an array with top-level `pagination` or `meta` metadata `{ page, limit, total, totalPages }`.
+   - **Shape B**: `data` as an object `{ items: [...], total, page, limit }`.
+   - All paginated endpoints in the frontend are processed through a single tolerant helper (`normalizePaginated<T>` in `src/lib/extract-data.ts`), ensuring every UI list receives `{ items, meta, data, pagination, extra }` without runtime breakage regardless of the envelope shape.
+
+2. **Backend Payload Enrichments**:
+   - **Admin Dashboard Stats**: `requestsByStatus` and `workOrdersByStatus` key-value status maps, `revenue: { currency, revenueCents, refundedCents, paymentCount }`, `activePremiumUsers`, `lateReviews`, and `generatedAt` timestamp.
+   - **Technician Analytics**: Returns `data.technician: { id, name }`, `jobsDone`, `ratingCount`, `measuredJobs`, `averageJobMinutes`, and `onTimeRate` as a direct percentage (0–100, not a fraction).
+   - **Payments**: Returns `invoice: { id, invoiceNumber, type }`, `failureReason`, and `refundedAt`.
+   - **Audit Logs**: Populates `actor: { id, name, email } | null`, `ipAddress`, `oldValues`, and `newValues`.
+   - **Feedback**: Populates full references `technician: { id, name }`, `customer: { id, name }`, `workOrder: { id }`, and `requestNumber`.
+   - **Subscriptions**: Includes nested `plan: { id, name, interval, priceCents }` and `customer: { id, name, email }`.
+   - **Notifications**: Includes flexible `data` dictionary with deep link targets (`invoiceId`, `requestId`, `workOrderId`, `paymentId`) and `extra: { unreadCount }`.
+
+---
+
 ## 🔗 Related Repositories
 
 - Backend API: [https://github.com/Fahim7600/Field_Service.git](https://github.com/Fahim7600/Field_Service.git)
