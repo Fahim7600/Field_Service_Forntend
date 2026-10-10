@@ -13,9 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { DEMO_ACCOUNTS } from "@/constants/demo-accounts";
 import { useLogin } from "@/hooks/use-login";
 import { getSafeRedirect } from "@/lib/auth-routes";
 import { authMessages, notify } from "@/lib/notify";
+import { getSafeRedirect as sanitizeRedirect } from "@/lib/safe-redirect";
 import { type LoginFormValues, loginSchema } from "@/lib/validations/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -85,7 +87,8 @@ export function LoginForm() {
   useEffect(() => {
     if (status === "authenticated" && user) {
       const redirectParam = searchParams.get("redirect");
-      const target = getSafeRedirect(redirectParam, user.role);
+      const safeParam = sanitizeRedirect(redirectParam, "");
+      const target = getSafeRedirect(safeParam, user.role);
       router.replace(target);
     }
   }, [status, user, router, searchParams]);
@@ -226,30 +229,33 @@ export function LoginForm() {
         </Link>
       </div>
 
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <Separator className="w-full" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-2 text-charcoal-600 font-medium">
-            DEMO ACCESS
-          </span>
-        </div>
-      </div>
+      {/* Quick Demo Login Section (only rendered when demo credentials are configured) */}
+      {DEMO_ACCOUNTS.some((a) => a.isAvailable) && (
+        <>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <Separator className="w-full" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-charcoal-600 font-medium">
+                DEMO ACCESS
+              </span>
+            </div>
+          </div>
 
-      {/* Quick Demo Login Section */}
-      <div className="space-y-1">
-        <div className="space-y-0.5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-charcoal-900">
-            Quick Demo Login
-          </h2>
-          <p className="text-xs text-charcoal-600">
-            Explore each role with one click.
-          </p>
-        </div>
-        <DemoLogin />
-      </div>
+          <div className="space-y-1">
+            <div className="space-y-0.5">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-charcoal-900">
+                Quick Demo Login
+              </h2>
+              <p className="text-xs text-charcoal-600">
+                Explore each role with one click.
+              </p>
+            </div>
+            <DemoLogin />
+          </div>
+        </>
+      )}
     </div>
   );
 }

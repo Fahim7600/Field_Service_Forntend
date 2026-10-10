@@ -1,3 +1,4 @@
+import { getSafeRedirect as getSanitizedRedirect } from "@/lib/safe-redirect";
 import type { Role } from "@/types/auth";
 
 export const ROLE_HOME: Record<Role, string> = {
@@ -21,14 +22,9 @@ export function getSafeRedirect(
     return roleHome;
   }
 
-  // Prevent protocol-relative URLs or open redirects (must start with "/" and not "//")
-  if (!redirectParam.startsWith("/") || redirectParam.startsWith("//")) {
-    return roleHome;
-  }
-
-  // Must begin with the role's authorized path prefix
-  if (redirectParam === roleHome || redirectParam.startsWith(`${roleHome}/`)) {
-    return redirectParam;
+  const safe = getSanitizedRedirect(redirectParam, roleHome);
+  if (safe === roleHome || safe.startsWith(`${roleHome}/`)) {
+    return safe;
   }
 
   return roleHome;

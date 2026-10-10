@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSafeRedirect } from "@/lib/auth-routes";
 import { authMessages, notify } from "@/lib/notify";
+import { getSafeRedirect as sanitizeRedirect } from "@/lib/safe-redirect";
 import { syncSessionCookies } from "@/lib/session";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth-store";
@@ -38,7 +39,8 @@ export function useLogin() {
         router.replace("/change-password");
       } else {
         const redirectParam = searchParams.get("redirect");
-        const targetUrl = getSafeRedirect(redirectParam, data.user.role);
+        const safeParam = sanitizeRedirect(redirectParam, "");
+        const targetUrl = getSafeRedirect(safeParam, data.user.role);
         router.replace(targetUrl);
       }
 

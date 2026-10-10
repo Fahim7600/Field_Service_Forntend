@@ -14,6 +14,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ROLE_HOME } from "@/lib/auth-routes";
 import { authMessages, notify } from "@/lib/notify";
+import { getSafeRedirect } from "@/lib/safe-redirect";
 import { clearSessionCookies, performLogout } from "@/lib/session";
 import { useAuthContext } from "@/providers/auth-provider";
 import { useAuthStore } from "@/stores/auth-store";
@@ -57,7 +58,8 @@ export function AuthGate({ role, children }: AuthGateProps) {
         if (currentPath !== "/login" && currentPath !== "/register") {
           void clearSessionCookies().then(() => {
             const fullPath = window.location.pathname + window.location.search;
-            const encodedRedirect = encodeURIComponent(fullPath);
+            const safePath = getSafeRedirect(fullPath, "/");
+            const encodedRedirect = encodeURIComponent(safePath);
             window.location.assign(
               `/login?redirect=${encodedRedirect}&reason=expired`,
             );

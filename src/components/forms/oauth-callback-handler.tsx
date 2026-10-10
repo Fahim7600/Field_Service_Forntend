@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ROLE_HOME } from "@/lib/auth-routes";
 import { notify } from "@/lib/notify";
+import { getSafeRedirect } from "@/lib/safe-redirect";
 import { clearSessionCookies, syncSessionCookies } from "@/lib/session";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth-store";
@@ -68,7 +69,14 @@ export function OAuthCallbackHandler() {
           },
         );
 
-        const target = ROLE_HOME[user.role] || "/";
+        const redirectParam = searchParams.get("redirect");
+        const defaultHome = ROLE_HOME[user.role] || "/";
+        const sanitized = redirectParam
+          ? getSafeRedirect(redirectParam, defaultHome)
+          : defaultHome;
+        const target = sanitized.startsWith(defaultHome)
+          ? sanitized
+          : defaultHome;
         router.replace(target);
         router.refresh();
       } catch {

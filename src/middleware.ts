@@ -17,6 +17,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
+import { getSafeRedirect } from "@/lib/safe-redirect";
 import { FS_COOKIE_MUST_CHANGE, FS_COOKIE_ROLE } from "@/lib/session-cookies";
 
 const ROLE_HOME: Record<string, string> = {
@@ -67,7 +68,15 @@ export function middleware(req: NextRequest) {
   // 3. Guest Auth Pages (/login, /register)
   if (isAuthRoute) {
     if (role && ROLE_HOME[role]) {
-      const redirectUrl = new URL(ROLE_HOME[role], req.url);
+      const redirectParam = req.nextUrl.searchParams.get("redirect");
+      const defaultHome = ROLE_HOME[role];
+      const safeRedirect = redirectParam
+        ? getSafeRedirect(redirectParam, defaultHome)
+        : defaultHome;
+      const target = safeRedirect.startsWith(defaultHome)
+        ? safeRedirect
+        : defaultHome;
+      const redirectUrl = new URL(target, req.url);
       return NextResponse.redirect(redirectUrl);
     }
     return NextResponse.next();
@@ -80,7 +89,8 @@ export function middleware(req: NextRequest) {
     // If no role cookie exists, redirect to login with encoded redirect param and reason
     if (!role) {
       const fullPath = pathname + search;
-      const encodedRedirect = encodeURIComponent(fullPath);
+      const safePath = getSafeRedirect(fullPath, "/");
+      const encodedRedirect = encodeURIComponent(safePath);
       const loginUrl = new URL(
         `/login?redirect=${encodedRedirect}&reason=login_required`,
         req.url,

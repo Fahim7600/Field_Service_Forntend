@@ -34,9 +34,17 @@ export function DemoLogin() {
     );
   };
 
+  const availableAccounts = DEMO_ACCOUNTS.filter(
+    (account) => account.isAvailable,
+  );
+
+  if (availableAccounts.length === 0) {
+    return null;
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-      {DEMO_ACCOUNTS.map((account, index) => {
+      {availableAccounts.map((account, index) => {
         const Icon = account.icon;
         const isThirdCard = index === 2;
         const isLoadingThis =

@@ -25,6 +25,7 @@ export function DashboardTopbar({ role }: DashboardTopbarProps) {
   const pathname = usePathname();
 
   // Close mobile sidebar drawer automatically on route changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close drawer on pathname navigation
   React.useEffect(() => {
     setSheetOpen(false);
   }, [pathname]);
