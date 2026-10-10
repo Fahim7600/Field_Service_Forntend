@@ -725,6 +725,41 @@ The live backend provides richer responses and slightly different structures tha
 
 ---
 
+## 🔒 Session Handling & Cold Server Resilience
+
+Field Service is engineered for high resilience against slow or sleeping server instances (such as free-tier Render instances with cold spin-ups):
+
+1. **Instant Logout with Background Revocation**:
+   - `performLogout()` immediately resets local state (in-memory Zustand session, TanStack Query cache, session storage) and deletes frontend routing cookies (`fs_role`, `fs_hint`, `fs_must_change`) with a 2-second timeout guard.
+   - The backend token revocation (`POST /api/v1/auth/logout`) is fired in the background using native `fetch` with `keepalive: true` without blocking the user.
+   - Navigation uses a hard `window.location.assign("/login?reason=logged_out")`, eliminating stale router cache and race conditions with middleware.
+   - A module-level guard locks double-clicks while the logout is completing.
+
+2. **Reason-Based Contextual Toasts**:
+   - Redirects to `/login` carry a `reason` parameter:
+     - `logged_out`: *"You have been logged out safely."*
+     - `expired`: *"Please log in again to continue."*
+     - `login_required`: *"Please log in to continue."*
+     - `password_changed`: *"Please log in with your new password."*
+   - On mount, `LoginForm` renders one deduplicated toast and scrubs the `reason` parameter from the URL address bar while preserving the `redirect` destination.
+
+3. **Session Validation & `<AuthGate />`**:
+   - To prevent stale `fs_role` cookies from flashing dashboard content and subsequently logging out when cold refreshes finish, dashboard layouts wrap page content inside `<AuthGate role={role}>`.
+   - **`idle` / `loading`**: Renders a full dashboard skeleton with a *"Checking your session..."* notice. After 5 seconds, it alerts the user that the server may be waking up.
+   - **`authenticated`**: Renders child components. If the user's role does not match the dashboard segment, redirects to the user's authorized home with `?role_redirect=1`.
+   - **`unauthenticated`**: Clears cookies and redirects to `/login?redirect=...&reason=expired`.
+   - **`unreachable`**: Renders a dedicated card (*"We could not reach the server"*) with a **Retry** button and a **Log out** button. It does NOT destroy session cookies or eject the user.
+
+4. **Why Timeouts Do Not Log the User Out**:
+   - Only explicit HTTP `401 Unauthorized` or `403 Forbidden` responses from refresh or profile endpoints invalidate the session.
+   - Network errors, timeouts (up to 60s), or 5xx server errors indicate a waking or temporarily unreachable server, transitioning the state to `unreachable` rather than `unauthenticated`.
+
+5. **Early Warm-Up Ping & Slow Request Explanations**:
+   - `BackendWarmup`: Mounted in the root layout, it fires a non-blocking `GET /api/v1/health` once every 10 minutes per browser, waking cold backends before users click Login or Book Service.
+   - **Slow Request Interceptor**: Any API request taking longer than 6 seconds triggers a single deduplicated *"Waking up the server"* toast with an active pending counter that automatically dismisses when all in-flight slow requests complete.
+
+---
+
 ## 🔗 Related Repositories
 
 - Backend API: [https://github.com/Fahim7600/Field_Service.git](https://github.com/Fahim7600/Field_Service.git)
