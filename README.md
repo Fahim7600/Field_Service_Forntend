@@ -496,6 +496,13 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
   - [x] Topbar VIP badge, profile membership card, and booking wizard priority review SLA notice
   - [x] Accessible Star rating component (`role="radiogroup"`, keyboard navigation, read-only display)
   - [x] Inline service feedback form on customer request detail page with duplicate rating protection (409 conflict handling)
+- [x] **Phase 11: Real-Time In-App Notifications & Role Pages**
+  - [x] Topbar notification bell dropdown with real-time unread badge counter (`9+` max cap)
+  - [x] 30-second visibility-aware polling (`useDocumentVisibility`) suppressing background tab requests
+  - [x] Optimistic single notification and bulk read state mutations (`useMarkNotificationRead`, `useMarkAllRead`)
+  - [x] Deep link routing helper (`getNotificationHref`) for customer, technician, and admin roles
+  - [x] Shared notifications client (`/customer/notifications`, `/technician/notifications`, `/admin/notifications`) with URL-synced filters
+  - [x] Client-side feedback caching in `localStorage` preserving read-only rating displays across reloads
 
 ---
 
@@ -528,6 +535,30 @@ Customer VIP memberships are managed exclusively through Stripe integration and 
 - **Timing Rule**: Rating is available only after the invoice is marked `PAID` or `CLOSED`. For `COMPLETED` or `INVOICED` jobs, a reminder indicates that rating unlocks upon payment.
 - **Submission Details**: 1 to 5 star rating (required) and optional comment (up to 1,000 characters).
 - **Single Submission Constraint**: Exactly one review per work order. If already submitted, the card transitions to a read-only review display. 409 conflict errors are gracefully handled.
+
+---
+
+## 🔔 Notifications System
+
+### 1. Polling & Visibility Strategy
+- **Visible-Tab Polling**: The topbar notification bell queries `GET /api/v1/notifications` (preview of latest 5) and `GET /api/v1/notifications?isRead=false` (total unread count) every 30 seconds only while `document.visibilityState === "visible"`. Background tabs pause polling completely to conserve network and battery resources.
+- **Focus Revalidation**: Polling automatically re-syncs when the tab regains user focus (`refetchOnWindowFocus: true`).
+- **Silent Background Errors**: Network errors during background polling are suppressed from triggering user toasts (`skipToast: true`).
+
+### 2. Optimistic Read Mutations
+- **Mark Single Read**: Clicking an unread notification or the "Mark as read" button instantly updates the preview dropdown, unread counter badge, and active list caches before the backend responds, rolling back on error.
+- **Mark All Read**: The "Mark all as read" button clears all unread indicators across preview and list views in one optimistic update.
+
+### 3. Role-Based Deep Linking
+Notifications automatically resolve to actionable dashboard views based on payload references:
+- **Customer**: Routes to `/customer/requests/{id}`, `/customer/invoices/{id}`, `/customer/payments`, or `/customer/premium`.
+- **Technician**: Routes to `/technician/tasks/{workOrderId}` or `/technician/schedule`.
+- **Admin**: Routes to `/admin/work-orders/{workOrderId}`, `/admin/dispatch/{requestId}`, `/admin/invoices/{invoiceId}`, or `/admin/payments`.
+
+### 4. Full Notification Pages
+- Dedicated role pages (`/customer/notifications`, `/technician/notifications`, `/admin/notifications`) powered by a shared responsive client component.
+- Features URL-synced status filters (`All`, `Unread`, `Read`), pagination controls, visual tone badges, and mobile-optimized card layouts.
+
 
 
 ---
