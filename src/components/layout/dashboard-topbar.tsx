@@ -1,8 +1,9 @@
 "use client";
 
-import { Bell, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useState } from "react";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,23 +52,9 @@ export function DashboardTopbar({ role }: DashboardTopbarProps) {
         </Sheet>
       </div>
 
-      {/* Right side: Notifications & UserMenu */}
+      {/* Right side: Notifications Bell & UserMenu */}
       <div className="flex items-center gap-3">
-        {/* Notifications Icon with red dot badge */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative text-charcoal-700 hover:bg-muted"
-          aria-label="View notifications"
-        >
-          <Bell className="size-4.5" />
-          <span className="absolute top-2 right-2 flex size-2">
-            <span className="animate-ping absolute inline-flex size-full rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex rounded-full size-2 bg-red-500" />
-          </span>
-        </Button>
-
-        {/* Authenticated User Menu */}
+        <NotificationBell role={role} />
         <UserMenu />
       </div>
     </header>
