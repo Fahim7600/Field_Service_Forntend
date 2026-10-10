@@ -12,7 +12,6 @@ import {
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
-import * as React from "react";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { PaginationControls } from "@/components/shared/pagination-controls";
@@ -67,15 +66,6 @@ export function FeedbackClient() {
 
   const technicians = extractArray<AdminUser>(techniciansData);
 
-  // Map technician ID to technician name
-  const technicianNameMap = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const tech of technicians) {
-      map.set(tech.id, tech.name);
-    }
-    return map;
-  }, [technicians]);
-
   // 2. Fetch Feedback Reviews
   const queryParams: FeedbackParams = {
     page,
@@ -100,8 +90,9 @@ export function FeedbackClient() {
     staleTime: 10000,
   });
 
-  const feedbackItems = extractArray<FeedbackItem>(feedbackData);
-  const pagination = feedbackData?.pagination;
+  const feedbackItems =
+    feedbackData?.items ?? extractArray<FeedbackItem>(feedbackData);
+  const pagination = feedbackData?.meta ?? feedbackData?.pagination;
 
   return (
     <div className="space-y-6">
@@ -261,20 +252,10 @@ export function FeedbackClient() {
             <div className="space-y-3">
               {feedbackItems.map((item) => {
                 const isLowRating = item.rating <= 2;
-                const customerName =
-                  item.customer?.name ||
-                  item.customerName ||
-                  `Customer (${item.customerId.slice(0, 6)})`;
-                const techName =
-                  item.technician?.name ||
-                  item.technicianName ||
-                  technicianNameMap.get(item.customerId) ||
-                  "Assigned Technician";
-                const workOrderId = item.workOrderId || item.workOrder?.id;
-                const workOrderNum =
-                  item.workOrderNumber ||
-                  item.workOrder?.workOrderNumber ||
-                  (workOrderId ? `#${workOrderId.slice(0, 8)}` : null);
+                const customerName = item.customer?.name || "Customer";
+                const techName = item.technician?.name || "Unassigned";
+                const workOrderId = item.workOrder?.id || item.workOrderId;
+                const requestNumber = item.requestNumber;
 
                 return (
                   <Card
@@ -335,6 +316,14 @@ export function FeedbackClient() {
                           <Wrench className="size-3.5 text-muted-foreground" />
                           <span>{techName}</span>
                         </div>
+                        {requestNumber && (
+                          <div className="flex items-center gap-1">
+                            <span>Request:</span>
+                            <span className="font-mono font-medium text-foreground">
+                              {requestNumber}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {workOrderId && (
@@ -342,7 +331,7 @@ export function FeedbackClient() {
                           href={`/admin/work-orders/${workOrderId}`}
                           className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
                         >
-                          <span>Work Order {workOrderNum}</span>
+                          <span>Work Order</span>
                           <ExternalLink className="size-3" />
                         </Link>
                       )}

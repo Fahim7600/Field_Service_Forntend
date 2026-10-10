@@ -90,7 +90,6 @@ export interface AuditLogParams {
 export interface FeedbackCustomer {
   id: string;
   name?: string | null;
-  email?: string | null;
 }
 
 export interface FeedbackTechnician {
@@ -98,22 +97,25 @@ export interface FeedbackTechnician {
   name?: string | null;
 }
 
+export interface FeedbackWorkOrderRef {
+  id: string;
+  workOrderNumber?: string;
+}
+
+/**
+ * Feedback item per live shape 5:
+ * { id, rating, comment, createdAt, technician: { id, name }, customer: { id, name }, workOrder: { id }, requestNumber }
+ */
 export interface FeedbackItem {
   id: string;
-  workOrderId: string;
-  customerId: string;
   rating: number;
   comment?: string | null;
   createdAt: string;
-  customer?: FeedbackCustomer | null;
-  customerName?: string | null;
   technician?: FeedbackTechnician | null;
-  technicianName?: string | null;
-  workOrderNumber?: string | null;
-  workOrder?: {
-    id: string;
-    workOrderNumber?: string;
-  } | null;
+  customer?: FeedbackCustomer | null;
+  workOrder?: FeedbackWorkOrderRef | null;
+  workOrderId?: string;
+  requestNumber?: string | null;
 }
 
 export interface FeedbackParams {
@@ -132,33 +134,32 @@ export type SubscriptionStatus =
   | "EXPIRED"
   | "INACTIVE";
 
+export interface SubscriptionPlanRef {
+  id?: string;
+  name: string;
+  interval: string;
+  priceCents?: number;
+}
+
+export interface SubscriptionCustomerRef {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+}
+
+/**
+ * Subscription item per live shape 6:
+ * { id, status, plan: { id, name, interval, priceCents }, customer: { id, name, email }, currentPeriodStart, currentPeriodEnd, cancelAtPeriodEnd, createdAt }
+ */
 export interface SubscriptionListItem {
   id: string;
-  userId: string;
   status: SubscriptionStatus | string;
+  plan?: SubscriptionPlanRef | null;
+  customer?: SubscriptionCustomerRef | null;
+  currentPeriodStart?: string | null;
   currentPeriodEnd: string;
   cancelAtPeriodEnd?: boolean;
   createdAt?: string;
-  user?: {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-  } | null;
-  customer?: {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-  } | null;
-  customerName?: string | null;
-  customerEmail?: string | null;
-  plan?: {
-    id?: string;
-    name: string;
-    interval: string;
-    priceCents?: number;
-  } | null;
-  planName?: string | null;
-  planInterval?: string | null;
 }
 
 export interface SubscriptionListParams {

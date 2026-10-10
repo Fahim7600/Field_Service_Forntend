@@ -23,7 +23,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUrlFilters } from "@/hooks/use-url-filters";
 import { extractArray } from "@/lib/extract-data";
-import { safeFormatDate } from "@/lib/format";
+import { formatMoney, safeFormatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { adminLogsService } from "@/services/admin-logs.service";
 import type {
@@ -64,7 +64,7 @@ function ActiveMembersCard() {
     );
   }
 
-  const count = data?.pagination?.total ?? 0;
+  const count = data?.meta?.total ?? data?.pagination?.total ?? 0;
 
   return (
     <Card className="p-4 border border-emerald-500/20 bg-emerald-500/5 shadow-2xs">
@@ -118,7 +118,7 @@ function PastDueCard() {
     );
   }
 
-  const count = data?.pagination?.total ?? 0;
+  const count = data?.meta?.total ?? data?.pagination?.total ?? 0;
 
   return (
     <Card className="p-4 border border-amber-500/20 bg-amber-500/5 shadow-2xs">
@@ -164,8 +164,8 @@ export function SubscriptionsClient() {
     staleTime: 10000,
   });
 
-  const subscriptions = extractArray<SubscriptionListItem>(data);
-  const pagination = data?.pagination;
+  const subscriptions = data?.items ?? extractArray<SubscriptionListItem>(data);
+  const pagination = data?.meta ?? data?.pagination;
 
   const handleStatusChange = (val: string) => {
     updateFilters({
@@ -178,13 +178,8 @@ export function SubscriptionsClient() {
     {
       header: "Customer",
       cell: (item) => {
-        const name =
-          item.customer?.name ||
-          item.user?.name ||
-          item.customerName ||
-          `User ${item.userId.slice(0, 8)}`;
-        const email =
-          item.customer?.email || item.user?.email || item.customerEmail || "";
+        const name = item.customer?.name || "Customer";
+        const email = item.customer?.email || "";
 
         return (
           <div className="flex items-center gap-3 min-w-[200px]">
@@ -208,19 +203,28 @@ export function SubscriptionsClient() {
       },
     },
     {
-      header: "Plan Tier",
-      className: "w-44",
+      header: "Plan",
+      className: "w-48",
       cell: (item) => {
-        const planName = item.plan?.name || item.planName || "VIP Premium";
-        const interval = item.plan?.interval || item.planInterval || "Monthly";
+        const plan = item.plan;
+        const planName = plan?.name || "Plan";
+        const price =
+          plan?.priceCents != null ? formatMoney(plan.priceCents) : null;
+        const intervalUpper = (plan?.interval || "").toUpperCase();
+        const intervalSuffix =
+          intervalUpper === "YEAR" || intervalUpper === "YEARLY"
+            ? "/year"
+            : "/month";
 
         return (
           <div className="space-y-0.5">
             <span className="font-semibold text-sm text-foreground block">
               {planName}
             </span>
-            <span className="text-xs text-muted-foreground capitalize">
-              {interval.toLowerCase()} billing
+            <span className="text-xs text-muted-foreground">
+              {price
+                ? `${price}${intervalSuffix}`
+                : intervalSuffix.replace("/", "")}
             </span>
           </div>
         );
@@ -230,13 +234,10 @@ export function SubscriptionsClient() {
       header: "Status",
       className: "w-36",
       cell: (item) => {
-        const isCancelled =
-          item.status === "CANCELLED" || item.cancelAtPeriodEnd;
-
         return (
           <div className="space-y-1">
             <StatusBadge status={item.status} />
-            {isCancelled && item.currentPeriodEnd && (
+            {item.cancelAtPeriodEnd && item.currentPeriodEnd && (
               <span className="text-[10px] text-muted-foreground block">
                 Ends {safeFormatDate(item.currentPeriodEnd)}
               </span>
@@ -246,9 +247,13 @@ export function SubscriptionsClient() {
       },
     },
     {
-      header: "Renews / Ends",
-      className: "w-36 text-xs text-muted-foreground",
-      cell: (item) => safeFormatDate(item.currentPeriodEnd),
+      header: "Period",
+      className: "w-44 text-xs text-muted-foreground",
+      cell: (item) => {
+        const start = safeFormatDate(item.currentPeriodStart);
+        const end = safeFormatDate(item.currentPeriodEnd);
+        return start !== "-" ? `${start} – ${end}` : end;
+      },
     },
     {
       header: "Started",
@@ -372,22 +377,20 @@ export function SubscriptionsClient() {
               />
             }
             mobileCardRender={(item) => {
-              const name =
-                item.customer?.name ||
-                item.user?.name ||
-                item.customerName ||
-                `User ${item.userId.slice(0, 8)}`;
-              const email =
-                item.customer?.email ||
-                item.user?.email ||
-                item.customerEmail ||
-                "";
-              const planName =
-                item.plan?.name || item.planName || "VIP Premium";
-              const interval =
-                item.plan?.interval || item.planInterval || "Monthly";
-              const isCancelled =
-                item.status === "CANCELLED" || item.cancelAtPeriodEnd;
+              const name = item.customer?.name || "Customer";
+              const email = item.customer?.email || "";
+              const plan = item.plan;
+              const planName = plan?.name || "Plan";
+              const price =
+                plan?.priceCents != null ? formatMoney(plan.priceCents) : null;
+              const intervalUpper = (plan?.interval || "").toUpperCase();
+              const intervalSuffix =
+                intervalUpper === "YEAR" || intervalUpper === "YEARLY"
+                  ? "/year"
+                  : "/month";
+              const start = safeFormatDate(item.currentPeriodStart);
+              const end = safeFormatDate(item.currentPeriodEnd);
+              const period = start !== "-" ? `${start} – ${end}` : end;
 
               return (
                 <Card className="p-4 border border-border bg-card shadow-2xs space-y-3">
@@ -410,7 +413,14 @@ export function SubscriptionsClient() {
                       </div>
                     </div>
 
-                    <StatusBadge status={item.status} />
+                    <div className="flex flex-col items-end gap-1">
+                      <StatusBadge status={item.status} />
+                      {item.cancelAtPeriodEnd && item.currentPeriodEnd && (
+                        <span className="text-[10px] text-muted-foreground">
+                          Ends {safeFormatDate(item.currentPeriodEnd)}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
@@ -418,16 +428,15 @@ export function SubscriptionsClient() {
                       <span className="font-semibold text-foreground">
                         {planName}
                       </span>
-                      <span className="text-muted-foreground block text-[11px] capitalize">
-                        {interval.toLowerCase()} billing
+                      <span className="text-muted-foreground block text-[11px]">
+                        {price
+                          ? `${price}${intervalSuffix}`
+                          : intervalSuffix.replace("/", "")}
                       </span>
                     </div>
 
-                    <div className="text-right text-muted-foreground">
-                      <span>
-                        {isCancelled ? "Ends" : "Renews"}{" "}
-                        {safeFormatDate(item.currentPeriodEnd)}
-                      </span>
+                    <div className="text-right text-muted-foreground text-[11px]">
+                      <span>{period}</span>
                     </div>
                   </div>
                 </Card>
