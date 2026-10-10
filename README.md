@@ -279,6 +279,8 @@ Field_Service_Forntend/
 | `dev` | `next dev --turbopack` | Starts development server with Turbopack |
 | `build` | `next build --turbopack` | Generates compiled production bundle |
 | `start` | `next start` | Runs the built production server |
+| `lint` | `biome check .` | Runs Biome code diagnostics without writing changes |
+| `format` | `biome format --write .` | Formats source files with Biome |
 | `fix` | `biome check --write .` | Applies automated linting and formatting fixes |
 | `typecheck` | `tsc --noEmit` | Runs strict TypeScript type diagnostics |
 | `check:links` | `node scripts/check-links.mjs` | Audits physical App Router pages against sidebar links |
