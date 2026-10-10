@@ -521,6 +521,10 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
   - [x] Accessible lazy-loaded Recharts status bar chart (`StatusBarChartLazy`, `ChartCard`, `ChartSkeleton`) with `prefers-reduced-motion` suppression and accessible data tables
   - [x] Field Technicians directory (`/admin/technicians`) with URL-synced search, status filters, responsive mobile cards, and pagination
   - [x] Technician Analytics console (`/admin/technicians/[id]`) with completed job counts, star ratings, on-time rates, average job durations, and customer feedback history
+- [x] **Phase 15: Technician Performance Console**
+  - [x] Technician Performance page (`/technician/performance`) with task completion summary, status chart, next visits, and recently completed tasks
+  - [x] Pure statistics computation helper (`computeTechnicianStats`) aggregating real task lifecycle data and service report hours
+  - [x] Quick performance navigation shortcut in technician overview dashboard and flat sidebar link
 
 
 ---
@@ -679,6 +683,25 @@ The Audit Logs console (`/admin/audit-logs`) provides complete compliance and ac
   4. **Average Job Duration**: Formatted duration per task (`formatDuration`).
 - **Customer Feedback History**: Direct integration with `GET /feedback?technicianId={id}`, previewing recent customer star ratings, comments, customer details, and linked work orders with deep links to full feedback logs.
 - **404 Handling**: Graceful fallback and recovery for nonexistent or removed technician IDs.
+
+---
+
+## 📈 Technician Performance
+
+### 1. Performance Overview (`/technician/performance`)
+- **Client-Side Grounded Aggregation**: Because the backend exposes no technician self-analytics endpoint (admin analytics and feedback endpoints are strictly role-guarded), performance metrics are computed purely from the technician's assigned tasks (`GET /api/v1/work-orders/my-assigned?limit=100`).
+- **Stat Cards**:
+  1. **Jobs Completed**: Work orders finished by the technician (`COMPLETED`, `INVOICED`, `PAID`, `CLOSED`).
+  2. **Active Jobs**: Current tasks undergoing lifecycle progression (`ASSIGNED`, `SCHEDULED`, `ARRIVED`, `IN_PROGRESS`).
+  3. **Upcoming Visits**: Scheduled future calendar visits (`SCHEDULED` with future `visitStart`).
+  4. **Hours Logged**: Sum of hours reported on completed service reports (`serviceReport.hoursSpent`). If no hours data is available across tasks, this card is hidden dynamically.
+- **Jobs by Status Chart**: Accessible, lazy-loaded Recharts bar chart displaying the lifecycle breakdown of all assigned work orders, complete with screen-reader summaries, reduced-motion suppression, and collapsible data table.
+- **Next Visits & Recent Completions**:
+  - Direct links to upcoming customer appointments with dates, job numbers, and address details.
+  - Recent completed jobs with completion dates and reported hours.
+- **Explicit Scope Boundaries**:
+  - **No Payroll or Earnings**: The system contains no payroll or billing calculations for technicians.
+  - **Clear Dispatch Oversight Notice**: A footer card clarifies that customer feedback ratings and on-time compliance are monitored by the admin dispatch team.
 
 ---
 
