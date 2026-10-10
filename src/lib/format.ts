@@ -149,14 +149,3 @@ export function toLocalInputValue(iso: string | null | undefined): string {
     return "";
   }
 }
-
-// Backwards compatibility aliases
-export const formatSafeDate = safeFormatDate;
-export const formatSafeDateTime = safeFormatDateTime;
-export const formatCurrencyCents = (
-  cents?: number | null,
-  currency = "USD",
-) => {
-  const formatted = formatMoney(cents, currency);
-  return formatted === "-" ? "$0.00" : formatted;
-};

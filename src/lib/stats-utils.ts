@@ -83,21 +83,6 @@ export function normalizeRequestsByStatus(
 }
 
 /**
- * Converts a raw fraction (0..1) or percentage (0..100) to a clean 0..100 percentage.
- * Clamps result between 0 and 100. Returns null for invalid or missing inputs.
- */
-export function toPercent(value: number | null | undefined): number | null {
-  if (value === null || value === undefined) return null;
-  const num = Number(value);
-  if (!Number.isFinite(num) || num < 0) return null;
-
-  // Fraction between 0 and 1 (e.g. 0.94 -> 94)
-  const converted = num <= 1 && num > 0 ? num * 100 : num;
-  const clamped = Math.min(100, Math.max(0, converted));
-  return Math.round(clamped * 10) / 10;
-}
-
-/**
  * Formats duration in minutes to a human-readable string ("45 min", "1 h 20 min", "2 h").
  * Returns "-" for invalid or negative inputs.
  */
