@@ -6,7 +6,6 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getErrorMessage } from "@/lib/api-client";
+import { messages, notify } from "@/lib/notify";
 import { adminService } from "@/services/admin.service";
 
 const rejectSchema = z.object({
@@ -84,9 +83,10 @@ export function RejectRequestDialog({
         reason: values.reason.trim(),
       });
 
-      toast.success("Request rejected", {
-        description: "The customer will be notified.",
-      });
+      notify.success(
+        messages.dispatch.rejected.title,
+        messages.dispatch.rejected.description,
+      );
 
       await queryClient.invalidateQueries({
         queryKey: ["admin", "dispatch-queue"],
@@ -98,7 +98,7 @@ export function RejectRequestDialog({
       onOpenChange(false);
       router.push("/admin/dispatch");
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      notify.fromError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -182,7 +182,7 @@ export function RejectRequestDialog({
               className="gap-2 shadow-xs"
             >
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              <span>Confirm Rejection</span>
+              <span>{isSubmitting ? "Rejecting..." : "Confirm Rejection"}</span>
             </Button>
           </DialogFooter>
         </form>

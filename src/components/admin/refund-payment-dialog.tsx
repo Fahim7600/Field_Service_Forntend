@@ -5,9 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
-
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -32,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, getErrorMessage } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import { financeService } from "@/services/finance.service";
 import {
   type Payment,
@@ -101,14 +100,16 @@ export function RefundPaymentDialog({
   }, [open, reset]);
 
   const refundMutation = useMutation({
+    meta: { silent: true },
     mutationFn: async (reason: string) => {
       if (!payment) throw new Error("No payment selected");
       return financeService.refundPayment(payment.id, { reason });
     },
     onSuccess: async () => {
-      toast.success("Refund issued", {
-        description: "The customer will see it in their payment history.",
-      });
+      notify.success(
+        messages.payments.refunded.title,
+        messages.payments.refunded.description,
+      );
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["payments"] }),

@@ -18,8 +18,6 @@ import {
   UserX,
 } from "lucide-react";
 import * as React from "react";
-import { toast } from "sonner";
-
 import { EmptyState } from "@/components/shared/empty-state";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import {
@@ -69,9 +67,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useUrlFilters } from "@/hooks/use-url-filters";
-import { getErrorMessage } from "@/lib/api-client";
 import { extractArray } from "@/lib/extract-data";
 import { safeFormatDate } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { adminUsersService } from "@/services/admin-users.service";
 import type {
@@ -167,19 +165,15 @@ export function AdminUsersClient() {
   const roleMutation = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: UserRole }) =>
       adminUsersService.changeUserRole(id, role),
-    onSuccess: (updatedUser, variables) => {
-      toast.success("Role Changed Successfully", {
-        description: `${updatedUser?.name || "User"} is now assigned the ${variables.role} role.`,
-        icon: <UserCog className="size-4 text-primary" />,
-      });
+    onSuccess: () => {
+      notify.success(
+        messages.admin.userRoleChanged.title,
+        messages.admin.userRoleChanged.description,
+      );
       setRoleUser(null);
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
-    onError: (err) => {
-      toast.error("Failed to Update Role", {
-        description: getErrorMessage(err),
-        icon: <AlertCircle className="size-4 text-destructive" />,
-      });
+    onError: () => {
       refetch();
     },
   });
@@ -188,24 +182,15 @@ export function AdminUsersClient() {
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: UserStatus }) =>
       adminUsersService.changeUserStatus(id, status),
-    onSuccess: (updatedUser, variables) => {
-      const isSuspended = variables.status === "SUSPENDED";
-      toast.success(isSuspended ? "Account Suspended" : "Account Activated", {
-        description: `${updatedUser?.name || "User"} account is now ${variables.status.toLowerCase()}.`,
-        icon: isSuspended ? (
-          <UserX className="size-4 text-destructive" />
-        ) : (
-          <UserCheck className="size-4 text-emerald-600" />
-        ),
-      });
+    onSuccess: () => {
+      notify.success(
+        messages.admin.userStatusChanged.title,
+        messages.admin.userStatusChanged.description,
+      );
       setStatusTarget(null);
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
-    onError: (err) => {
-      toast.error("Status Update Failed", {
-        description: getErrorMessage(err),
-        icon: <AlertCircle className="size-4 text-destructive" />,
-      });
+    onError: () => {
       refetch();
     },
   });
@@ -214,19 +199,14 @@ export function AdminUsersClient() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => adminUsersService.deleteUser(id),
     onSuccess: () => {
-      toast.success("User Deleted", {
-        description:
-          "The user account was soft-deleted and can no longer log in.",
-        icon: <Trash2 className="size-4 text-destructive" />,
-      });
+      notify.success(
+        messages.admin.deleted.title,
+        messages.admin.deleted.description,
+      );
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
-    onError: (err) => {
-      toast.error("User Deletion Failed", {
-        description: getErrorMessage(err),
-        icon: <AlertCircle className="size-4 text-destructive" />,
-      });
+    onError: () => {
       refetch();
     },
   });

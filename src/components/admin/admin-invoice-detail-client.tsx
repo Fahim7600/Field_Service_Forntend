@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertCircle,
   ArrowLeft,
   CheckCircle2,
   Clock,
@@ -18,21 +17,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
-import { toast } from "sonner";
-
 import { EditInvoiceForm } from "@/components/admin/edit-invoice-form";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { DetailNotFound } from "@/components/shared/detail-not-found";
 import { InvoiceBreakdown } from "@/components/shared/invoice-breakdown";
+import { QueryError } from "@/components/shared/query-error";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -47,8 +37,9 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
-import { getErrorMessage } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-client";
 import { safeFormatDate, safeFormatDateTime } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { financeService } from "@/services/finance.service";
 import type { Invoice } from "@/types/api";
@@ -83,17 +74,15 @@ export function AdminInvoiceDetailClient({
   const issueMutation = useMutation({
     mutationFn: async () => financeService.issueInvoice(id),
     onSuccess: async () => {
-      toast.success("Invoice issued", {
-        description: "The customer has been notified.",
-      });
+      notify.success(
+        messages.invoices.issued.title,
+        messages.invoices.issued.description,
+      );
       setIsIssueDialogOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["invoices", id] });
       await queryClient.invalidateQueries({ queryKey: ["invoices"] });
     },
-    onError: (err: unknown) => {
-      toast.error("Failed to issue invoice", {
-        description: getErrorMessage(err),
-      });
+    onError: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices", id] });
     },
   });
@@ -103,18 +92,16 @@ export function AdminInvoiceDetailClient({
     mutationFn: async (reason: string) =>
       financeService.voidInvoice(id, reason),
     onSuccess: async () => {
-      toast.success("Invoice voided", {
-        description: "The invoice status has been updated to VOID.",
-      });
+      notify.success(
+        messages.invoices.voided.title,
+        messages.invoices.voided.description,
+      );
       setIsVoidDialogOpen(false);
       setVoidReason("");
       await queryClient.invalidateQueries({ queryKey: ["invoices", id] });
       await queryClient.invalidateQueries({ queryKey: ["invoices"] });
     },
-    onError: (err: unknown) => {
-      toast.error("Failed to void invoice", {
-        description: getErrorMessage(err),
-      });
+    onError: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices", id] });
     },
   });
@@ -142,42 +129,23 @@ export function AdminInvoiceDetailClient({
   }
 
   if (isError || !invoice) {
+    if (error instanceof ApiError && error.status === 404) {
+      return (
+        <DetailNotFound
+          title="Invoice not found"
+          description="The requested billing invoice could not be located."
+          backHref="/admin/invoices"
+          backLabel="Back to Invoices"
+        />
+      );
+    }
     return (
-      <div className="max-w-md mx-auto py-12 text-center space-y-4">
-        <Card className="border-destructive/30 bg-destructive/5 p-6 space-y-4">
-          <CardContent className="space-y-3 p-0">
-            <AlertCircle className="size-8 text-destructive mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-destructive">
-                Invoice Not Found
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {error
-                  ? getErrorMessage(error)
-                  : "The requested billing invoice could not be located."}
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <Link
-                href="/admin/invoices"
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "sm" }),
-                  "gap-1.5 text-xs font-semibold",
-                )}
-              >
-                <ArrowLeft className="size-3.5" />
-                <span>All Invoices</span>
-              </Link>
-              <Button
-                size="sm"
-                onClick={() => refetch()}
-                className="gap-1.5 text-xs font-semibold"
-              >
-                Retry
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="max-w-md mx-auto py-12">
+        <QueryError
+          error={error}
+          onRetry={refetch}
+          title="Unable to load invoice"
+        />
       </div>
     );
   }
@@ -523,48 +491,18 @@ export function AdminInvoiceDetailClient({
         </div>
       )}
 
-      {/* AlertDialog: Issue Invoice Confirmation */}
-      <AlertDialog
+      {/* Issue Invoice Confirmation */}
+      <ConfirmDialog
         open={isIssueDialogOpen}
         onOpenChange={(val) => {
           if (!issueMutation.isPending) setIsIssueDialogOpen(val);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Issue this invoice to the customer?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              The invoice status will change to ISSUED and the customer will be
-              notified by email. They will be able to view and pay the invoice
-              online.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={issueMutation.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                issueMutation.mutate();
-              }}
-              disabled={issueMutation.isPending}
-              className="gap-2 font-semibold"
-            >
-              {issueMutation.isPending ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  <span>Issuing...</span>
-                </>
-              ) : (
-                <span>Confirm &amp; Issue</span>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title="Issue this invoice to the customer?"
+        description="The invoice status will change to ISSUED and the customer will be notified by email. They will be able to view and pay the invoice online."
+        confirmLabel="Confirm & Issue"
+        pending={issueMutation.isPending}
+        onConfirm={() => issueMutation.mutate()}
+      />
 
       {/* Dialog: Void Invoice Reason */}
       <Dialog
@@ -586,8 +524,8 @@ export function AdminInvoiceDetailClient({
               <span>Void Invoice</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Please provide an audit reason for voiding this invoice (min 5,
-              max 300 characters).
+              The invoice will be voided and can no longer be paid. Please
+              provide an audit reason (5 to 300 characters).
             </DialogDescription>
           </DialogHeader>
 

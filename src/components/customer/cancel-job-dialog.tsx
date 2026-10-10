@@ -3,7 +3,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar, Clock, Loader2, XCircle } from "lucide-react";
 import * as React from "react";
-import { toast } from "sonner";
 import { FeeNotice } from "@/components/customer/fee-notice";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getChangeEstimate } from "@/lib/change-policy";
 import { safeFormatDateTime } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import { workOrdersService } from "@/services/work-orders.service";
 import type { WorkOrder } from "@/types/work-order";
 
@@ -56,10 +56,9 @@ export function CancelJobDialog({
       const isLateFee = estimate.kind === "LATE_FEE" && estimate.feeCents > 0;
       const description = isLateFee
         ? `A late fee of $${(estimate.feeCents / 100).toFixed(2)} has been added to your invoices.`
-        : "Your field service job has been cancelled.";
+        : messages.requests.cancelled.description;
 
-      toast.success("Job cancelled", {
-        description,
+      notify.success(messages.requests.cancelled.title, description, {
         action: isLateFee
           ? {
               label: "View Invoices",
@@ -95,9 +94,7 @@ export function CancelJobDialog({
       setReason("");
     },
     onError: (error: unknown) => {
-      const err = error as { message?: string; statusCode?: number };
-      const message = err.message || "Failed to cancel work order.";
-      toast.error(message);
+      const err = error as { statusCode?: number };
 
       // Refetch work order to update view in case status moved to ARRIVED
       queryClient.invalidateQueries({ queryKey: ["work-order", workOrder.id] });

@@ -2,11 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertCircle,
   Edit2,
   FilterX,
   Layers,
-  Loader2,
   Plus,
   RefreshCw,
   Search,
@@ -14,32 +12,23 @@ import {
   Wrench,
 } from "lucide-react";
 import * as React from "react";
-import { toast } from "sonner";
 
 import { CategoryFormDialog } from "@/components/admin/category-form-dialog";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
+import { QueryError } from "@/components/shared/query-error";
 import {
   type ColumnDef,
   ResponsiveDataList,
 } from "@/components/shared/responsive-data-list";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getErrorMessage } from "@/lib/api-client";
 import { extractArray } from "@/lib/extract-data";
 import { formatMoney, safeFormatDate } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { catalogService } from "@/services/catalog.service";
 import type { ServiceCategory, Skill } from "@/types/admin";
@@ -112,19 +101,12 @@ export function CategoriesTab({ onSkillTabSwitch }: CategoriesTabProps) {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => catalogService.deleteCategory(id),
     onSuccess: () => {
-      toast.success("Service Type Deleted", {
-        description:
-          "The service category has been removed from the booking catalog.",
-        icon: <Trash2 className="size-4 text-destructive" />,
-      });
+      notify.success(
+        messages.generic.deleted.title,
+        messages.generic.deleted.description,
+      );
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ["service-categories"] });
-    },
-    onError: (err) => {
-      toast.error("Failed to Delete Service Type", {
-        description: getErrorMessage(err),
-        icon: <AlertCircle className="size-4 text-destructive" />,
-      });
     },
   });
 
@@ -270,30 +252,13 @@ export function CategoriesTab({ onSkillTabSwitch }: CategoriesTabProps) {
         </div>
       )}
 
-      {/* Error Card */}
+      {/* Error State */}
       {isCategoriesError && (
-        <Card className="border-destructive/30 bg-destructive/5 p-6 text-center">
-          <CardContent className="space-y-3 p-0">
-            <AlertCircle className="size-8 text-destructive mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-destructive">
-                Failed to load service categories
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {categoriesError instanceof Error
-                  ? categoriesError.message
-                  : "An unexpected error occurred while loading catalog categories."}
-              </p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => refetchCategories()}
-            >
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
+        <QueryError
+          error={categoriesError}
+          onRetry={() => refetchCategories()}
+          title="Failed to load service categories"
+        />
       )}
 
       {/* Categories Data List */}
@@ -408,62 +373,25 @@ export function CategoriesTab({ onSkillTabSwitch }: CategoriesTabProps) {
         onSkillTabSwitch={onSkillTabSwitch}
       />
 
-      {/* Delete Alert Dialog */}
-      <AlertDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => {
-          if (!deleteMutation.isPending && !open) {
-            setDeleteTarget(null);
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete this service category?"
+        description={
+          deleteTarget
+            ? `Are you sure you want to delete "${deleteTarget.name}"? Existing requests keep working but customers will no longer be able to book it.`
+            : "The category will be removed."
+        }
+        confirmLabel="Delete Category"
+        variant="destructive"
+        pending={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteMutation.mutate(deleteTarget.id);
           }
         }}
-      >
-        <AlertDialogContent className="sm:max-w-md border-destructive/30">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="size-5" />
-              <span>Delete Service Category</span>
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs space-y-2">
-              <span>
-                Delete this service type (
-                <strong className="text-foreground">
-                  {deleteTarget?.name}
-                </strong>
-                )?
-              </span>
-              <span className="block font-medium text-foreground pt-1">
-                Existing requests keep working but customers will no longer be
-                able to book it.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel
-              disabled={deleteMutation.isPending}
-              onClick={() => setDeleteTarget(null)}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleteMutation.isPending || !deleteTarget}
-              onClick={(e) => {
-                e.preventDefault();
-                if (deleteTarget) {
-                  deleteMutation.mutate(deleteTarget.id);
-                }
-              }}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-            >
-              {deleteMutation.isPending ? (
-                <Loader2 className="size-4 animate-spin mr-1.5" />
-              ) : (
-                <Trash2 className="size-4 mr-1.5" />
-              )}
-              <span>Delete Category</span>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      />
     </div>
   );
 }

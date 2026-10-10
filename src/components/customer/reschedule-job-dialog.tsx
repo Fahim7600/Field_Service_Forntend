@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 import { FeeNotice } from "@/components/customer/fee-notice";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -28,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getChangeEstimate } from "@/lib/change-policy";
 import { safeFormatDate, safeFormatDateTime } from "@/lib/format";
+import { messages, notify } from "@/lib/notify";
 import { workOrdersService } from "@/services/work-orders.service";
 import type { WorkOrder } from "@/types/work-order";
 
@@ -166,6 +166,7 @@ export function RescheduleJobDialog({
   );
 
   const rescheduleMutation = useMutation({
+    meta: { silent: true },
     mutationFn: async (values: RescheduleFormValues) => {
       setConflictError(null);
       const start = new Date(`${values.newDate}T${values.startTime}`);
@@ -181,9 +182,10 @@ export function RescheduleJobDialog({
       });
     },
     onSuccess: () => {
-      toast.success("Visit rescheduled", {
-        description: "Your new appointment time has been saved.",
-      });
+      notify.success(
+        messages.requests.rescheduled.title,
+        messages.requests.rescheduled.description,
+      );
 
       if (requestId) {
         queryClient.invalidateQueries({
@@ -217,9 +219,7 @@ export function RescheduleJobDialog({
         msg.toLowerCase().includes("schedule");
 
       if (isConflict) {
-        setConflictError(
-          "That time is not available. Please choose another time.",
-        );
+        setConflictError(messages.dispatch.scheduleConflict.description);
       } else {
         setConflictError(msg || "Failed to reschedule work order.");
       }

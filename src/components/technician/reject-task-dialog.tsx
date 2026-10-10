@@ -6,9 +6,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getErrorMessage } from "@/lib/api-client";
+import { messages, notify } from "@/lib/notify";
 import { technicianService } from "@/services/technician.service";
 
 const rejectTaskSchema = z.object({
@@ -81,9 +79,10 @@ export function RejectTaskDialog({
       setIsSubmitting(true);
       await technicianService.rejectTask(workOrderId, values.reason.trim());
 
-      toast.success("Job rejected", {
-        description: "It has been sent back to the dispatcher.",
-      });
+      notify.success(
+        messages.tasks.rejected.title,
+        messages.tasks.rejected.description,
+      );
 
       await queryClient.invalidateQueries({
         queryKey: ["technician", "tasks"],
@@ -98,7 +97,7 @@ export function RejectTaskDialog({
       onOpenChange(false);
       router.push("/technician/tasks");
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      notify.fromError(err, "Failed to reject job");
     } finally {
       setIsSubmitting(false);
     }
