@@ -503,6 +503,14 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
   - [x] Deep link routing helper (`getNotificationHref`) for customer, technician, and admin roles
   - [x] Shared notifications client (`/customer/notifications`, `/technician/notifications`, `/admin/notifications`) with URL-synced filters
   - [x] Client-side feedback caching in `localStorage` preserving read-only rating displays across reloads
+- [x] **Phase 12: User Management & Service Catalog**
+  - [x] Admin User Management with URL-synced role & status filters, search debouncing, and pagination
+  - [x] User role reassignment (promote registered customers to Technician or Admin)
+  - [x] Account suspension, activation, and soft deletion with destructive confirmation dialogs
+  - [x] Strict self-protection guard (prevent administrators from demoting, suspending, or deleting their own accounts)
+  - [x] Admin Service Catalog page (`/admin/catalog`) with URL-synced tabs (`?tab=categories|skills`)
+  - [x] Service Category CRUD dialogs with required skill selector, integer cents pricing (`MoneyInput`), and duplicate conflict handling
+  - [x] Technician Skills registry with immutable skill note and shared TanStack Query keys (`["service-categories"]`, `["skills"]`)
 
 ---
 
@@ -559,7 +567,41 @@ Notifications automatically resolve to actionable dashboard views based on paylo
 - Dedicated role pages (`/customer/notifications`, `/technician/notifications`, `/admin/notifications`) powered by a shared responsive client component.
 - Features URL-synced status filters (`All`, `Unread`, `Read`), pagination controls, visual tone badges, and mobile-optimized card layouts.
 
+---
 
+## 👥 User Management
+
+The User Management console (`/admin/users`) gives administrators governance over platform accounts:
+
+1. **Self-Registration & Promotion**:
+   - Platform users register independently as `CUSTOMER` accounts.
+   - Administrators promote users to `TECHNICIAN` (enabling task dispatch and profile configuration) or `ADMIN` (granting full access) via the **Change Role** dialog (`PATCH /api/v1/admin/users/{id}/role`).
+2. **Account Lifecycle & Soft Deletion**:
+   - Accounts can be suspended or activated (`PATCH /api/v1/admin/users/{id}/status`). Suspended users are barred from logging in.
+   - Soft deletion (`DELETE /api/v1/admin/users/{id}`) revokes platform access while preserving historical work order and invoice audit records.
+3. **Self-Protection Safeguards**:
+   - The authenticated admin row is marked with a "You" badge.
+   - All destructive and role-changing actions are disabled for the current administrator (`"You cannot change your own account"`) to prevent accidental lockout or orphan accounts.
+
+---
+
+## 🗂️ Service Catalog
+
+The Service Catalog (`/admin/catalog`) defines the core foundation linking customer bookings, required skills, and technician dispatch:
+
+1. **Hierarchical Relationships**:
+   - Every service request requires a **Service Category**.
+   - Every service category requires a **Skill**.
+   - Dispatch only presents technicians who possess the qualification skill required by the request's category.
+2. **Categories Management**:
+   - Create, edit, and delete service categories with base pricing in integer cents (`basePriceCents`), descriptive summaries, and linked skills.
+   - Duplicate name conflicts (HTTP 409) are caught and displayed inline.
+   - In-use categories are soft-deleted to maintain ongoing work orders while preventing new bookings.
+3. **Skills Registry**:
+   - Define qualification skills required for technicians and service types.
+   - Skills are immutable after creation to protect historical assignment logs and dispatch consistency.
+4. **Shared Query Invalidation**:
+   - Catalog changes automatically synchronize across the booking wizard (`["service-categories"]`) and technician skill profiles (`["skills"]`).
 
 ---
 
