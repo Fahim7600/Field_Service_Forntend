@@ -44,6 +44,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/api-client";
+import { extractArray } from "@/lib/extract-data";
 import { loadSkills, saveSkills } from "@/lib/skills-cache";
 import { cn } from "@/lib/utils";
 import {
@@ -52,6 +53,7 @@ import {
 } from "@/lib/validations/profile";
 import { usersService } from "@/services/users.service";
 import { useAuthStore } from "@/stores/auth-store";
+import type { Skill } from "@/types/admin";
 
 const WEEKDAYS = [
   { key: "monday", label: "Monday" },
@@ -95,12 +97,12 @@ export function TechnicianProfileClient() {
     isError: isSkillsError,
     refetch: refetchSkills,
   } = useQuery({
-    queryKey: ["skills", "catalog"],
+    queryKey: ["skills"],
     queryFn: () => usersService.fetchSkills({ limit: 50 }),
     staleTime: 60_000,
   });
 
-  const availableSkills = skillsData?.data || [];
+  const availableSkills = extractArray<Skill>(skillsData);
 
   // 2. Professional Profile Form
   const profileForm = useForm<TechnicianProfileFormValues>({
