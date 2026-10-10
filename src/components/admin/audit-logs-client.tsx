@@ -24,13 +24,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUrlFilters } from "@/hooks/use-url-filters";
 import { diffValues, maskSensitive } from "@/lib/audit-diff";
@@ -41,61 +34,63 @@ import { cn } from "@/lib/utils";
 import { adminLogsService } from "@/services/admin-logs.service";
 import type { AuditLog, AuditLogParams } from "@/types/admin";
 
-const COMMON_ACTIONS = [
-  { value: "ALL", label: "All Actions" },
-  { value: "USER_ROLE_UPDATED", label: "User Role Updated" },
-  { value: "USER_STATUS_UPDATED", label: "User Status Updated" },
-  { value: "USER_DELETED", label: "User Deleted" },
-  { value: "REQUEST_REVIEWED", label: "Request Reviewed" },
-  { value: "WORK_ORDER_ASSIGNED", label: "Work Order Assigned" },
-  { value: "WORK_ORDER_SCHEDULED", label: "Work Order Scheduled" },
-  { value: "WORK_ORDER_STATUS_UPDATED", label: "Status Updated" },
-  { value: "SERVICE_REPORT_SUBMITTED", label: "Service Report Filed" },
-  { value: "INVOICE_ISSUED", label: "Invoice Issued" },
-  { value: "INVOICE_VOIDED", label: "Invoice Voided" },
-  { value: "PAYMENT_REFUNDED", label: "Payment Refunded" },
-  { value: "CATEGORY_CREATED", label: "Category Created" },
-  { value: "CATEGORY_UPDATED", label: "Category Updated" },
-  { value: "CATEGORY_DELETED", label: "Category Deleted" },
-  { value: "SKILL_CREATED", label: "Skill Created" },
-];
-
-const COMMON_ENTITIES = [
-  { value: "ALL", label: "All Entities" },
-  { value: "User", label: "User" },
-  { value: "ServiceRequest", label: "Service Request" },
-  { value: "WorkOrder", label: "Work Order" },
-  { value: "Invoice", label: "Invoice" },
-  { value: "Payment", label: "Payment" },
-  { value: "ServiceCategory", label: "Service Category" },
-  { value: "Skill", label: "Skill" },
-  { value: "Subscription", label: "Subscription" },
-];
-
 export function AuditLogsClient() {
   const { filters, updateFilters, resetFilters } = useUrlFilters({
     page: 1,
     limit: 20,
   });
 
-  const actionFilter = (filters.action as string) || "ALL";
-  const entityFilter = (filters.entity as string) || "ALL";
+  const actionFilter = (filters.action as string) || "";
+  const entityFilter = (filters.entity as string) || "";
   const dateFrom = (filters.dateFrom as string) || "";
   const dateTo = (filters.dateTo as string) || "";
   const page = filters.page || 1;
 
+  const [actionInput, setActionInput] = React.useState(actionFilter);
+  const [entityInput, setEntityInput] = React.useState(entityFilter);
+
   const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
+  const [knownActions, setKnownActions] = React.useState<Set<string>>(
+    () => new Set(["WORK_ORDER_ASSIGNED", "PAYMENT_SUCCEEDED"]),
+  );
+  const [knownEntities, setKnownEntities] = React.useState<Set<string>>(
+    () => new Set(["WorkOrder", "Payment"]),
+  );
+
+  React.useEffect(() => {
+    setActionInput(actionFilter);
+  }, [actionFilter]);
+
+  React.useEffect(() => {
+    setEntityInput(entityFilter);
+  }, [entityFilter]);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmedAction = actionInput.trim();
+      const trimmedEntity = entityInput.trim();
+      if (trimmedAction !== actionFilter || trimmedEntity !== entityFilter) {
+        updateFilters({
+          action: trimmedAction || undefined,
+          entity: trimmedEntity || undefined,
+          page: 1,
+        });
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [actionInput, entityInput, actionFilter, entityFilter, updateFilters]);
+
   const isFiltered = Boolean(
-    actionFilter !== "ALL" || entityFilter !== "ALL" || dateFrom || dateTo,
+    actionFilter || entityFilter || dateFrom || dateTo,
   );
 
   const queryParams: AuditLogParams = {
     page,
     limit: 20,
-    action: actionFilter !== "ALL" ? actionFilter : undefined,
-    entity: entityFilter !== "ALL" ? entityFilter : undefined,
+    action: actionFilter || undefined,
+    entity: entityFilter || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
   };
@@ -106,8 +101,35 @@ export function AuditLogsClient() {
     staleTime: 10000,
   });
 
-  const logs = extractArray<AuditLog>(data);
-  const pagination = data?.pagination;
+  const logs = data?.items ?? extractArray<AuditLog>(data);
+  const pagination = data?.meta ?? data?.pagination;
+
+  React.useEffect(() => {
+    if (logs && logs.length > 0) {
+      setKnownActions((prev) => {
+        let changed = false;
+        const next = new Set(prev);
+        for (const log of logs) {
+          if (log.action && !next.has(log.action)) {
+            next.add(log.action);
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+      setKnownEntities((prev) => {
+        let changed = false;
+        const next = new Set(prev);
+        for (const log of logs) {
+          if (log.entity && !next.has(log.entity)) {
+            next.add(log.entity);
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }
+  }, [logs]);
 
   const handleCopy = (id: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -136,57 +158,61 @@ export function AuditLogsClient() {
     });
   };
 
+  const handleResetFilters = () => {
+    setActionInput("");
+    setEntityInput("");
+    resetFilters();
+  };
+
   return (
     <div className="space-y-6">
+      <datalist id="audit-action-suggestions">
+        {Array.from(knownActions).map((act) => (
+          <option key={act} value={act} />
+        ))}
+      </datalist>
+
+      <datalist id="audit-entity-suggestions">
+        {Array.from(knownEntities).map((ent) => (
+          <option key={ent} value={ent} />
+        ))}
+      </datalist>
+
       {/* Filters Toolbar */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card p-3 rounded-xl border border-border shadow-2xs">
-        <div className="flex flex-wrap items-center gap-2 flex-1">
-          {/* Action Filter */}
-          <Select
-            value={actionFilter}
-            onValueChange={(val) =>
-              updateFilters({
-                action: val === "ALL" ? undefined : val,
-                page: 1,
-              })
-            }
-          >
-            <SelectTrigger className="h-9 w-[160px] text-xs">
-              <SelectValue placeholder="Action: All" />
-            </SelectTrigger>
-            <SelectContent>
-              {COMMON_ACTIONS.map((a) => (
-                <SelectItem key={a.value} value={a.value}>
-                  {a.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-start sm:items-center gap-3 flex-1">
+          {/* Action Filter with Datalist */}
+          <div className="flex flex-col gap-0.5">
+            <Input
+              list="audit-action-suggestions"
+              placeholder="e.g. WORK_ORDER_ASSIGNED"
+              value={actionInput}
+              onChange={(e) => setActionInput(e.target.value)}
+              className="h-9 w-[190px] text-xs"
+              aria-label="Action filter"
+            />
+            <span className="text-[10px] text-muted-foreground px-0.5">
+              Exact value as stored
+            </span>
+          </div>
 
-          {/* Entity Filter */}
-          <Select
-            value={entityFilter}
-            onValueChange={(val) =>
-              updateFilters({
-                entity: val === "ALL" ? undefined : val,
-                page: 1,
-              })
-            }
-          >
-            <SelectTrigger className="h-9 w-[150px] text-xs">
-              <SelectValue placeholder="Entity: All" />
-            </SelectTrigger>
-            <SelectContent>
-              {COMMON_ENTITIES.map((e) => (
-                <SelectItem key={e.value} value={e.value}>
-                  {e.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Entity Filter with Datalist */}
+          <div className="flex flex-col gap-0.5">
+            <Input
+              list="audit-entity-suggestions"
+              placeholder="e.g. WorkOrder"
+              value={entityInput}
+              onChange={(e) => setEntityInput(e.target.value)}
+              className="h-9 w-[150px] text-xs"
+              aria-label="Entity filter"
+            />
+            <span className="text-[10px] text-muted-foreground px-0.5">
+              Exact value as stored
+            </span>
+          </div>
 
           {/* Date Range Inputs */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-0 sm:pt-0 pb-3 sm:pb-0">
             <Calendar className="size-3.5" />
             <Input
               type="date"
@@ -211,7 +237,7 @@ export function AuditLogsClient() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={resetFilters}
+              onClick={handleResetFilters}
               className="h-9 px-2.5 text-xs text-muted-foreground hover:text-foreground"
             >
               <FilterX className="size-3.5 mr-1" />
@@ -297,11 +323,12 @@ export function AuditLogsClient() {
                 const maskedOld = maskSensitive(log.oldValues);
                 const maskedNew = maskSensitive(log.newValues);
                 const diffs = diffValues(maskedOld, maskedNew);
+                const actor = log.actor;
                 const actorName =
-                  log.actor?.name ||
-                  (log.actorId ? `User ${log.actorId.slice(0, 8)}` : "System");
-                const actorRole = log.actor?.role;
-                const entityType = log.entity || log.entityType || "Entity";
+                  actor?.name || (actor?.email ? actor.email : "System");
+                const actorEmail =
+                  actor?.name && actor?.email ? actor.email : null;
+                const entityType = log.entity || "Entity";
                 const shortEntityId = log.entityId
                   ? log.entityId.slice(0, 8)
                   : "-";
@@ -317,8 +344,10 @@ export function AuditLogsClient() {
                       <div className="flex items-start sm:items-center gap-3 min-w-0">
                         <Avatar className="size-8 rounded-full border border-border shrink-0 mt-0.5 sm:mt-0">
                           <AvatarFallback className="text-xs font-semibold bg-muted text-foreground">
-                            {log.actor?.name ? (
-                              log.actor.name[0].toUpperCase()
+                            {actor?.name ? (
+                              actor.name[0].toUpperCase()
+                            ) : actor?.email ? (
+                              actor.email[0].toUpperCase()
                             ) : (
                               <Shield className="size-3.5" />
                             )}
@@ -329,13 +358,10 @@ export function AuditLogsClient() {
                             <span className="font-semibold text-sm text-foreground">
                               {actorName}
                             </span>
-                            {actorRole && (
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] py-0 px-1.5 font-medium bg-muted text-muted-foreground"
-                              >
-                                {actorRole}
-                              </Badge>
+                            {actorEmail && (
+                              <span className="text-xs text-muted-foreground font-normal">
+                                {actorEmail}
+                              </span>
                             )}
                             <Badge
                               variant="outline"
@@ -390,15 +416,26 @@ export function AuditLogsClient() {
                         id={rowId}
                         className="border-t border-border/80 bg-muted/20 p-4 space-y-4 text-xs animate-in fade-in-50 duration-150"
                       >
-                        {/* Target Entity Details */}
+                        {/* Target Entity Details & IP */}
                         <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border">
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground">
-                              Full Entity ID:
-                            </span>
-                            <code className="font-mono font-semibold text-foreground select-all">
-                              {log.entityId}
-                            </code>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground">
+                                Full Entity ID:
+                              </span>
+                              <code className="font-mono font-semibold text-foreground select-all">
+                                {log.entityId}
+                              </code>
+                            </div>
+                            {log.ipAddress && (
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <span>•</span>
+                                <span>IP:</span>
+                                <code className="font-mono text-foreground font-medium">
+                                  {log.ipAddress}
+                                </code>
+                              </div>
+                            )}
                           </div>
                           <Button
                             variant="outline"

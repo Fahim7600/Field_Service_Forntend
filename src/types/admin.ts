@@ -59,20 +59,21 @@ export interface AuditLogActor {
   id: string;
   name?: string | null;
   email?: string | null;
-  role?: string | null;
 }
 
+/**
+ * Audit log entry per live shape:
+ * { id, action, entity, entityId, oldValues, newValues, ipAddress, createdAt, actor: { id, name, email } | null }
+ */
 export interface AuditLog {
   id: string;
   action: string;
   entity: string;
-  entityType?: string;
   entityId: string;
-  actorId?: string | null;
-  actor?: AuditLogActor | null;
+  actor: AuditLogActor | null;
   oldValues?: Record<string, unknown> | null;
   newValues?: Record<string, unknown> | null;
-  ip?: string | null;
+  ipAddress?: string | null;
   createdAt: string;
 }
 
