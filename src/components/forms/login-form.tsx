@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { DemoLogin } from "@/components/forms/demo-login";
 import { PasswordInput } from "@/components/forms/password-input";
 import { SocialAuth } from "@/components/forms/social-auth";
@@ -16,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useLogin } from "@/hooks/use-login";
 import { getSafeRedirect } from "@/lib/auth-routes";
+import { authMessages, notify } from "@/lib/notify";
 import { type LoginFormValues, loginSchema } from "@/lib/validations/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -24,16 +24,60 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const status = useAuthStore((state) => state.status);
-  const hasShownPasswordToastRef = useRef(false);
+  const hasHandledReasonRef = useRef(false);
 
-  // If passwordChanged=1 is present in the query, show a one-time success toast
+  // Read "reason" query param (or backwards-compatible passwordChanged=1), show one toast, and strip param
   useEffect(() => {
-    if (
-      searchParams.get("passwordChanged") === "1" &&
-      !hasShownPasswordToastRef.current
-    ) {
-      hasShownPasswordToastRef.current = true;
-      toast.success("Password updated. Please log in with your new password.");
+    if (hasHandledReasonRef.current) return;
+
+    const reason = searchParams.get("reason");
+    const passwordChanged = searchParams.get("passwordChanged") === "1";
+    const effectiveReason =
+      reason || (passwordChanged ? "password_changed" : null);
+
+    if (effectiveReason) {
+      hasHandledReasonRef.current = true;
+
+      switch (effectiveReason) {
+        case "logged_out":
+          notify.success(
+            authMessages.loggedOut.title,
+            authMessages.loggedOut.description,
+            { id: "auth-reason" },
+          );
+          break;
+        case "expired":
+          notify.warning(
+            authMessages.sessionExpired.title,
+            authMessages.sessionExpired.description,
+            { id: "auth-reason" },
+          );
+          break;
+        case "login_required":
+          notify.info(
+            authMessages.loginRequired.title,
+            authMessages.loginRequired.description,
+            { id: "auth-reason" },
+          );
+          break;
+        case "password_changed":
+          notify.success(
+            authMessages.passwordChanged.title,
+            authMessages.passwordChanged.description,
+            { id: "auth-reason" },
+          );
+          break;
+      }
+
+      // Remove "reason" and "passwordChanged" from the URL while preserving "redirect"
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("reason");
+        url.searchParams.delete("passwordChanged");
+        const cleanUrl =
+          url.pathname + (url.search ? url.search : "") + url.hash;
+        window.history.replaceState({}, "", cleanUrl);
+      }
     }
   }, [searchParams]);
 

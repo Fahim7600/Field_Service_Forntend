@@ -2,6 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { notify } from "@/lib/notify";
 import { getQueryClient } from "@/lib/query-client";
 import { clearSessionCookies } from "@/lib/session";
 import type { ChangePasswordFormValues } from "@/lib/validations/auth";
@@ -21,6 +22,7 @@ export function useChangePassword() {
 
       return authService.changePassword(payload);
     },
+    meta: { skipToast: true },
     onSuccess: async () => {
       // 1. Wipe session cookies and in-memory store
       await clearSessionCookies();
@@ -33,9 +35,12 @@ export function useChangePassword() {
         // Ignore cache clear errors
       }
 
-      // 3. Redirect to login with passwordChanged param
-      router.replace("/login?passwordChanged=1");
+      // 3. Redirect to login with reason=password_changed param
+      router.replace("/login?reason=password_changed");
       router.refresh();
+    },
+    onError: (error) => {
+      notify.fromError(error, "Failed to update password");
     },
   });
 }
