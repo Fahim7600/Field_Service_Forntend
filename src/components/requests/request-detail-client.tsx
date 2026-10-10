@@ -263,6 +263,7 @@ export function RequestDetailClient({ id }: RequestDetailClientProps) {
                       alt="Attachment Photo"
                       fill
                       unoptimized
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                       className="object-cover group-hover:scale-105 transition-transform duration-200"
                     />
                     <div className="absolute inset-0 bg-charcoal-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">

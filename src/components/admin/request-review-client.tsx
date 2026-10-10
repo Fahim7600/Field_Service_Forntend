@@ -464,6 +464,7 @@ export function RequestReviewClient({ id }: RequestReviewClientProps) {
                           alt={att.fileName || `Attachment ${idx + 1}`}
                           fill
                           unoptimized
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                           className="object-cover transition-transform duration-200 group-hover:scale-105"
                         />
                       ) : (
