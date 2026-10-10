@@ -1,7 +1,8 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
+import * as React from "react";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -20,11 +21,17 @@ export interface DashboardTopbarProps {
 }
 
 export function DashboardTopbar({ role }: DashboardTopbarProps) {
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const pathname = usePathname();
+
+  // Close mobile sidebar drawer automatically on route changes
+  React.useEffect(() => {
+    setSheetOpen(false);
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border bg-card px-4 sm:px-6 shadow-2xs">
-      {/* Left side: Mobile Hamburger Trigger */}
+      {/* Left side: Mobile Hamburger Trigger (44px touch target) */}
       <div className="flex items-center gap-3">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger
@@ -32,8 +39,10 @@ export function DashboardTopbar({ role }: DashboardTopbarProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden text-charcoal-800 hover:bg-muted"
+                className="lg:hidden h-11 w-11 min-h-[44px] min-w-[44px] text-charcoal-800 hover:bg-muted"
                 aria-label="Open sidebar navigation"
+                aria-expanded={sheetOpen}
+                aria-controls="mobile-sidebar"
               >
                 <Menu className="size-5" />
               </Button>
@@ -44,6 +53,7 @@ export function DashboardTopbar({ role }: DashboardTopbarProps) {
               <SheetTitle>Navigation Menu</SheetTitle>
             </SheetHeader>
             <DashboardSidebar
+              id="mobile-sidebar"
               role={role}
               className="w-full border-r-0"
               onLinkClick={() => setSheetOpen(false)}

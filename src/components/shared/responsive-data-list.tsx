@@ -73,8 +73,8 @@ export function ResponsiveDataList<T>({
       </div>
 
       {/* Desktop Table View (hidden on mobile, visible on md and larger) */}
-      <div className="hidden md:block overflow-hidden rounded-xl border border-border bg-card shadow-2xs">
-        <table className="w-full text-left text-sm border-collapse">
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card shadow-2xs">
+        <table className="w-full min-w-[640px] text-left text-sm border-collapse">
           <thead>
             <tr className="border-b border-border bg-panel text-charcoal-600">
               {columns.map((col) => {
