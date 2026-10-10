@@ -57,7 +57,8 @@ function parseDashboardLinks() {
     },
     {
       role: "Admin",
-      regex: /ADMIN_LINKS\s*:\s*DashboardLink\[\]\s*=\s*\[([\s\S]*?)\];/,
+      regex:
+        /(?:ADMIN_LINKS|ADMIN_NAV_GROUPS)\s*:\s*(?:DashboardLink\[\]|NavGroup\[\])\s*=\s*\[([\s\S]*?)\];/,
     },
   ];
 
