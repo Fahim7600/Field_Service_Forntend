@@ -1,23 +1,18 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-  AlertCircle,
-  AlertTriangle,
-  Crown,
-  FilterX,
-  RefreshCw,
-} from "lucide-react";
+import { AlertTriangle, Crown, FilterX, RefreshCw } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { PaginationControls } from "@/components/shared/pagination-controls";
+import { QueryError } from "@/components/shared/query-error";
 import {
   type ColumnDef,
   ResponsiveDataList,
 } from "@/components/shared/responsive-data-list";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -327,24 +322,11 @@ export function SubscriptionsClient() {
 
       {/* Error Card */}
       {isError && (
-        <Card className="border-destructive/30 bg-destructive/5 p-6 text-center">
-          <CardContent className="space-y-3 p-0">
-            <AlertCircle className="size-8 text-destructive mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-destructive">
-                Failed to load subscriptions
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {error instanceof Error
-                  ? error.message
-                  : "An unexpected error occurred while loading member subscriptions."}
-              </p>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => refetch()}>
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
+        <QueryError
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load subscriptions"
+        />
       )}
 
       {/* Subscriptions Data List */}

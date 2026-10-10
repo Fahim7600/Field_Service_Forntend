@@ -7,7 +7,6 @@ import {
   Clock,
   Edit,
   ExternalLink,
-  Loader2,
   RotateCcw,
   Send,
   ShieldAlert,
@@ -56,6 +55,7 @@ export function AdminInvoiceDetailClient({
   const [isEditing, setIsEditing] = React.useState(false);
   const [isIssueDialogOpen, setIsIssueDialogOpen] = React.useState(false);
   const [isVoidDialogOpen, setIsVoidDialogOpen] = React.useState(false);
+  const [isConfirmVoidOpen, setIsConfirmVoidOpen] = React.useState(false);
   const [voidReason, setVoidReason] = React.useState("");
 
   const {
@@ -567,7 +567,9 @@ export function AdminInvoiceDetailClient({
               type="button"
               variant="destructive"
               size="sm"
-              onClick={() => voidMutation.mutate(voidReason.trim())}
+              onClick={() => {
+                setIsConfirmVoidOpen(true);
+              }}
               disabled={
                 voidMutation.isPending ||
                 voidReason.trim().length < 5 ||
@@ -575,18 +577,26 @@ export function AdminInvoiceDetailClient({
               }
               className="gap-2 text-xs font-semibold"
             >
-              {voidMutation.isPending ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  <span>Voiding...</span>
-                </>
-              ) : (
-                <span>Confirm Void</span>
-              )}
+              <span>Continue to Void</span>
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Step for Void */}
+      <ConfirmDialog
+        open={isConfirmVoidOpen}
+        onOpenChange={setIsConfirmVoidOpen}
+        title="Permanently void this invoice?"
+        description={`This invoice will be marked as VOID with audit reason: "${voidReason.trim()}". The customer will no longer be able to pay it, and this action cannot be undone.`}
+        confirmLabel="Confirm & Void Invoice"
+        variant="destructive"
+        pending={voidMutation.isPending}
+        onConfirm={async () => {
+          await voidMutation.mutateAsync(voidReason.trim());
+          setIsConfirmVoidOpen(false);
+        }}
+      />
     </div>
   );
 }

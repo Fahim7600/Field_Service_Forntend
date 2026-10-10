@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertCircle,
   AlertTriangle,
   ExternalLink,
   FilterX,
@@ -15,10 +14,11 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { PaginationControls } from "@/components/shared/pagination-controls";
+import { QueryError } from "@/components/shared/query-error";
 import { StarRating } from "@/components/shared/star-rating";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -206,24 +206,11 @@ export function FeedbackClient() {
 
       {/* Error State */}
       {isError && (
-        <Card className="border-destructive/30 bg-destructive/5 p-6 text-center">
-          <CardContent className="space-y-3 p-0">
-            <AlertCircle className="size-8 text-destructive mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-destructive">
-                Failed to load customer feedback
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {error instanceof Error
-                  ? error.message
-                  : "An unexpected error occurred while loading feedback records."}
-              </p>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => refetch()}>
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
+        <QueryError
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load customer feedback"
+        />
       )}
 
       {/* Feedback List */}

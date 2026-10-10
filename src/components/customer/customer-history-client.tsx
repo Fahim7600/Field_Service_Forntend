@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, History, Plus, RefreshCw, User } from "lucide-react";
+import { ArrowRight, History, Plus, User } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { PaginationControls } from "@/components/shared/pagination-controls";
+import { QueryError } from "@/components/shared/query-error";
 import {
   type ColumnDef,
   ResponsiveDataList,
@@ -53,7 +54,7 @@ export function CustomerHistoryClient() {
     };
   }, [filters]);
 
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["customer-service-history", queryParams],
     queryFn: () => workOrdersService.fetchCustomerServiceHistory(queryParams),
     staleTime: 30_000,
@@ -288,25 +289,11 @@ export function CustomerHistoryClient() {
           <Skeleton className="h-12 w-full rounded-xl" />
         </div>
       ) : isError ? (
-        <Card className="border-destructive/30 bg-destructive/10 p-6 text-center">
-          <CardContent className="space-y-3 pt-3">
-            <p className="text-sm font-semibold text-destructive">
-              {(error as { message?: string })?.message ||
-                "Failed to load service history. Please try again."}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              className="gap-2 mx-auto"
-            >
-              <RefreshCw
-                className={cn("size-3.5", isFetching && "animate-spin")}
-              />
-              <span>Retry</span>
-            </Button>
-          </CardContent>
-        </Card>
+        <QueryError
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load service history"
+        />
       ) : items.length === 0 ? (
         <EmptyState
           icon={History}

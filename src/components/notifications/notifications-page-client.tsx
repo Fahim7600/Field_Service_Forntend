@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ExternalLink,
   Loader2,
-  RefreshCw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type * as React from "react";
@@ -14,6 +13,7 @@ import type * as React from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { PaginationControls } from "@/components/shared/pagination-controls";
+import { QueryError } from "@/components/shared/query-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -177,21 +177,11 @@ export function NotificationsPageClient({
             ))}
           </div>
         ) : isError ? (
-          <Card className="border border-border bg-card p-8 text-center space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Unable to load notifications (
-              {error instanceof Error ? error.message : "Network error"}).
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-            >
-              <RefreshCw className="size-3.5 mr-1.5" />
-              Retry
-            </Button>
-          </Card>
+          <QueryError
+            error={error}
+            onRetry={() => refetch()}
+            title="Failed to load notifications"
+          />
         ) : notifications.length === 0 ? (
           <EmptyState
             icon={CheckCircle2}

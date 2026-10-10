@@ -18,17 +18,8 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -452,48 +443,17 @@ export function PremiumPricingClient() {
           </Card>
 
           {/* Cancel Renewal Confirmation Dialog */}
-          <AlertDialog
+          <ConfirmDialog
             open={isCancelDialogOpen}
             onOpenChange={setIsCancelDialogOpen}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Cancel your renewal?</AlertDialogTitle>
-                <AlertDialogDescription className="text-xs leading-relaxed">
-                  Cancel your renewal? You keep all Premium benefits until{" "}
-                  <strong>
-                    {safeFormatDate(subscription.currentPeriodEnd)}
-                  </strong>
-                  . After that you return to the free plan.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel
-                  disabled={cancelRenewalMutation.isPending}
-                  className="text-xs"
-                >
-                  Keep Membership
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  disabled={cancelRenewalMutation.isPending}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    cancelRenewalMutation.mutate();
-                  }}
-                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-semibold"
-                >
-                  {cancelRenewalMutation.isPending ? (
-                    <>
-                      <Loader2 className="size-3.5 animate-spin mr-1.5" />
-                      Cancelling...
-                    </>
-                  ) : (
-                    "Confirm Cancellation"
-                  )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            title="Cancel automatic renewal?"
+            description={`You will keep all Premium benefits until ${safeFormatDate(subscription.currentPeriodEnd)}. After that date, your account will switch to the free plan and you will not be charged again.`}
+            confirmLabel="Confirm Cancellation"
+            cancelLabel="Keep Membership"
+            variant="destructive"
+            pending={cancelRenewalMutation.isPending}
+            onConfirm={() => cancelRenewalMutation.mutate()}
+          />
         </div>
       ) : (
         /* 4. UNSUBSCRIBED / EXPIRED / ENDED CANCELLED STATE: PRICING VIEW */

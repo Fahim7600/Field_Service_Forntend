@@ -6,17 +6,8 @@ import { AlertCircle, AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -325,51 +316,18 @@ export function RefundPaymentDialog({
       </Dialog>
 
       {/* Confirmation Step Dialog */}
-      <AlertDialog
+      <ConfirmDialog
         open={isConfirmOpen}
         onOpenChange={(val) => {
           if (!isPending) setIsConfirmOpen(val);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive flex items-center gap-2 text-base sm:text-lg">
-              <AlertTriangle className="size-5" />
-              <span>Are you sure you want to issue this refund?</span>
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs space-y-2">
-              <span>
-                A refund of{" "}
-                <strong className="font-mono text-foreground">
-                  {formatMoney(payment.amountCents)}
-                </strong>{" "}
-                will be initiated immediately through Stripe to the original
-                payment method.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                handleConfirmRefund();
-              }}
-              disabled={isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2 font-semibold"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  <span>Processing Refund...</span>
-                </>
-              ) : (
-                <span>Confirm &amp; Issue Refund</span>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title="Are you sure you want to issue this refund?"
+        description={`A refund of ${formatMoney(payment.amountCents)} will be initiated immediately through Stripe to the original payment method.`}
+        confirmLabel="Confirm & Issue Refund"
+        variant="destructive"
+        pending={isPending}
+        onConfirm={handleConfirmRefund}
+      />
     </>
   );
 }

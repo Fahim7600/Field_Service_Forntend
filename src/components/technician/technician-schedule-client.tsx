@@ -11,12 +11,10 @@ import {
   startOfDay,
 } from "date-fns";
 import {
-  AlertCircle,
   ArrowRight,
   Calendar,
   Clock,
   MapPin,
-  RefreshCw,
   Sparkles,
   User,
 } from "lucide-react";
@@ -25,8 +23,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { QueryError } from "@/components/shared/query-error";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -222,26 +221,11 @@ export function TechnicianScheduleClient() {
 
       {/* Error State */}
       {isError && (
-        <Card className="border-border">
-          <CardContent className="p-8 text-center space-y-4">
-            <div className="size-12 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
-              <AlertCircle className="size-6" />
-            </div>
-            <div className="space-y-1">
-              <h2 className="text-base font-bold text-foreground">
-                Unable to load schedule
-              </h2>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                {(error as Error)?.message ||
-                  "Could not retrieve your schedule. Please try again."}
-              </p>
-            </div>
-            <Button variant="default" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="size-3.5 mr-2" />
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
+        <QueryError
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load schedule"
+        />
       )}
 
       {/* Empty State */}

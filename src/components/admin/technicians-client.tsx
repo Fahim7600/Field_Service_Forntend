@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertCircle,
   ArrowRight,
   FilterX,
   Phone,
@@ -15,6 +14,7 @@ import Link from "next/link";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { PaginationControls } from "@/components/shared/pagination-controls";
+import { QueryError } from "@/components/shared/query-error";
 import {
   type ColumnDef,
   ResponsiveDataList,
@@ -256,20 +256,10 @@ export function TechniciansClient() {
           </div>
         </div>
       ) : isError ? (
-        <EmptyState
-          icon={AlertCircle}
-          title="Failed to Load Technicians"
-          description={
-            error instanceof Error
-              ? error.message
-              : "An unexpected error occurred while fetching technicians."
-          }
-          action={
-            <Button onClick={() => refetch()} variant="outline" size="sm">
-              <RefreshCw className="size-3.5 mr-2" />
-              <span>Retry</span>
-            </Button>
-          }
+        <QueryError
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load technicians"
         />
       ) : technicians.length === 0 ? (
         <EmptyState

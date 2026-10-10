@@ -17,6 +17,7 @@ import { DueBadge } from "@/components/shared/due-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { PriorityBadge } from "@/components/shared/priority-badge";
+import { QueryError } from "@/components/shared/query-error";
 import {
   type ColumnDef,
   ResponsiveDataList,
@@ -314,32 +315,11 @@ export function DispatchQueueClient() {
           </CardContent>
         </Card>
       ) : isError ? (
-        <Card className="border-destructive/30 bg-destructive/5 shadow-xs">
-          <CardContent className="p-8 text-center space-y-4">
-            <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
-              <AlertCircle className="size-6" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-destructive">
-                Failed to load dispatch queue
-              </h3>
-              <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                {error instanceof Error
-                  ? error.message
-                  : "An unexpected error occurred while communicating with the server."}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              className="border-destructive/30 text-destructive hover:bg-destructive/10"
-            >
-              <RefreshCw className="size-3.5 mr-1.5" />
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
+        <QueryError
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load dispatch queue"
+        />
       ) : items.length === 0 ? (
         <EmptyState
           icon={Inbox}

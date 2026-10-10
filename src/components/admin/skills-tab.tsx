@@ -1,19 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-  AlertCircle,
-  FilterX,
-  Info,
-  Plus,
-  RefreshCw,
-  Search,
-  Wrench,
-} from "lucide-react";
+import { FilterX, Info, Plus, RefreshCw, Search, Wrench } from "lucide-react";
 import * as React from "react";
 
 import { SkillFormDialog } from "@/components/admin/skill-form-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
+import { QueryError } from "@/components/shared/query-error";
 import {
   type ColumnDef,
   ResponsiveDataList,
@@ -21,7 +14,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { extractArray } from "@/lib/extract-data";
@@ -161,24 +154,11 @@ export function SkillsTab() {
 
       {/* Error Card */}
       {isError && (
-        <Card className="border-destructive/30 bg-destructive/5 p-6 text-center">
-          <CardContent className="space-y-3 p-0">
-            <AlertCircle className="size-8 text-destructive mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-destructive">
-                Failed to load skills catalog
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {error instanceof Error
-                  ? error.message
-                  : "An unexpected error occurred while loading skills."}
-              </p>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => refetch()}>
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
+        <QueryError
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load skills catalog"
+        />
       )}
 
       {/* Skills Data List */}

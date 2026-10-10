@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AlertCircle,
   ArrowRight,
   BarChart3,
   Calendar,
@@ -19,6 +18,7 @@ import { ChartCard } from "@/components/charts/chart-card";
 import { StatusBarChartLazy } from "@/components/charts/status-bar-chart.lazy";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { QueryError } from "@/components/shared/query-error";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -67,32 +67,11 @@ export function TechnicianPerformanceClient() {
 
   if (isError || !stats) {
     return (
-      <div className="space-y-6">
-        <PageHeader
-          title="My performance"
-          description="A summary of your jobs"
-        />
-        <EmptyState
-          icon={AlertCircle}
-          title="Failed to Load Performance Metrics"
-          description={
-            error instanceof Error
-              ? error.message
-              : "Could not retrieve your assigned task history. Please retry."
-          }
-          action={
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              className="gap-1.5"
-            >
-              <RefreshCw className="size-3.5" />
-              <span>Retry</span>
-            </Button>
-          }
-        />
-      </div>
+      <QueryError
+        error={error}
+        onRetry={() => refetch()}
+        title="Failed to load performance metrics"
+      />
     );
   }
 

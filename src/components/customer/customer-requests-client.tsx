@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertCircle,
   ArrowRight,
   ClipboardList,
   Plus,
@@ -16,6 +15,7 @@ import * as React from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { PriorityBadge } from "@/components/shared/priority-badge";
+import { QueryError } from "@/components/shared/query-error";
 import {
   type ColumnDef,
   ResponsiveDataList,
@@ -430,30 +430,11 @@ export function CustomerRequestsClient() {
           ))}
         </div>
       ) : isError ? (
-        /* Error Card with Retry */
-        <div className="p-6 rounded-xl border border-destructive/30 bg-destructive/10 text-center space-y-3">
-          <AlertCircle className="size-8 text-destructive mx-auto" />
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold text-destructive">
-              Failed to load service requests
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {error instanceof Error
-                ? error.message
-                : "An error occurred while fetching requests."}
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            className="text-xs"
-          >
-            <RefreshCw className="size-3.5 mr-1.5" />
-            Try Again
-          </Button>
-        </div>
+        <QueryError
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load service requests"
+        />
       ) : items.length === 0 ? (
         /* Empty State */
         <EmptyState

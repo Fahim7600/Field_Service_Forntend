@@ -3,7 +3,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { isPast, parseISO } from "date-fns";
 import {
-  AlertCircle,
   ArrowUpDown,
   CreditCard,
   Eye,
@@ -15,6 +14,7 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { PaginationControls } from "@/components/shared/pagination-controls";
+import { QueryError } from "@/components/shared/query-error";
 import {
   type ColumnDef,
   ResponsiveDataList,
@@ -420,29 +420,11 @@ export function CustomerInvoicesClient() {
           <Skeleton className="h-20 w-full rounded-xl" />
         </div>
       ) : isError ? (
-        <Card className="border-destructive/30 bg-destructive/5 text-center p-6 space-y-3">
-          <CardContent className="space-y-3 p-0">
-            <AlertCircle className="size-8 text-destructive mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-destructive">
-                Failed to load invoices
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {error
-                  ? (error as Error).message
-                  : "Unable to retrieve your billing records."}
-              </p>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => refetch()}
-              className="gap-1.5 text-xs font-semibold"
-            >
-              <RefreshCw className="size-3.5" />
-              <span>Retry</span>
-            </Button>
-          </CardContent>
-        </Card>
+        <QueryError
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load invoices"
+        />
       ) : items.length === 0 ? (
         <EmptyState
           icon={FileText}
