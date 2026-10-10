@@ -1,42 +1,37 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { AdminAnalyticsDashboard } from "@/components/admin/admin-analytics-dashboard";
-import { DashboardWelcomeHeader } from "@/components/dashboard/dashboard-welcome-header";
+import { AdminDashboardClient } from "@/components/admin/admin-dashboard-client";
 import { Container } from "@/components/shared/container";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
-  title: "Admin Command Center & Analytics",
+  title: "Admin Dashboard | Operational Overview",
   description:
-    "Comprehensive operational overview, revenue tracking, dispatch queue, and platform analytics.",
+    "Operational overview, revenue tracking, dispatch metrics, and workforce statistics.",
 };
 
 export default function AdminDashboardPage() {
   return (
     <Container className="py-6 space-y-6">
-      <DashboardWelcomeHeader
-        title="Admin Command Center"
-        description="Comprehensive operational overview, revenue telemetry, dispatch queue, and workforce management."
-      />
-
       <Suspense
         fallback={
           <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Skeleton className="h-32 rounded-xl" />
-              <Skeleton className="h-32 rounded-xl" />
-              <Skeleton className="h-32 rounded-xl" />
-              <Skeleton className="h-32 rounded-xl" />
+            <div className="h-10 w-48 bg-muted rounded animate-pulse" />
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+              {[...Array(6)].map((_, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items
+                <Skeleton key={i} className="h-28 rounded-xl" />
+              ))}
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Skeleton className="h-88 rounded-xl" />
-              <Skeleton className="h-88 rounded-xl" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Skeleton className="h-80 rounded-xl lg:col-span-2" />
+              <Skeleton className="h-80 rounded-xl" />
             </div>
           </div>
         }
       >
-        <AdminAnalyticsDashboard />
+        <AdminDashboardClient />
       </Suspense>
     </Container>
   );
