@@ -271,6 +271,10 @@ Field_Service_Forntend/
 | `BACKEND_URL` | `https://field-service-d24g.onrender.com` | Target Express + Prisma backend API endpoint |
 | `NEXT_PUBLIC_API_BASE` | `/api/v1` | Public API base path |
 | `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` | Local frontend origin |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | *(Optional)* | Public contact email address (omitted if unset) |
+| `NEXT_PUBLIC_CONTACT_PHONE` | *(Optional)* | Public contact phone number (omitted if unset) |
+| `NEXT_PUBLIC_CONTACT_ADDRESS` | *(Optional)* | Public business street address (omitted if unset) |
+| `NEXT_PUBLIC_CONTACT_HOURS` | *(Optional)* | Public operating business hours (omitted if unset) |
 | `NEXT_PUBLIC_DEMO_ADMIN_EMAIL` | *(Optional)* | Admin demo account email |
 | `NEXT_PUBLIC_DEMO_ADMIN_PASSWORD` | *(Optional)* | Admin demo account password |
 | `NEXT_PUBLIC_DEMO_CUSTOMER_EMAIL` | *(Optional)* | Customer demo account email |
@@ -757,6 +761,44 @@ Field Service is engineered for high resilience against slow or sleeping server 
 5. **Early Warm-Up Ping & Slow Request Explanations**:
    - `BackendWarmup`: Mounted in the root layout, it fires a non-blocking `GET /api/v1/health` once every 10 minutes per browser, waking cold backends before users click Login or Book Service.
    - **Slow Request Interceptor**: Any API request taking longer than 6 seconds triggers a single deduplicated *"Waking up the server"* toast with an active pending counter that automatically dismisses when all in-flight slow requests complete.
+
+---
+
+## 🌐 Public Marketing Pages & SEO Infrastructure
+
+### 1. Rebuilt Public Pages
+- **Home Page (`/`)**:
+  - **HeroSection**: Industrial amber & charcoal theme, tagline from site config, direct "Book a Service" CTA button, secondary "See how it works" anchor link, Unsplash hero image via `<SafeImage priority />`, and verified Premium priority review badge. Zero fabricated statistics or fake testimonials.
+  - **HowItWorksSection (`#how-it-works`)**: 5-step transparent workflow sequence (Request → Review → Assign & Schedule → Work & Report → Pay & Rate) with Lucide icons and step badges.
+  - **ServicesPreviewSection**: Live categories when available or static `SERVICE_AREAS` (AC Repair, Plumbing, Electrical, Appliance Repair), each featuring remote Unsplash photography and "From {price}" formatting.
+  - **AudienceSection**: Dedicated value proposition cards for Customers, Field Technicians, and Operations Dispatch.
+  - **PremiumTeaserSection**: Highlights Premium perks (2-hr review, 10% labor discount, free changes) and displays live plan pricing and calculated annual savings (`getYearlySavings`) when `getPublicPlans()` succeeds.
+  - **FinalCtaSection**: High-contrast charcoal band (`#111827`) with "Book a Service" CTA and account creation links.
+  - **JSON-LD Structured Data**: `<JsonLd>` helper safely renders Organization schema with contact email, telephone, and address when configured.
+- **Services Page (`/services`)**:
+  - Full catalog grid (1 col mobile, 2 col md, 3 col xl) with direct "Book this service" buttons linking to `/customer/requests/new?category={id}`.
+  - URL query parameter preselection in `ServiceRequestWizard`: When navigating with `?category={id}`, the wizard automatically preselects the matching service category.
+  - Compact "What to expect" overview and closing CTA band.
+
+### 2. Resilient Server-Side Public Data Helpers (`src/lib/public-data.ts`)
+- **Strict Server Component Isolation**: Marked with `import "server-only"`.
+- **Never Throws / Fails Gracefully**: Wrapped in try/catch with 8-second timeout (`AbortSignal.timeout(8000)`) and 5-minute ISR revalidation (`revalidate = 300`).
+- **Endpoint Security Awareness**: Because `GET /service-categories` requires an authenticated bearer token, `getPublicCategories()` immediately returns `{ data: [], error: null }` without triggering failing 401 calls, cleanly falling back to static `SERVICE_AREAS`.
+- **Public Plans**: `getPublicPlans()` contacts `GET /subscription-plans` (verified public endpoint) and falls back safely to benefit listings without prices if unreachable.
+
+### 3. Remote Unsplash Photography & `<SafeImage />`
+- **Verified Remote Images**: Handpicked Unsplash images covering Hero, How-It-Works, and the four core trade disciplines, verified with HTTP 200 headers.
+- **Fail-Safe Fallback (`<SafeImage />`)**: Wraps Next.js `next/image`. If an image fails to load or the network drops, it replaces the image with an industrial charcoal-to-amber gradient placeholder featuring a centered Lucide `Wrench` icon and matching accessible `aria-label`.
+- **Unsplash Attribution**: Muted photo credit in the footer linking to `https://unsplash.com`.
+
+### 4. Dynamic Contact Configuration
+- Reads optional contact information from `NEXT_PUBLIC_CONTACT_EMAIL`, `NEXT_PUBLIC_CONTACT_PHONE`, `NEXT_PUBLIC_CONTACT_ADDRESS`, and `NEXT_PUBLIC_CONTACT_HOURS`.
+- Rendered only when values are provided (never displays fake placeholders or empty labels).
+
+### 5. SEO & Metadata
+- **`src/app/sitemap.ts`**: Generates dynamic XML sitemap for public routes (`/`, `/services`, `/pricing`, `/about`, `/contact`) with change frequencies and priorities.
+- **`src/app/robots.ts`**: Allows indexing of public routes while blocking internal dashboards and API routes (`/admin`, `/customer`, `/technician`, `/api`, `/payment`, etc.).
+- **`src/app/opengraph-image.tsx` & `src/app/twitter-image.tsx`**: Dynamic 1200x630 social preview image generated using `next/og` `ImageResponse` with system fonts and industrial charcoal/amber branding.
 
 ---
 
