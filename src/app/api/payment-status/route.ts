@@ -6,6 +6,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
+import { getBackendUrl } from "@/lib/server-env";
 import { parseSessionId } from "@/lib/session-id";
 
 export const dynamic = "force-dynamic";
@@ -25,8 +26,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const backendUrl =
-    process.env.BACKEND_URL || "https://field-service-d24g.onrender.com";
+  const backendUrl = getBackendUrl();
 
   try {
     const upstreamRes = await fetch(

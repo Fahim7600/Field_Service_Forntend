@@ -1,3 +1,4 @@
+import { publicEnv } from "@/lib/env";
 import { getQueryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/stores/auth-store";
 import type { Role } from "@/types/auth";
@@ -81,7 +82,7 @@ export async function performLogout(
     const token = useAuthStore.getState().accessToken;
 
     // 2. Fire backend revocation in the background without awaiting it
-    const baseURL = process.env.NEXT_PUBLIC_API_BASE || "/api/v1";
+    const baseURL = publicEnv.apiBase;
     try {
       void fetch(`${baseURL}/auth/logout`, {
         method: "POST",

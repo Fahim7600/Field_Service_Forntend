@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { getBackendUrl } from "@/lib/server-env";
 import {
   FS_COOKIE_HINT,
   FS_COOKIE_MUST_CHANGE,
@@ -64,8 +65,7 @@ export async function POST(request: NextRequest) {
 
     if (!verifiedRole) {
       try {
-        const backendBase =
-          process.env.BACKEND_URL || "https://field-service-d24g.onrender.com";
+        const backendBase = getBackendUrl();
 
         const verifyRes = await fetch(`${backendBase}/api/v1/users/me`, {
           headers: {

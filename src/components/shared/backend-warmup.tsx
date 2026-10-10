@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { publicEnv } from "@/lib/env";
 
 const WARMUP_KEY = "fs_backend_warmup_ts";
 const TEN_MINUTES_MS = 10 * 60 * 1000;
@@ -22,7 +23,7 @@ export function BackendWarmup() {
 
       window.sessionStorage.setItem(WARMUP_KEY, String(now));
 
-      const baseURL = process.env.NEXT_PUBLIC_API_BASE || "/api/v1";
+      const baseURL = publicEnv.apiBase;
       void fetch(`${baseURL}/health`, {
         cache: "no-store",
       }).catch(() => {

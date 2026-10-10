@@ -1,5 +1,6 @@
 import "server-only";
 import { ApiError } from "@/lib/api-client";
+import { getBackendUrl } from "@/lib/server-env";
 import type { ApiResponse, FieldError } from "@/types/api";
 
 export interface ServerFetchOptions extends RequestInit {
@@ -18,8 +19,7 @@ export async function serverFetch<T>(
   path: string,
   options: ServerFetchOptions = {},
 ): Promise<T> {
-  const backendBase =
-    process.env.BACKEND_URL || "https://field-service-d24g.onrender.com";
+  const backendBase = getBackendUrl();
 
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const endpointPath = cleanPath.startsWith("/api/v1")

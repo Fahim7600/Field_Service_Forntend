@@ -1,7 +1,17 @@
 import type { NextConfig } from "next";
 
-const backendUrl =
-  process.env.BACKEND_URL || "https://field-service-d24g.onrender.com";
+const rawBackendUrl = process.env.BACKEND_URL?.trim();
+const isVercelProduction = process.env.VERCEL_ENV === "production";
+
+if (!rawBackendUrl && isVercelProduction) {
+  throw new Error("BACKEND_URL must be set in Vercel environment variables");
+}
+
+if (!rawBackendUrl) {
+  console.warn("BACKEND_URL is not set; skipping /api/v1 proxy rewrites.");
+}
+
+const backendUrl = rawBackendUrl ? rawBackendUrl.replace(/\/+$/, "") : "";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -36,12 +46,24 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ];
+    if (!backendUrl) {
+      return {
+        beforeFiles: [],
+        afterFiles: [],
+        fallback: [],
+      };
+    }
+
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        {
+          source: "/api/v1/:path*",
+          destination: `${backendUrl}/api/v1/:path*`,
+        },
+      ],
+      fallback: [],
+    };
   },
   images: {
     remotePatterns: [

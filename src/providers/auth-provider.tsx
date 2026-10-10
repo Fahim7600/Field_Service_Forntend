@@ -9,6 +9,7 @@ import {
   useEffect,
   useRef,
 } from "react";
+import { publicEnv } from "@/lib/env";
 import { clearSessionCookies } from "@/lib/session";
 import { FS_COOKIE_HINT } from "@/lib/session-cookies";
 import { useAuthStore } from "@/stores/auth-store";
@@ -59,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     setStatus("loading");
-    const baseURL = process.env.NEXT_PUBLIC_API_BASE || "/api/v1";
+    const baseURL = publicEnv.apiBase;
 
     try {
       // Step 1: Silent refresh token exchange via httpOnly cookie (60s timeout for cold Render server)

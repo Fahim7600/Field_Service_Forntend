@@ -4,6 +4,7 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from "axios";
+import { publicEnv } from "@/lib/env";
 import { normalizePaginated } from "@/lib/extract-data";
 import { authMessages, notify } from "@/lib/notify";
 import { clearSessionCookies } from "@/lib/session";
@@ -101,7 +102,7 @@ export function getErrorMessage(error: unknown): string {
   return "An unexpected error occurred. Please try again.";
 }
 
-const baseURL = process.env.NEXT_PUBLIC_API_BASE || "/api/v1";
+const baseURL = publicEnv.apiBase;
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL,

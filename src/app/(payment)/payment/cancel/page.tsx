@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getBackendUrl } from "@/lib/server-env";
 import { parseSessionId } from "@/lib/session-id";
 import { cn } from "@/lib/utils";
 
@@ -33,8 +34,7 @@ export default async function PaymentCancelPage({ searchParams }: PageProps) {
 
   let invoiceId: string | null = null;
   if (validSessionId) {
-    const backendUrl =
-      process.env.BACKEND_URL || "https://field-service-d24g.onrender.com";
+    const backendUrl = getBackendUrl();
     try {
       const res = await fetch(
         `${backendUrl}/api/v1/payments/success?session_id=${encodeURIComponent(validSessionId)}`,

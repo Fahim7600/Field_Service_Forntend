@@ -1,9 +1,8 @@
 import type { MetadataRoute } from "next";
+import { publicEnv } from "@/lib/env";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const rawBase =
-    process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000";
-  const baseUrl = rawBase.replace(/\/+$/, "");
+  const baseUrl = publicEnv.appUrl;
 
   const routes = ["", "/services", "/pricing", "/about", "/contact"];
   const now = new Date();

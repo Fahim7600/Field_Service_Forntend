@@ -1,3 +1,5 @@
+import { publicEnv } from "@/lib/env";
+
 export interface NavItem {
   title: string;
   href: string;
@@ -37,8 +39,8 @@ export const siteConfig = {
     "On-demand Field Service Management platform for scheduling, dispatching, and customer operations.",
   description:
     "Comprehensive enterprise field service management platform for dispatching, scheduling, technician work orders, and customer communication.",
-  url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-  apiBase: process.env.NEXT_PUBLIC_API_BASE || "/api/v1",
+  url: publicEnv.appUrl,
+  apiBase: publicEnv.apiBase,
   keywords: [
     "field service management",
     "AC repair",

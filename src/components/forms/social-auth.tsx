@@ -1,10 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { publicEnv } from "@/lib/env";
 
 export function SocialAuth() {
   const handleGoogleSignIn = () => {
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE || "/api/v1";
+    const apiBase = publicEnv.apiBase;
     // Navigate via our frontend proxy to maintain cookie domain consistency
     window.location.assign(`${apiBase}/auth/google`);
   };
