@@ -1,270 +1,231 @@
-# Field Service Frontend
+# Field Service Management Platform
 
-> Modern, robust, and responsive Field Service Management (FSM) web application built with Next.js 15, React 19, TypeScript, Tailwind CSS, and Biome.
+Modern, full-stack responsive web application designed for on-demand field service dispatching, technician operations, customer appointment tracking, and billing workflows.
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.5-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
-[![Biome](https://img.shields.io/badge/Biome-2.2-60A5FA?style=flat-square&logo=biome)](https://biomejs.dev/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+[![TanStack Query](https://img.shields.io/badge/TanStack_Query-v5-FF4154?style=flat-square&logo=react-query)](https://tanstack.com/query)
+[![Stripe](https://img.shields.io/badge/Stripe-Test_Mode-635BFF?style=flat-square&logo=stripe)](https://stripe.com/)
 
 ---
 
-## 📌 Overview
+## Live Demo
 
-**Field Service** is an enterprise-grade Field Service Management frontend designed to streamline field operations, service scheduling, work order dispatching, technician telemetry, invoice generation, and customer communication.
+| Service | Endpoint / URL |
+|---|---|
+| Frontend (Vercel) | `_Add your Vercel URL here after deployment_` |
+| Backend API | https://field-service-d24g.onrender.com |
+| Backend repository | https://github.com/Fahim7600/Field_Service |
+| Frontend repository | https://github.com/Fahim7600/Field_Service_Forntend |
 
-It connects seamlessly to the backend API ([Field_Service Backend](https://github.com/Fahim7600/Field_Service.git)) via Next.js proxy rewrites, ensuring secure cookie handling and real-time operational workflows.
-
-The complete backend OpenAPI 3.0 schema is archived locally at [`docs/openapi.json`](docs/openapi.json).
+> Note: The backend runs on a free Render instance. The first request after inactivity can take up to a minute while it wakes up.
 
 ---
 
-## 🏗️ Architecture: Auth & Data Fetching
+## Demo Accounts
 
-The application employs a secure authentication and dual data-fetching strategy:
+| Role | Email | Password | Lands on |
+|---|---|---|---|
+| ADMIN | `systemadmin@gmail.com` | `SystemAdminPass123` | `/admin` |
+| CUSTOMER | `test_runner_cust_1791224075987@test.com` | `Password123!` | `/customer` |
+| TECHNICIAN | `test_runner_tech_1791224075987@test.com` | `Password123!` | `/technician` |
 
-```text
-[ Incoming Request ]
-        │
-        ├── 0. Edge Middleware (src/middleware.ts)
-        │      └── Reads fs_role cookie: redirects unauthenticated users to /login and
-        │          enforces role-segregated routes (/admin, /technician, /customer)
-        │
-[ Browser / Client Components ]
-        │
-        ├── 1. Same-Origin Requests (/api/v1/...)
-        │      └── Next.js Rewrites Proxy ──► [ Express Backend API ]
-        │
-        ├── 2. In-Memory Access Token (Zustand - No persistence)
-        │      └── Sent via Authorization: Bearer <token>
-        │
-        ├── 3. httpOnly Refresh Cookie (Backend cookie)
-        │      └── Silently exchanged on boot & on 401 via single-flight interceptor
-        │
-        ├── 4. Routing Cookies (Set by /api/session route handler)
-        │      └── fs_role, fs_hint, fs_must_change
-        │
-        └── 5. Client State: TanStack Query (60s staleTime, 4xx retry suppression, global toast)
+Demo credentials for evaluation only. They are also available as one-click buttons on the login page.
 
-[ Next.js Server Components ]
-        │
-        └── Direct Server Fetch (serverFetch<T> in src/lib/server-api.ts)
-               └── Calls backend API directly (ISR, revalidate, tags) for public pages
+**Stripe Test Payment Cards**:
+- Successful Charge: `4242 4242 4242 4242` (any future MM/YY, any 3-digit CVC, any postal code)
+- Declined Charge: `4000 0000 0000 0002`
+
+---
+
+## Screenshots
+
+Add PNG files named `home.png`, `customer.png`, `dispatch.png`, `technician.png`, `payment.png`, `admin.png` into `docs/screenshots/`.
+
+| View | Screenshot Preview | Status |
+|---|---|---|
+| Home Landing | `docs/screenshots/home.png` | _To be added_ |
+| Customer Dashboard | `docs/screenshots/customer.png` | _To be added_ |
+| Dispatch Board | `docs/screenshots/dispatch.png` | _To be added_ |
+| Technician Task | `docs/screenshots/technician.png` | _To be added_ |
+| Invoice and Payment | `docs/screenshots/payment.png` | _To be added_ |
+| Admin Dashboard | `docs/screenshots/admin.png` | _To be added_ |
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [How It Works](#how-it-works)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Available Scripts](#available-scripts)
+- [Deployment](#deployment)
+- [Manual Test Checklist](#manual-test-checklist)
+- [Quality and Security](#quality-and-security)
+- [Known Limitations](#known-limitations)
+- [Documentation](#documentation)
+- [Author](#author)
+
+---
+
+## Overview
+
+Field Service provides an end-to-end operational platform connecting customers needing repairs, dispatchers orchestrating staff, and mobile technicians completing work in the field. Built with modern App Router patterns, it handles real-time status progression, multi-step photo uploads, live Stripe payments, customer ratings, and comprehensive audit logs.
+
+---
+
+## Key Features
+
+### Customer Portal
+- Interactive booking wizard with service category selection, address entry, preferred time windows, and multi-file photo uploads.
+- Real-time request tracking with multi-stage progress steppers and live status polling.
+- Self-service cancellation and reschedule requests with transparent 24-hour late fee policy calculation.
+- Digital invoice review and instant online checkout via Stripe payment sessions.
+- VIP Premium subscription purchasing with automatic 45-second webhook activation polling.
+- In-app notification center with deep links to invoices, requests, and payment updates.
+- Post-service star rating and written reviews with duplicate submission conflict guards.
+
+### Technician Workspace
+- Task queue with single-status filter chips highlighting urgent responses and daily appointments.
+- Task assignment acceptance and decline workflows with mandatory reason capture.
+- Standardized execution stepper: Scheduled to Arrived to In Progress to Completed.
+- Comprehensive digital service reports with labor hours, parts consumed, and completion photo uploads.
+- Mobile-optimized agenda calendar displaying 7-day, 30-day, and all-time visit schedules.
+- Performance console computing on-time arrival rate, hours logged, and completed task volumes.
+
+### Admin Command Center
+- Real-time dispatch board managing incoming requests with SLA priority and review countdowns.
+- Request review workflow with one-click work order creation or rejection with audit logging.
+- Technician assignment matching certified skills against category requirements with schedule conflict checks.
+- Comprehensive billing console: draft invoice adjustment, issuance, cancellation, and Stripe refunds.
+- VIP Premium subscriptions ledger tracking active, past-due, and cancelled auto-renewals.
+- Staff and customer administration: user role promotion, status suspensions, and soft deletion.
+- Service catalog management for categories and skills, plus audit logs with field deltas.
+- Real-time operational dashboard with 6 isolated KPI telemetry cards and Recharts status charts.
+
+---
+
+## How It Works
+
+### Core Operational Lifecycle
+
+```mermaid
+flowchart TD
+    A[Customer Submits Request] --> B{Admin Review}
+    B -->|Reject| Z[Request Rejected]
+    B -->|Approve| C[Work Order Created]
+    C --> D[Admin Assigns Technician]
+    D --> E{Technician Response}
+    E -->|Decline| C
+    E -->|Accept| F[Admin Schedules Visit Window]
+    F --> G[Technician Arrives at Site]
+    G --> H[Technician Starts Work]
+    H --> I[Technician Completes & Files Report]
+    I --> J[Draft Invoice Generated Automatically]
+    J --> K[Admin Reviews & Issues Invoice]
+    K --> L[Customer Pays via Stripe Checkout]
+    L --> M[Customer Submits Star Rating & Feedback]
 ```
 
-### Key Architectural Pillars
+### Free vs. Premium Service Tiers
 
-1. **Edge Middleware Route Protection**: `src/middleware.ts` runs on the Edge, intercepting protected dashboard paths (`/admin`, `/technician`, `/customer`) and authentication routes (`/login`, `/register`). It checks the verified `fs_role` cookie, redirects unauthenticated requests to login with encoded redirect params, and smoothly redirects users with mismatched roles to their authorized dashboard with `?role_redirect=1`.
-2. **Same-Origin API Proxy**: All client-side HTTP calls route through `/api/v1/*` using Next.js `rewrites()`. Because requests are same-origin, the backend's `httpOnly` refresh token cookie resides on the frontend domain.
-3. **Strict In-Memory Access Tokens**: Access tokens are kept exclusively in memory within a Zustand store (`src/stores/auth-store.ts`). Tokens are never persisted to `localStorage` or `sessionStorage`.
-4. **Session Routing Cookies**: Next.js route handler (`/api/session`) synchronizes routing metadata (`fs_role`, `fs_hint`, `fs_must_change`) on the frontend origin.
-5. **Silent Session Restoration**: On app load, `AuthProvider` checks for the `fs_hint=1` cookie; if present, it silently contacts `/auth/refresh-token` and restores `/users/me`.
-6. **Single-Flight 401 Interceptor**: If an authenticated call expires (401), the Axios client locks incoming 401s behind a single in-flight refresh promise, exchanges the cookie for a new access token, and retries all concurrent queued requests.
-7. **Server-Side Fetch for Public Pages**: Public marketing pages execute on the server using `serverFetch<T>` (`server-only`), communicating directly with the backend.
-8. **TanStack Query for Dashboards**: Authenticated views fetch via TanStack Query with smart caching, background revalidation, and automated error reporting.
-
----
-
-## 🔐 Authentication Flows
-
-Field Service implements end-to-end authentication patterns aligned strictly with the backend OpenAPI specification:
-
-1. **Email & Password Login**:
-   - Submits credentials to `POST /api/v1/auth/login`.
-   - Stores `accessToken` in the in-memory Zustand store and syncs `fs_role`, `fs_hint`, and `fs_must_change` via `/api/session`.
-   - If `mustChangePassword` is returned as `true`, the user is immediately routed to `/change-password`. Otherwise, redirects to the role home (`/admin`, `/technician`, `/customer`).
-
-2. **Customer Registration with Auto-Login**:
-   - Validates full name, email, optional phone/address, and strict password rules via `registerSchema` (React Hook Form + Zod).
-   - Shows live interactive password complexity checklist (`PasswordRequirements`).
-   - Automatically sanitizes empty strings and posts payload to `POST /api/v1/auth/register`.
-   - Automatically initializes session in memory, sets session cookies, and redirects the new customer to `/customer`.
-
-3. **Google OAuth via Proxy**:
-   - Triggers sign-in through the frontend proxy endpoint `GET /api/v1/auth/google`.
-   - The backend redirects to `/oauth-callback?token=...`.
-   - The callback handler scrubs the token from the browser history via `window.history.replaceState`, loads the profile with `GET /api/v1/users/me`, syncs session cookies, and transitions to the user's role dashboard.
-
-4. **Forced Password Change for First-Time Staff**:
-   - Server component reads `fs_must_change` cookie and passes the requirement to `<ChangePasswordForm />`.
-   - Displays a security alert explaining that a password update is required.
-   - Live requirement checklist enforces uppercase, lowercase, number, and 8+ characters.
-   - On `PATCH /api/v1/auth/change-password` success, clears all credentials, caches, and routing cookies, then directs to `/login?passwordChanged=1` for clean re-authentication with new privileges.
-
-5. **One-Click Demo Access**:
-   - Quick-fill demo authentication for Admin Dispatcher, Customer, and Field Technician accounts directly on the login card.
-
-6. **Edge Role Guarding & Session Routing Cookies**:
-   - Uses `fs_role` (verified role), `fs_must_change` (temporary password flag), and `fs_hint` (non-sensitive boolean for silent session restoration) for instant Edge middleware routing and server-side state evaluation.
-   - Forced password change rule: redirects any user with `fs_must_change === "1"` to `/change-password` upon navigating to any dashboard or auth page.
-   - Role-specific dashboard route protection with `?role_redirect=1` query feedback.
-
-7. **User & Technician Profiles**:
-   - Role-specific profile routes (`/customer/profile`, `/technician/profile`, `/admin/profile`) connected to the navigation user menu.
-   - Reusable `AccountDetailsForm` updating name, phone, and address via `PATCH /api/v1/users/me` with partial diff payloads.
-   - Professional technician profile manager supporting bio, service area coverage, weekly day-by-day shift hours configuration (`PATCH /api/v1/technicians/me/profile`), and an interactive certified skills checklist (`PUT /api/v1/technicians/me/skills`).
-   - `SecurityCard` component providing convenient access to voluntary password changes.
-
----
-
-## 🎨 Design System & Theme Tokens
-
-Field Service uses a purpose-built **Industrial Amber** color system engineered for contrast, professional clarity, and tactile focus:
-
-### Color Palette
-
-| Token | Hex Value | Role / Usage |
+| Benefit | Free Tier | Premium Tier |
 |---|---|---|
-| `brand-500` | `#F97316` | Safety Orange / Primary brand accent |
-| `brand-600` | `#EA580C` | Deep Amber / Hover states |
-| `brand-700` | `#C2410C` | Dark Terracotta / Gradient stops |
-| `terracotta` | `#A8442A` | Industrial Terracotta |
-| `charcoal-900` | `#111827` | Deep Charcoal / Primary text & headers |
-| `charcoal-800` | `#1F2937` | Base Charcoal / Primary buttons & active elements |
-| `charcoal-600` | `#4B5563` | Slate Charcoal / Secondary text & subtitles |
-| `ash` | `#9CA3AF` | Ash Grey / Footer text & placeholder tones |
-| `background` | `#F3F4F6` | App background |
-| `panel` | `#F9FAFB` | Sub-surface panel background |
-| `card` | `#FFFFFF` | Card surface |
-| `border` | `#E5E7EB` | Subtle dividing border |
-
-### UI Rules & Button Variants
-
-- **Primary Button Rule**: Standard action buttons use `charcoal-800` (`#1F2937`) as the primary fill to maintain an authoritative, high-contrast industrial look.
-- **Exclusive CTA Rule & WCAG Compliance**: The `cta` button variant uses a deep terracotta gradient `from-brand-700 (#C2410C) to-brand-800 (#9A3412)` with white semibold text and visible 2px focus ring. This guarantees a minimum 5.18:1 contrast ratio across the whole gradient (avoiding the lighter `#F97316` stop which failed WCAG AA with white text).
-- **Public Page Color Rules**:
-  - Light background: `#FFFFFF` with alternating sections in `#F8FAFC`.
-  - Headings: `#0F172A` (16.08:1 contrast).
-  - Body text: `#334155` (9.66:1 contrast; never lighter than `#475569`).
-  - Text links & eyebrows: `#C2410C` (5.89:1 contrast; `#F97316` is never used for text on white).
-  - Dark bands & navbar: `#111827` background with `#FFFFFF` headings, `#E2E8F0` body text (12.42:1), and `#CBD5E1` secondary labels (10.02:1). Active links use `#FBBF24` (9.28:1).
-  - Borders: `#E2E8F0` (light) and `#1F2937` (dark).
-- **Automated Contrast Checker Script**:
-  - Located at `scripts/check-contrast.mjs`.
-  - Run via:
-    ```bash
-    npm run check:contrast
-    ```
-  - Calculates WCAG 2.1 relative luminance and contrast ratios across 16 explicit token pairs, exiting with code 1 if any token pair fails the 4.5:1 (normal text) or 3.0:1 (large text) threshold.
-- **Server/Client Component Boundary Rule**:
-  - Files marked with `"use client"` must export **components only**.
-  - Pure functions, JSON-LD builders (such as `buildFaqJsonLd` in `src/lib/seo/faq-json-ld.ts`), runtime constants, and schemas needed by Server Components must reside in modules without `"use client"`. Server components cannot call non-component runtime functions exported from client modules.
+| Review Target SLA | 24 hours | 2 hours (Priority review) |
+| Labor Discount | None | 10% automatic labor discount |
+| Cancellation / Reschedule | Free until 24h before visit ($5.00 late fee within 24h) | Free until technician arrives (No late fees) |
+| Booking Queue | Standard | High Priority Tag |
 
 ---
 
-## 🚀 Planned Features by Role
+## Architecture
 
-### 👤 Customer Portal
-- **Service Request & Booking**: Interactive multi-step booking with service category selection, address autofill, and preferred time windows.
-- **Real-Time Job Tracking**: Live status timeline (Requested → Scheduled → Dispatched → In Progress → Completed) with technician profile.
-- **Digital Invoices & Payments**: Instant invoice review, breakdown of labor and parts, digital signature, and secure payment processing.
-- **Rating & Feedback**: Post-service rating, photo upload, and feedback submission.
+### System Flow Diagram
 
-### 🔧 Technician Workspace
-- **Daily Job Schedule & Route**: Interactive daily schedule with geolocation mapping, route optimization, and turn-by-turn navigation links.
-- **Job Execution & Checklists**: Step-by-step checklist compliance, safety inspection forms, and notes capture.
-- **Parts & Inventory Consumption**: Real-time logging of parts utilized from vehicle inventory with barcode scanning support.
-- **Digital Sign-off & Work Logs**: Time-tracking (travel, on-site, pause) and customer digital signature capture.
+```mermaid
+flowchart LR
+    Browser[Browser Client] --> NextApp[Next.js App on Vercel]
+    subgraph NextApp [Next.js Application Layer]
+        MW[Edge Middleware: Role Routing]
+        Handlers[Route Handlers: Stripe & Session]
+        Proxy[Rewrite Proxy: /api/v1/*]
+    end
+    NextApp --> Express[Express API on Render]
+    Express --> DB[(PostgreSQL via Prisma)]
+    Express --> Cloudinary[Cloudinary CDN]
+    Express --> Stripe[Stripe Payments]
+    Stripe -.->|Webhooks| Express
+```
 
-### 🛡️ Admin & Dispatcher Command Center
-- **Dynamic Dispatch Board**: Drag-and-drop technician scheduling, calendar/timeline views, and smart auto-dispatch assignment.
-- **Work Order Lifecycle Management**: Comprehensive work order CRUD, SLA monitoring, priority tagging, and automated escalation triggers.
-- **Inventory & Asset Tracking**: Multi-warehouse and van inventory levels, reorder threshold alerts, and asset service history.
-- **Financials & Analytics**: Real-time revenue dashboards, technician utilization metrics, first-time fix rates, and job profitability reports.
-
----
-
-## 🛠️ Tech Stack
-
-| Category | Technology | Description |
-|---|---|---|
-| **Framework** | [Next.js 15 (App Router)](https://nextjs.org/) | Hybrid Server & Client rendering, API rewrites proxy |
-| **Language** | [TypeScript (Strict)](https://www.typescriptlang.org/) | Strict type safety and robust developer experience |
-| **Styling** | [Tailwind CSS v4](https://tailwindcss.com/) | High-performance atomic CSS with industrial amber theme tokens |
-| **Component Library** | [shadcn/ui](https://ui.shadcn.com/) (Base UI) | Accessible, customizable primitive UI components |
-| **Linter & Formatter** | [Biome](https://biomejs.dev/) | Sub-millisecond formatting, import organization, and strict linting |
-| **State Management** | [Zustand](https://github.com/pmndrs/zustand) | Minimalist and fast client state store |
-| **Data Fetching** | [@tanstack/react-query](https://tanstack.com/query) | Async server state synchronization, caching, and optimistic updates |
-| **Forms & Validation** | [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/) | Type-safe form validation and state handling |
-| **Notifications** | [Sonner](https://sonner.emilkowal.ski/) | Opinionated and elegant toast notification system |
-| **Icons** | [Lucide React](https://lucide.dev/) | Clean, consistent SVG icon set |
-| **HTTP Client** | [Axios](https://axios-http.com/) | Configured client for API requests and interceptors |
-| **Charts** | [Recharts](https://recharts.org/) | Composable analytics and operational charting |
-| **Date Utilities** | [date-fns](https://date-fns.org/) | Modern, modular date manipulation library |
+- **Authentication Model**: Short-lived access tokens reside purely in client memory. Silent token refresh occurs via an httpOnly cookie over same-origin proxy rewrites. Routing cookies (`fs_role`, `fs_hint`, `fs_must_change`) guide Edge navigation without exposing secrets.
+- **Data Fetching**: Client requests use TanStack Query with background focus revalidation. All paginated endpoints pass through `normalizePaginated` to tolerate varying backend envelope shapes.
+- **State Management**: Zustand handles user authentication state exclusively. Form state is managed by React Hook Form, and server caches are governed by TanStack Query.
+- **Validation**: Strict runtime validation powered by React Hook Form and Zod schemas across all inputs.
+- **Currency & Finance**: All currency amounts are stored and calculated strictly as integer cents to eliminate floating-point rounding errors.
 
 ---
 
-## 📁 Project Structure
+## Tech Stack
+
+| Area | Technology |
+|---|---|
+| Framework | Next.js 15 (App Router with Turbopack) |
+| Language | TypeScript 5 (Strict Mode) |
+| Styling | Tailwind CSS v4 & Lucide Icons |
+| Component Primitives | Base UI (shadcn/ui primitives) |
+| Server State | TanStack Query v5 |
+| Client State | Zustand v5 |
+| Forms & Validation | React Hook Form & Zod |
+| HTTP Client | Axios & Native Fetch |
+| Analytics & Charts | Recharts (Dynamic SSR-disabled import) |
+| Linter & Formatter | Biome |
+
+---
+
+## Project Structure
 
 ```text
 Field_Service_Forntend/
-├── docs/
-│   └── openapi.json          # Live backend OpenAPI 3.0 specification
-├── .env.example              # Environment variables template
-├── .env.local                # Local environment secrets (gitignored)
-├── biome.json                # Biome linter and formatter configuration
-├── next.config.ts            # Next.js configuration & API proxy rewrites
-├── package.json              # Dependencies and npm scripts
-├── postcss.config.mjs        # PostCSS configuration
-├── tsconfig.json             # Strict TypeScript configuration
-├── public/                   # Static assets & icons
-└── src/
-    ├── middleware.ts         # Edge middleware for role-based route guarding
-    ├── app/                  # Next.js App Router pages, layouts, and error boundaries
-    │   ├── (auth)/
-    │   │   ├── change-password/ # Change password page (server component + client form)
-    │   │   ├── layout.tsx    # Dedicated authentication shell
-    │   │   ├── login/        # Login page with validated form & demo cards
-    │   │   ├── oauth-callback/ # Google OAuth token callback handler
-    │   │   └── register/     # Registration page with auto-login
-    │   ├── (dashboard)/
-    │   │   ├── admin/        # Admin command center workspace
-    │   │   ├── customer/     # Customer portal workspace
-    │   │   ├── technician/   # Technician operational workspace
-    │   │   ├── layout.tsx    # Dashboard shell with fixed sidebar & topbar
-    │   │   └── loading.tsx   # Dashboard skeleton loading state
-    │   ├── (dev)/
-    │   │   └── test-error/   # Dev-only test error page
-    │   ├── (marketing)/
-    │   │   ├── layout.tsx    # Public marketing shell with Navbar and Footer
-    │   │   ├── loading.tsx   # Skeleton loading state
-    │   │   └── page.tsx      # Landing page / design system verification
-    │   ├── api/
-    │   │   └── session/      # Session cookie synchronization route handler
-    │   ├── error.tsx         # Global client error boundary with retry
-    │   ├── global-error.tsx  # Root fallback error boundary
-    │   ├── globals.css       # Industrial amber theme tokens & base styles
-    │   ├── layout.tsx        # Root layout with Inter font and Toaster
-    │   └── not-found.tsx     # Custom 404 error page
-    ├── components/
-    │   ├── dashboard/        # DashboardWelcomeHeader
-    │   ├── forms/            # LoginForm, RegisterForm, ChangePasswordForm, DemoLogin, PasswordRequirements, PasswordInput, SocialAuth
-    │   ├── layout/           # App shell, Navbar, NavLinks, AuthActions, UserMenu, DashboardSidebar, DashboardTopbar, DashboardLayout, Footer, MobileNav
-    │   ├── shared/           # Logo, Container, PageHeader, EmptyState, RoleRedirectToast
-    │   └── ui/               # shadcn/ui primitive components (Avatar, DropdownMenu, Button, Sheet, etc.)
-    ├── constants/            # Site config, demo accounts, dashboard links, navigation links
-    ├── hooks/                # useAuth, useLogin, useRegister, useChangePassword, useDebounce
-    ├── lib/                  # api-client, session, session-cookies, auth-routes, query-client, server-api, validations
-    ├── providers/            # QueryProvider, AuthProvider
-    ├── services/             # auth.service.ts
-    ├── stores/               # Zustand auth-store
-    └── types/                # API and Auth TypeScript definitions
+├── docs/                 # OpenAPI specification and engineering reference notes
+│   ├── ENGINEERING_NOTES.md
+│   ├── openapi.json
+│   └── screenshots/      # Application screenshot artifacts
+├── public/               # Static assets, branding, and icons
+├── scripts/              # Verification scripts (check-links, check-contrast)
+├── src/
+│   ├── app/              # Next.js App Router (pages, layouts, route handlers, error boundaries)
+│   ├── components/       # UI primitives, dashboard widgets, and domain forms
+│   ├── constants/        # Site metadata, demo accounts, navigation links, and policies
+│   ├── hooks/            # Custom hooks (useAuth, useLogin, useUrlFilters, useDebounce)
+│   ├── lib/              # Environment helpers, formatters, safe-redirect, and API clients
+│   ├── providers/        # Context wrappers (AuthProvider, QueryProvider, ThemeProvider)
+│   ├── services/         # Domain API services (auth, finance, etc.)
+│   ├── stores/           # Zustand stores (auth-store)
+│   ├── types/            # TypeScript schemas, models, and API interfaces
+│   └── middleware.ts     # Next.js Edge Middleware for role protection
+├── .env.example          # Environment variables template
+├── biome.json            # Biome linting and formatting configuration
+├── next.config.ts        # Next.js configuration, security headers, and proxy rewrites
+├── package.json          # Package manifest and npm scripts
+└── tsconfig.json         # Strict TypeScript compiler configuration
 ```
 
 ---
 
-## ⚙️ Getting Started
+## Getting Started
 
 ### Prerequisites
+- Node.js >= 20.0.0
+- npm >= 10.0.0
 
-- **Node.js**: `v20.x` or `v24.x` (LTS recommended)
-- **npm**: `v10.x` or higher
-- **Backend API**: Running instance of [Field_Service Backend](https://github.com/Fahim7600/Field_Service.git) or deployed cloud service.
+### Setup Instructions
 
-### Installation
-
-1. Clone the repository:
+1. Clone repository:
    ```bash
    git clone https://github.com/Fahim7600/Field_Service_Forntend.git
    cd Field_Service_Forntend
@@ -275,644 +236,132 @@ Field_Service_Forntend/
    npm install
    ```
 
-3. Set up environment variables:
+3. Configure environment:
    ```bash
    cp .env.example .env.local
    ```
 
 ### Environment Variables
 
-| Variable | Default Value | Description |
+| Variable | Required | Description | Example |
+|---|:---:|---|---|
+| `BACKEND_URL` | Yes | Target backend API origin for proxy rewrites | `https://field-service-d24g.onrender.com` |
+| `NEXT_PUBLIC_API_BASE` | Yes | API base prefix used by client requests | `/api/v1` |
+| `NEXT_PUBLIC_APP_URL` | Yes | Canonical public URL of the frontend | `http://localhost:3000` |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | No | Public customer support contact email | `support@fieldservice.com` |
+| `NEXT_PUBLIC_CONTACT_PHONE` | No | Public telephone number | `+1 (555) 019-2834` |
+| `NEXT_PUBLIC_CONTACT_ADDRESS` | No | Public street address | `100 Industrial Parkway, Suite 400` |
+| `NEXT_PUBLIC_CONTACT_HOURS` | No | Operating business hours | `Mon - Sat: 7:00 AM - 7:00 PM` |
+| `NEXT_PUBLIC_DEMO_ADMIN_EMAIL` | No | Admin demo login button email | `systemadmin@gmail.com` |
+| `NEXT_PUBLIC_DEMO_ADMIN_PASSWORD` | No | Admin demo login button password | `SystemAdminPass123` |
+| `NEXT_PUBLIC_DEMO_CUSTOMER_EMAIL` | No | Customer demo login button email | `test_runner_cust_1791224075987@test.com` |
+| `NEXT_PUBLIC_DEMO_CUSTOMER_PASSWORD` | No | Customer demo login button password | `Password123!` |
+| `NEXT_PUBLIC_DEMO_TECHNICIAN_EMAIL` | No | Technician demo login button email | `test_runner_tech_1791224075987@test.com` |
+| `NEXT_PUBLIC_DEMO_TECHNICIAN_PASSWORD` | No | Technician demo login button password | `Password123!` |
+
+4. Run locally:
+   ```bash
+   npm run dev
+   ```
+
+5. Build for production:
+   ```bash
+   npm run build
+   npm run start
+   ```
+
+---
+
+## Available Scripts
+
+| Script | Command | Purpose |
 |---|---|---|
-| `BACKEND_URL` | `https://field-service-d24g.onrender.com` | Target Express + Prisma backend API endpoint |
-| `NEXT_PUBLIC_API_BASE` | `/api/v1` | Public API base path |
-| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` | Local frontend origin |
-| `NEXT_PUBLIC_CONTACT_EMAIL` | *(Optional)* | Public contact email address (omitted if unset) |
-| `NEXT_PUBLIC_CONTACT_PHONE` | *(Optional)* | Public contact phone number (omitted if unset) |
-| `NEXT_PUBLIC_CONTACT_ADDRESS` | *(Optional)* | Public business street address (omitted if unset) |
-| `NEXT_PUBLIC_CONTACT_HOURS` | *(Optional)* | Public operating business hours (omitted if unset) |
-| `NEXT_PUBLIC_DEMO_ADMIN_EMAIL` | *(Optional)* | Admin demo account email |
-| `NEXT_PUBLIC_DEMO_ADMIN_PASSWORD` | *(Optional)* | Admin demo account password |
-| `NEXT_PUBLIC_DEMO_CUSTOMER_EMAIL` | *(Optional)* | Customer demo account email |
-| `NEXT_PUBLIC_DEMO_CUSTOMER_PASSWORD` | *(Optional)* | Customer demo account password |
-| `NEXT_PUBLIC_DEMO_TECHNICIAN_EMAIL` | *(Optional)* | Technician demo account email |
-| `NEXT_PUBLIC_DEMO_TECHNICIAN_PASSWORD` | *(Optional)* | Technician demo account password |
-
-### Running the Development Server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser to view the application.
+| `dev` | `next dev --turbopack` | Starts development server with Turbopack |
+| `build` | `next build --turbopack` | Generates compiled production bundle |
+| `start` | `next start` | Runs the built production server |
+| `fix` | `biome check --write .` | Applies automated linting and formatting fixes |
+| `typecheck` | `tsc --noEmit` | Runs strict TypeScript type diagnostics |
+| `check:links` | `node scripts/check-links.mjs` | Audits physical App Router pages against sidebar links |
+| `check:contrast` | `node scripts/check-contrast.mjs` | Tests design token pairs against WCAG AA standards |
+| `verify` | `npm run fix && npm run typecheck && npm run check:links && npm run check:contrast` | Runs complete quality and validation suite |
 
 ---
 
-## 🔑 Demo Accounts
+## Deployment
 
-One-click demo login buttons are integrated into the login page (`/login`) for fast evaluation across roles:
+### Vercel Deployment Steps
+1. Import repository on [Vercel](https://vercel.com).
+2. Framework Preset will auto-detect as **Next.js**.
+3. Configure Environment Variables according to the table above.
+4. Deploy application.
 
-- **Admin Dispatcher**: Full access to dispatching, technician oversight, customer service logs, and analytics.
-- **Customer**: Access to service booking, real-time job timeline, and invoice payment workflows.
-- **Field Technician**: Access to daily job schedule, checklist execution, parts logging, and sign-offs.
+### Backend Alignment on Render
+Configure the following environment variables on the Render backend to point to your Vercel deployment URL:
+- `FRONTEND_URL`: `https://<your-app>.vercel.app`
+- `PUBLIC_API_URL`: `https://<your-app>.vercel.app`
 
-*Demo credentials can be configured via the `NEXT_PUBLIC_DEMO_*` environment variables in `.env.local` or entered manually into the login form.*
+### Stripe Webhook Configuration
+- Webhook URL: `https://field-service-d24g.onrender.com/api/v1/payments/webhook`
+- Subscribed Events:
+  - `checkout.session.completed`
+  - `invoice.paid`
+  - `invoice.payment_failed`
+  - `customer.subscription.updated`
+  - `customer.subscription.deleted`
+
+### Post-Deployment Verification
+- Check health status endpoint: `https://<your-app>.vercel.app/api/health` returns `{ "status": "ok" }`.
+- Test authentication with one-click demo accounts on `/login`.
+- Verify Stripe test checkout flow on an unpaid customer invoice.
 
 ---
 
-## 📜 Available NPM Scripts
+## Manual Test Checklist
 
-| Script | Command | Description |
+| Flow Area | Action | Expected Result |
 |---|---|---|
-| `npm run dev` | `next dev --turbopack` | Starts the Next.js dev server with Turbopack |
-| `npm run build` | `next build --turbopack` | Builds the production application bundle |
-| `npm run start` | `next start` | Runs the compiled production server |
-| `npm run lint` | `biome check .` | Runs Biome linting and import checks |
-| `npm run format` | `biome format --write .` | Formats codebase according to style rules |
-| `npm run fix` | `biome check --write .` | Automatically fixes linting and formatting issues |
-| `npm run typecheck`| `tsc --noEmit` | Validates TypeScript types across the project |
-| `npm run check:links`| `node scripts/check-links.mjs` | Audits sidebar dashboard links against physical App Router pages |
-| `npm run check:contrast`| `node scripts/check-contrast.mjs` | Audits WCAG 2.1 AA contrast ratios across design tokens |
+| Authentication | Click demo button on login | Authenticates into memory, syncs cookies, routes to correct home |
+| Role Guard | Customer visits `/admin` | Edge middleware redirects to `/customer?role_redirect=1` |
+| Service Booking | Customer submits wizard | Creates request, uploads photos, transitions status to Submitted |
+| Dispatch Review | Admin approves request | Creates linked Work Order in Approved status |
+| Task Assignment | Admin assigns technician | Matches skills, verifies schedule, transitions status to Assigned |
+| Technician Work | Technician accepts & advances | Advances status: Scheduled to Arrived to In Progress to Completed |
+| Service Report | Technician files report | Saves labor & parts, uploads completion photos, auto-generates invoice |
+| Invoicing & Pay | Customer pays issued invoice | Opens Stripe Checkout, interceptor returns to success page on payment |
+| VIP Premium | Customer buys membership | Redirects to Stripe, returns and activates VIP status within 45 seconds |
+| Feedback | Customer reviews paid job | Records star rating and comment, prevents duplicate reviews |
 
 ---
 
-## 📁 Multipart File Uploads & Two-Step Flows
+## Quality and Security
 
-All file uploads are streamed directly to the backend API as `multipart/form-data`:
-1. **Service Reports (`POST /api/v1/work-orders/{id}/service-report`)**:
-   - Sent as multipart with `workDone`, `partsUsed`, `hoursSpent`, and binary `photos` attachments.
-   - Upload progress is visualized in real-time via `UploadProgress`.
-2. **Customer Service Requests & Attachments**:
-   - **Step 1**: Submits JSON payload (`categoryId`, `title`, `description`, `address`, `preferredAt`) to `POST /api/v1/service-requests`.
-   - **Step 2**: If photos were selected, uploads them to `POST /api/v1/service-requests/{id}/attachments` as multipart binary files.
-   - **Partial Recovery**: If photo upload fails after the request is created, the request is preserved with retry and skip options.
-
----
-
-## 🛠️ Utilities
-
-### Safe Formatting Helpers (`src/lib/format.ts`)
-- **`formatMoney(cents, currency)`**: Formats integer amounts in cents to localized currency (e.g. `15000` -> `"$150.00"`). Returns `"-"` safely on null/undefined/NaN.
-- **`safeFormatDate(value, pattern, fallback)`**: Uses `date-fns` `parseISO` + `isValid` to format dates safely without ever throwing.
-- **`safeFormatDateTime(value, fallback)`**: Formats full timestamp (`"dd MMM yyyy, hh:mm a"`).
-- **`formatRelative(value)`**: Displays relative time strings (e.g., `"in 2 hours"`, `"3 hours ago"`).
-- **`isPast(value)`**: Safe date past-predicate check.
-- **`toIsoFromLocalInput(localValue)`** & **`toLocalInputValue(iso)`**: Converts between HTML5 `<input type="datetime-local">` values and ISO strings.
-
-### URL Filter Hook (`src/hooks/use-url-filters.ts`)
-- **`useUrlFilters(defaults)`**: URL search param synchronization hook. Automatically resets `page` back to 1 when any non-page filter changes, drops empty/default keys, and uses non-polluting `router.replace({ scroll: false })` for filter modifications.
-### Admin Dispatch Flow
-1. **Needs Review Queue (`/admin/dispatch?type=REQUEST_REVIEW`)**: Incoming submitted service requests appear in the review queue with SLA priority indicators and review due dates.
-2. **Review & Decision (`/admin/dispatch/[id]`)**:
-   - Inspect customer details, service category, required skills, preferred schedule window, and attached media.
-   - **Approve**: Confirms via dialog and calls `PATCH /admin/service-requests/{id}/review` with `{ decision: "APPROVE" }`. Invalidates queries, fetches the generated `workOrder.id`, and seamlessly routes to `/admin/work-orders/{workOrderId}`.
-   - **Reject**: Opens a locked modal to input a validated reason (10-500 chars) and calls `PATCH /admin/service-requests/{id}/review` with `{ decision: "REJECT", reason }`.
-3. **Work Order Management (`/admin/work-orders`)**: Full list of generated work orders with single-status filters, sorting (createdAt, visitStart, status), and responsive data tables.
-4. **Work Order Inspection (`/admin/work-orders/[id]`)**: Full view of customer details, linked service request, assigned technician, visit window, dispatch actions guidance, and chronological status transition history.
-
-### Technician Workflow
-1. **Task Queue (`/technician/tasks`)**: Horizontally scrollable status chips (All, Assigned, Scheduled, Arrived, In progress, Completed, Cancelled) synced to single status parameter in URL. Highlights urgent jobs needing response and jobs scheduled for today.
-2. **Assignment Response (`/technician/tasks/[id]`)**:
-   - Status `ASSIGNED`: Technician inspects customer info, location, service category, description, and attached photos.
-   - **Accept**: Calls `POST /work-orders/{id}/accept`. Status moves to accepted state while staying in `ASSIGNED` awaiting visit scheduling by dispatch.
-   - **Reject**: Opens dialog with required reason (10-500 chars) calling `POST /work-orders/{id}/reject`. Job returns to `APPROVED` and re-enters the dispatch queue.
-3. **Execution Steps**:
-   - Status `SCHEDULED`: Once scheduled by dispatcher, technician clicks "Mark as Arrived" (`PATCH /work-orders/{id}/status` -> `ARRIVED`).
-   - Status `ARRIVED`: Technician clicks "Start Work" (`PATCH /work-orders/{id}/status` -> `IN_PROGRESS`).
-   - Status `IN_PROGRESS`: Technician clicks "Complete and file report" directing to `/technician/tasks/[id]/report`.
-4. **Visual Progress**: Reusable `WorkProgressStepper` displays real-time milestone progression across all device viewports.
+- **Strict Type Safety**: `tsc --noEmit` runs with strict mode enabled; `any` types are avoided.
+- **Code Standards**: Biome enforces consistent formatting, import order, and linting rules.
+- **Accessibility**: Includes skip navigation links, semantic landmarks, and a contrast audit script verifying WCAG AA standards.
+- **Security Headers**: Enforces strict CSP frame-ancestors, X-Frame-Options, X-Content-Type-Options, and Referrer-Policy.
+- **Token Hygiene**: Tokens never exist in cookies or local storage; only transient in-memory stores are used.
+- **Safe Redirection**: Redirection paths are strictly validated through `getSafeRedirect` to prevent open redirect vulnerabilities.
+- **Repository Safety**: Scanned for secrets, tokens, private keys, and environment files.
 
 ---
 
-## 🗺️ Roadmap
+## Known Limitations
 
-- [x] **Phase 1: Project Scaffolding & Design System**
-  - [x] Next.js 15 App Router + TypeScript Strict setup
-  - [x] Biome formatting, linting, and import organization
-  - [x] Industrial Amber design system & CSS theme tokens
-  - [x] Core shadcn/ui components (Button with CTA variant, Input, Card, Badge, Skeleton, Separator, Sonner, Sheet, AlertDialog)
-  - [x] Next.js API proxy rewrites configuration
-- [x] **Phase 2: Shell Layout, Navigation & Error Handling**
-  - [x] Responsive public Navbar with active path indicator and accessible skip link
-  - [x] Mobile slide-out Sheet navigation drawer with stacked actions
-  - [x] Solid charcoal Footer with link matrix and copyright
-  - [x] Custom 404 page, client error boundaries (`error.tsx`, `global-error.tsx`), and loading skeleton
-  - [x] Reusable shared layout primitives (`Container`, `PageHeader`, `EmptyState`, `StatusBadge`, `PriorityBadge`, `DueBadge`, `StatusTimeline`, `WorkProgressStepper`, `ResponsiveDataList`, `PaginationControls`)
-- [x] **Phase 3: Core API Client, Auth Store & Architecture**
-  - [x] Local archive of OpenAPI 3.0 specification ([`docs/openapi.json`](docs/openapi.json))
-  - [x] Strict TypeScript types for API responses, errors, pagination, and Auth models
-  - [x] Axios client with single-flight silent 401 token refresh & typed helper methods
-  - [x] In-memory Zustand auth store without persistence
-  - [x] TanStack Query client with 4xx retry suppression and global toast handlers
-  - [x] Server-side `serverFetch<T>` utility and `useAuth` / `useDebounce` hooks
-- [x] **Phase 4: Authentication & Role-Aware Routing**
-  - [x] Login page with React Hook Form + Zod real-time validation
-  - [x] PasswordInput component with eye visibility toggle
-  - [x] Session cookie route handler (`/api/session`) for Next.js routing metadata (`fs_role`, `fs_hint`, `fs_must_change`)
-  - [x] One-click demo login system for Admin, Customer, and Technician roles
-  - [x] Dynamic role redirection (`getSafeRedirect()`) and logout flow
-  - [x] Temporary role dashboard landing pages
-- [x] **Phase 5: Registration, Password Change & Social OAuth**
-  - [x] Customer registration form with live password complexity validation
-  - [x] Password requirements live interactive checklist (`PasswordRequirements`)
-  - [x] Auto-login and session initialization upon registration
-  - [x] Google OAuth sign-in button & `/oauth-callback` handler with token URL scrubbing
-  - [x] Forced password change flow (`/change-password`) for first-login technicians
-  - [x] Session and routing cookie invalidation on credential change
-- [x] **Phase 6: Edge Middleware Guarding & Dashboard Shell**
-  - [x] Edge middleware route protection (`src/middleware.ts`)
-  - [x] Cross-role redirection with `?role_redirect=1` query and toast notification
-  - [x] Authenticated `<UserMenu />` dropdown with initials fallback and profile/dashboard links
-  - [x] Dashboard navigation constants for Admin, Technician, and Customer roles
-  - [x] Fixed sidebar shell, sticky topbar with notifications and mobile slide-out drawer
-- [x] **Phase 7: Customer Portal & Service Request Lifecycle**
-  - [x] Multi-step service booking wizard with local photo picker & two-step submission
-  - [x] URL-synced request list with debounced search, status chips, priority, date range, and sort order
-  - [x] Request detail view with milestone progress stepper, active polling, job card, and service report preview
-  - [x] Photo management on submitted requests (delete and upload with progress bar)
-  - [x] Dedicated request edit page with prefill, diff submissions, and status guards
-  - [x] Cancellation and reschedule dialogs with automated policy estimate and conflict handling
-  - [x] Rebuilt customer service history page with URL-synced filters and pagination
-  - [x] Customer workspace overview dashboard with 4 independent metric stat cards and next visit spotlight
-  - [x] Live work order tracker with timeline visualization
-  - [x] Customer billing history and online checkout
+- **Free-Tier Cold Starts**: Backend runs on Render's free tier and requires up to 60 seconds to spin up on cold requests.
+- **Stripe Test Mode**: Online payments and recurring subscriptions run strictly in Stripe test mode.
+- **Local Feedback Cache**: Work order feedback ratings are retained locally to preserve UI state when read endpoints are unavailable.
+- **Contact Inquiries**: Contact form launches the visitor's default email client rather than dispatching server emails directly.
+- **Payload Normalization**: The live API returns envelopes richer than the OpenAPI specification, handled gracefully via `normalizePaginated`.
 
 ---
 
-## 🛠️ Customer Request & Modification Flow
+## Documentation
 
-The customer portal provides a dedicated end-to-end service request lifecycle and appointment management flow:
-
-1. **Request List (`/customer/requests`)**:
-   - URL-synced search toolbar with 400ms debounce (`q`), status chips (`All`, `Submitted`, `Approved`, `Rejected`), priority filter (`All`, `High`, `Normal`), date range picker (`dateFrom`, `dateTo`), and sort order selector.
-   - Automatically handles endpoint parameter constraints (disabling incompatible filter queries during active text search as per API specification).
-   - Shows composite status with `getDisplayStatus()` (prioritizing active Work Order status over initial Request status).
-   - "Book Service" action prominently displayed using the orange `cta` variant.
-   - Responsive cards for mobile viewports (zero horizontal overflow at 375px) and structured table for desktop.
-
-2. **Request Detail (`/customer/requests/[id]`)**:
-   - Two-column responsive layout with independent queries for service request details, work order progress, and status timeline.
-   - Dynamic `WorkProgressStepper` driven by live work order progression, with active polling (30s interval while active status and tab visible).
-   - For `SUBMITTED` requests: "Waiting for review" banner (with priority review SLA countdown if applicable), edit link, and delete action with `AlertDialog` confirmation.
-   - For `CANCELLED` jobs: dedicated cancellation banner displaying date and recorded cancellation reason.
-   - Editable photo gallery while in `SUBMITTED` status: delete individual attachments or upload additional photos (up to 5 total) with multipart/form-data progress indicator.
-   - Job assignment details, technician information, service report summary, and direct link to customer invoices.
-
-3. **Request Editing (`/customer/requests/[id]/edit`)**:
-   - Dedicated single-page editing form available exclusively for requests in `SUBMITTED` status.
-   - Prefills form values using shared validation schema and time parsing helper `splitPreferredAt()`.
-   - Sends only modified fields via `PATCH /api/v1/service-requests/{id}`.
-   - Handles backend conflict rejection (e.g., if status transitioned to `APPROVED`) with instant feedback and redirection.
-   - Browser navigation guard (`beforeunload`) prevents accidental loss of unsaved changes.
-
-5. **Invoices & Billing (Admin)**:
-   - **Automated Draft Generation**: When a technician submits a completed service report, the backend automatically generates a `DRAFT` invoice with labor, parts, and diagnostic items.
-   - **Server-Side Calculations**: All currency amounts are represented as integer cents. Subtotals, tax (e.g. 8%), and active customer premium discounts are calculated and verified authoritatively by the server.
-   - **Adjusting Draft Charges**: Admins can add, edit, or remove line items (labor, parts, extra charges) and modify internal notes prior to issuance.
-   - **Issuing Invoices**: Issuing a draft transitions status to `ISSUED` and triggers customer notification for online Stripe payment.
-   - **Voiding Invoices**: Unpaid draft or issued invoices can be voided with a mandatory audit reason (5–300 characters).
-   - **Fallback Creation**: If a draft invoice does not exist for a completed work order, admins can create one manually using the fallback dialog with conflict protection.
-
-6. **Payments & Stripe Checkout (Customer)**:
-   - **Pay Flow**: Customers can view unpaid invoices (`ISSUED`) and click **Pay Now** to initiate a secure Stripe Checkout Session. The backend returns a validated checkout URL (or re-issues the open session without duplication errors).
-   - **Return Interception & Redirects**: Stripe returns the customer's browser to `${PUBLIC_API_URL}/api/v1/payments/success?session_id=...` or `/cancel`. Because the backend returns raw JSON without redirecting, Next.js filesystem route handlers intercept these return paths and redirect the browser to `/payment/success` or `/payment/cancel`.
-   - **Verification & Polling**: The success page polls the real payment verification status via `/api/payment-status?session_id=...` every 2 seconds, declaring success only when the backend confirms `SUCCEEDED`.
-   - **Stripe Test Configuration**:
-     - Render/Backend environment variables: `PUBLIC_API_URL` and `FRONTEND_URL` must point to the frontend origin (`http://localhost:3000` locally, production Vercel URL in production).
-     - Stripe Webhook endpoint: `https://field-service-d24g.onrender.com/api/v1/payments/webhook`.
-     - Test card number: `4242 4242 4242 4242`.
-
-7. **Payments History & Admin Refunds**:
-   - **Customer Payment History (`/customer/payments`)**: Dedicated transaction ledger with URL-synced status filters (`All`, `Succeeded`, `Pending`, `Failed`, `Cancelled`, `Refunded`), sort controls, and direct links to invoices or uncompleted checkout recovery.
-   - **Admin Payments & Refunds (`/admin/payments`)**: Centralized payment transactions registry allowing administrators to review transaction details, Stripe payment references, and initiate refunds.
-   - **Refund Processing (`POST /api/v1/admin/payments/{id}/refund`)**:
-     - Full refund initiation with two-step confirmation dialog (`RefundPaymentDialog` + `AlertDialog`).
-     - Validated mandatory refund reason (5–300 characters) logged for audit compliance.
-     - Live mutation locking and double-click protection to prevent duplicate refund attempts.
-     - Automated multi-cache invalidation updating invoice, payment, and work order views across admin and customer dashboards.
-
-- [x] **Phase 8: Technician Mobile-Optimized Dashboard**
-  - [x] Real-time task queue with single-status URL-synced chips (`All`, `Assigned`, `Scheduled`, `Arrived`, `In progress`, `Completed`, `Cancelled`)
-  - [x] Job assignment acceptance & decline modal with validated reason (10-500 chars)
-  - [x] Step progression (`SCHEDULED` -> `ARRIVED` -> `IN_PROGRESS`) with state machine rules & confirmation dialogs
-  - [x] Visual work progress stepper and Google Maps location integration
-  - [x] Dedicated service report page (`/technician/tasks/[id]/report`) with local draft persistence and image upload
-  - [x] Two-step retry-safe completion workflow (`useCompleteJob`) ensuring reports are never double-submitted
-  - [x] Daily agenda schedule grouped by calendar day with range selector chips (`7`, `30`, `all`)
-  - [x] Technician overview dashboard with four independent metric cards and spotlight next visit
-- [x] **Phase 9: Admin Command Center**
-  - [x] Dispatch queue with "Needs review" and "Needs technician" URL-synced tabs
-  - [x] Request review detail with Approve (auto-creates work order) & Reject modal
-  - [x] Work orders list with status filters, sorting, and pagination
-  - [x] Work order detail view with customer context, dispatch guidance, and status timeline
-  - [x] Interactive technician assignment and visit scheduling forms with conflict safety
-  - [x] Comprehensive invoice and billing management (draft editing, issuance, voiding, fallback creation)
-  - [x] Customer payment transactions, receipts, and refund management
-- [x] **Phase 10: Customer Premium Membership & Service Feedback**
-  - [x] Public subscription plans (`GET /subscription-plans`) with monthly and yearly pricing comparison
-  - [x] Customer subscription status (`GET /subscriptions/me`) and membership lifecycle management
-  - [x] Webhook-driven Stripe checkout session initialization and tolerant response normalization
-  - [x] Active 45s webhook activation polling and status return handlers (`?checkout=success|cancelled`)
-  - [x] Subscription renewal cancellation dialog (`POST /subscriptions/cancel`) with retention of paid benefits until period end
-  - [x] Topbar VIP badge, profile membership card, and booking wizard priority review SLA notice
-  - [x] Accessible Star rating component (`role="radiogroup"`, keyboard navigation, read-only display)
-  - [x] Inline service feedback form on customer request detail page with duplicate rating protection (409 conflict handling)
-- [x] **Phase 11: Real-Time In-App Notifications & Role Pages**
-  - [x] Topbar notification bell dropdown with real-time unread badge counter (`9+` max cap)
-  - [x] 30-second visibility-aware polling (`useDocumentVisibility`) suppressing background tab requests
-  - [x] Optimistic single notification and bulk read state mutations (`useMarkNotificationRead`, `useMarkAllRead`)
-  - [x] Deep link routing helper (`getNotificationHref`) for customer, technician, and admin roles
-  - [x] Shared notifications client (`/customer/notifications`, `/technician/notifications`, `/admin/notifications`) with URL-synced filters
-  - [x] Client-side feedback caching in `localStorage` preserving read-only rating displays across reloads
-- [x] **Phase 12: User Management & Service Catalog**
-  - [x] Admin User Management with URL-synced role & status filters, search debouncing, and pagination
-  - [x] User role reassignment (promote registered customers to Technician or Admin)
-  - [x] Account suspension, activation, and soft deletion with destructive confirmation dialogs
-  - [x] Strict self-protection guard (prevent administrators from demoting, suspending, or deleting their own accounts)
-  - [x] Admin Service Catalog page (`/admin/catalog`) with URL-synced tabs (`?tab=categories|skills`)
-  - [x] Service Category CRUD dialogs with required skill selector, integer cents pricing (`MoneyInput`), and duplicate conflict handling
-  - [x] Technician Skills registry with immutable skill note and shared TanStack Query keys (`["service-categories"]`, `["skills"]`)
-- [x] **Phase 13: Grouped Admin Navigation, Audit Logs, Feedback & Subscriptions**
-  - [x] Grouped admin sidebar (`Operations`, `Finance`, `People and Setup`, `System`) with accessible role groups and exact active route matching
-  - [x] Audit Logs explorer (`/admin/audit-logs`) with date/action/entity filters, masked sensitive credentials, field-level deltas, and expandable raw JSON viewer
-  - [x] Customer Feedback dashboard (`/admin/feedback`) with StarRating component, technician filters, and low-rating highlights (1–2 stars)
-  - [x] Premium Subscriptions ledger (`/admin/subscriptions`) with active/past-due independent stat cards and renewal/cancellation tracking
-- [x] **Phase 14: Rebuilt Admin Dashboard, Accessible Charts & Field Technician Analytics**
-  - [x] Rebuilt Admin Dashboard (`/admin`) with 6 independent stat cards, real server telemetry, and zero fabricated trends
-  - [x] Accessible lazy-loaded Recharts status bar chart (`StatusBarChartLazy`, `ChartCard`, `ChartSkeleton`) with `prefers-reduced-motion` suppression and accessible data tables
-  - [x] Field Technicians directory (`/admin/technicians`) with URL-synced search, status filters, responsive mobile cards, and pagination
-  - [x] Technician Analytics console (`/admin/technicians/[id]`) with completed job counts, star ratings, on-time rates, average job durations, and customer feedback history
-- [x] **Phase 15: Technician Performance Console**
-  - [x] Technician Performance page (`/technician/performance`) with task completion summary, status chart, next visits, and recently completed tasks
-  - [x] Pure statistics computation helper (`computeTechnicianStats`) aggregating real task lifecycle data and service report hours
-  - [x] Quick performance navigation shortcut in technician overview dashboard and flat sidebar link
-- [x] **Phase 16: Unified UX Notifications, Query State Consistency & Action Protection**
-  - [x] Centralized typed message catalog (`src/lib/messages.ts`) with succinct statements (<40 chars) and actionable next steps (<100 chars)
-  - [x] Standardized notification wrapper (`src/lib/notify.ts`) with automatic HTTP error code normalization, deduplication, and silent 401 suppression
-  - [x] Global TanStack Query policy (`src/lib/query-client.ts`) eliminating background query failure toasts and duplicate mutation errors
-  - [x] Shared state primitives: `<QueryError />` (friendly messaging, network wake-up notice, and retry action), `<EmptyState />`, and `<DetailNotFound />`
-  - [x] Accessible `<ConfirmDialog />` (AlertDialog primitive) for destructive actions (invoice voiding, payment refunds, cancellations, role changes)
-  - [x] Complete double-submit prevention and loading button indicators across all mutations and Stripe checkout redirects
-
+- [Technical Engineering Notes](docs/ENGINEERING_NOTES.md)
+- [Backend OpenAPI 3.0 Specification](docs/openapi.json)
 
 ---
 
-## 💎 Premium Membership & Service Feedback
+## Author
 
-### 1. Subscription Lifecycle & Statuses
-
-Customer VIP memberships are managed exclusively through Stripe integration and backend webhooks:
-
-- **`ACTIVE`**: Full benefits active. Displays renewal date, active benefit summary, and an option to cancel renewal.
-- **`PAST_DUE`**: Benefits paused due to a failed renewal charge. Prompts the customer to contact support.
-- **`CANCELLED`**: Auto-renewal is cancelled via `POST /api/v1/subscriptions/cancel`. Benefits remain active until `currentPeriodEnd`.
-- **`INACTIVE` / `EXPIRED`**: No active subscription. Displays the tier comparison table and plan upgrade cards.
-
-### 2. Webhook-Driven Membership Activation
-
-1. The customer selects a plan on `/customer/premium` and clicks **Subscribe** (orange `cta` button).
-2. The frontend contacts `POST /api/v1/subscriptions/checkout` with `planId`, validates the returned checkout URL (`isSafeCheckoutUrl`), and redirects to Stripe Checkout.
-3. Upon returning from Stripe (`?checkout=success`), the frontend immediately polls `GET /api/v1/subscriptions/me` every 2 seconds (up to 45 seconds) until the webhook activates the subscription (`status === "ACTIVE"`).
-
-### 3. Core Premium Benefits
-
-1. **Priority Queue & Review SLA**: Premium requests automatically receive `HIGH` priority and are reviewed within 2 hours instead of 24 hours.
-2. **10% Labor Discount**: 10% automatic discount applied to labor charges on every invoice.
-3. **Flexible Cancellation & Rescheduling**: Free cancellation and rescheduling before technician arrival with zero late fees.
-
-### 4. Post-Service Feedback & Rating
-
-- Customers can review completed jobs directly from the Request Detail view (`/customer/requests/[id]`).
-- **Timing Rule**: Rating is available only after the invoice is marked `PAID` or `CLOSED`. For `COMPLETED` or `INVOICED` jobs, a reminder indicates that rating unlocks upon payment.
-- **Submission Details**: 1 to 5 star rating (required) and optional comment (up to 1,000 characters).
-- **Single Submission Constraint**: Exactly one review per work order. If already submitted, the card transitions to a read-only review display. 409 conflict errors are gracefully handled.
-
----
-
-## 🔔 Notifications System
-
-### 1. Polling & Visibility Strategy
-- **Visible-Tab Polling**: The topbar notification bell queries `GET /api/v1/notifications` (preview of latest 5) and `GET /api/v1/notifications?isRead=false` (total unread count) every 30 seconds only while `document.visibilityState === "visible"`. Background tabs pause polling completely to conserve network and battery resources.
-- **Focus Revalidation**: Polling automatically re-syncs when the tab regains user focus (`refetchOnWindowFocus: true`).
-- **Silent Background Errors**: Network errors during background polling are suppressed from triggering user toasts (`skipToast: true`).
-
-### 2. Optimistic Read Mutations
-- **Mark Single Read**: Clicking an unread notification or the "Mark as read" button instantly updates the preview dropdown, unread counter badge, and active list caches before the backend responds, rolling back on error.
-- **Mark All Read**: The "Mark all as read" button clears all unread indicators across preview and list views in one optimistic update.
-
-### 3. Role-Based Deep Linking
-Notifications automatically resolve to actionable dashboard views based on payload references:
-- **Customer**: Routes to `/customer/requests/{id}`, `/customer/invoices/{id}`, `/customer/payments`, or `/customer/premium`.
-- **Technician**: Routes to `/technician/tasks/{workOrderId}` or `/technician/schedule`.
-- **Admin**: Routes to `/admin/work-orders/{workOrderId}`, `/admin/dispatch/{requestId}`, `/admin/invoices/{invoiceId}`, or `/admin/payments`.
-
-### 4. Full Notification Pages
-- Dedicated role pages (`/customer/notifications`, `/technician/notifications`, `/admin/notifications`) powered by a shared responsive client component.
-- Features URL-synced status filters (`All`, `Unread`, `Read`), pagination controls, visual tone badges, and mobile-optimized card layouts.
-
----
-
-## 👥 User Management
-
-The User Management console (`/admin/users`) gives administrators governance over platform accounts:
-
-1. **Self-Registration & Promotion**:
-   - Platform users register independently as `CUSTOMER` accounts.
-   - Administrators promote users to `TECHNICIAN` (enabling task dispatch and profile configuration) or `ADMIN` (granting full access) via the **Change Role** dialog (`PATCH /api/v1/admin/users/{id}/role`).
-2. **Account Lifecycle & Soft Deletion**:
-   - Accounts can be suspended or activated (`PATCH /api/v1/admin/users/{id}/status`). Suspended users are barred from logging in.
-   - Soft deletion (`DELETE /api/v1/admin/users/{id}`) revokes platform access while preserving historical work order and invoice audit records.
-3. **Self-Protection Safeguards**:
-   - The authenticated admin row is marked with a "You" badge.
-   - All destructive and role-changing actions are disabled for the current administrator (`"You cannot change your own account"`) to prevent accidental lockout or orphan accounts.
-
----
-
-## 🗂️ Service Catalog
-
-The Service Catalog (`/admin/catalog`) defines the core foundation linking customer bookings, required skills, and technician dispatch:
-
-1. **Hierarchical Relationships**:
-   - Every service request requires a **Service Category**.
-   - Every service category requires a **Skill**.
-   - Dispatch only presents technicians who possess the qualification skill required by the request's category.
-2. **Categories Management**:
-   - Create, edit, and delete service categories with base pricing in integer cents (`basePriceCents`), descriptive summaries, and linked skills.
-   - Duplicate name conflicts (HTTP 409) are caught and displayed inline.
-   - In-use categories are soft-deleted to maintain ongoing work orders while preventing new bookings.
-3. **Skills Registry**:
-   - Define qualification skills required for technicians and service types.
-   - Skills are immutable after creation to protect historical assignment logs and dispatch consistency.
-4. **Shared Query Invalidation**:
-   - Catalog changes automatically synchronize across the booking wizard (`["service-categories"]`) and technician skill profiles (`["skills"]`).
-
----
-
-## 📜 Audit Logs
-
-The Audit Logs console (`/admin/audit-logs`) provides complete compliance and accountability across platform modifications:
-
-1. **Detailed Event Tracking**:
-   - Captures who changed what and when across user roles, work orders, invoices, payments, categories, and subscriptions.
-   - Highlights actor role, system-triggered operations, and target entity IDs.
-2. **Field-Level Diffing & Security**:
-   - Deep credential masking (`maskSensitive`) automatically replaces passwords, tokens, API secrets, and authorization headers with `"hidden"`.
-   - Field-level diffing (`diffValues`) visualizes changes from previous to new values with currency awareness for cents values.
-   - Expandable raw JSON panel allows technical inspection of full payloads without exposing raw secrets.
-
----
-
-## 🌟 Feedback & Subscriptions
-
-1. **Customer Feedback (`/admin/feedback`)**:
-   - Collects 1–5 star reviews and comments submitted by customers following completed service visits.
-   - Filter reviews by rating (1 to 5 stars) and assigned technician.
-   - Visual emphasis (red border and "Low Rating" badge) for 1–2 star reviews to facilitate proactive customer resolution.
-2. **Subscriptions Management (`/admin/subscriptions`)**:
-   - High-level metric spotlight displaying live counts for active VIP members and past-due accounts.
-   - Comprehensive customer plan registry with status filtering, renewal dates, and period-end cancellation tracking.
-
----
-
-## 📊 Admin Dashboard & Technician Analytics
-
-### 1. Operational Command Center (`/admin`)
-- **Real Backend Metrics**: The rebuilt dashboard is strictly grounded in the OpenAPI specification (`GET /api/v1/admin/dashboard-stats` and `GET /api/v1/admin/dispatch-queue`). No fake trend lines, no randomized numbers, and no synthetic series.
-- **6 Independent KPI Stat Cards**:
-  1. **Total Revenue**: Accurately formatted invoiced amount in currency cents (`formatMoney`).
-  2. **Total Requests**: Lifetime customer service request volume.
-  3. **Active Premium**: Active VIP memberships with direct link to `/admin/subscriptions`.
-  4. **Late Reviews**: Overdue dispatch reviews highlighted with a high-visibility red accent when count > 0.
-  5. **Awaiting Review**: Real-time count of requests in `REQUEST_REVIEW` queue.
-  6. **Needs Technician**: Real-time count of approved work orders requiring technician assignment (`NEEDS_TECHNICIAN`).
-- **Resilient Isolated Queries**: Each metric card manages its own query state, skeleton loader, and individual retry trigger, preventing one slow or failing endpoint from degrading the entire dashboard.
-- **Global Invalidation**: A top-level "Refresh" button invalidates all active dashboard queries in parallel.
-
-### 2. Accessible, Zero-Hydration-Risk Recharts
-- **Server/Client Isolation**: Charts are dynamically imported with `ssr: false` via `StatusBarChartLazy`, ensuring Recharts only executes client-side after mounting to prevent SSR hydration mismatches.
-- **Calm & Semantic Palette**: Mapped to brand tokens and `StatusBadge` theme colors (amber, blue, purple, cyan, orange, emerald, charcoal) without harsh neon highlights.
-- **Accessibility & Reduced Motion**:
-  - `aria-label` summary regions describing category count and total volume.
-  - Automatic detection of `prefers-reduced-motion` to disable transitions when requested by user OS preferences.
-  - Accessible `<details>` dropdown containing a full HTML `<table>` representation of chart data points for screen readers.
-- **Responsive Layout**: Zero horizontal overflow at 375px mobile viewport widths with truncated label formatters.
-
-### 3. Field Technicians Directory (`/admin/technicians`)
-- Dedicated directory for viewing and managing field workforce staff.
-- Search with 400ms debounce, status filters (`All`, `Active`, `Suspended`), and pagination.
-- Displays technician initials, contact numbers, account statuses, and registration dates.
-- Direct navigation links to detailed performance analytics for each technician.
-
-### 4. Technician Analytics & Feedback Console (`/admin/technicians/[id]`)
-- **Key Performance Telemetry**:
-  1. **Completed Jobs**: Total finished work orders.
-  2. **Average Rating**: StarRating visual display and average score out of 5.0 (or "No ratings yet").
-  3. **On-Time Rate**: Verified completion percentage with visual progress bar.
-  4. **Average Job Duration**: Formatted duration per task (`formatDuration`).
-- **Customer Feedback History**: Direct integration with `GET /feedback?technicianId={id}`, previewing recent customer star ratings, comments, customer details, and linked work orders with deep links to full feedback logs.
-- **404 Handling**: Graceful fallback and recovery for nonexistent or removed technician IDs.
-
----
-
-## 📈 Technician Performance
-
-### 1. Performance Overview (`/technician/performance`)
-- **Client-Side Grounded Aggregation**: Because the backend exposes no technician self-analytics endpoint (admin analytics and feedback endpoints are strictly role-guarded), performance metrics are computed purely from the technician's assigned tasks (`GET /api/v1/work-orders/my-assigned?limit=100`).
-- **Stat Cards**:
-  1. **Jobs Completed**: Work orders finished by the technician (`COMPLETED`, `INVOICED`, `PAID`, `CLOSED`).
-  2. **Active Jobs**: Current tasks undergoing lifecycle progression (`ASSIGNED`, `SCHEDULED`, `ARRIVED`, `IN_PROGRESS`).
-  3. **Upcoming Visits**: Scheduled future calendar visits (`SCHEDULED` with future `visitStart`).
-  4. **Hours Logged**: Sum of hours reported on completed service reports (`serviceReport.hoursSpent`). If no hours data is available across tasks, this card is hidden dynamically.
-- **Jobs by Status Chart**: Accessible, lazy-loaded Recharts bar chart displaying the lifecycle breakdown of all assigned work orders, complete with screen-reader summaries, reduced-motion suppression, and collapsible data table.
-- **Next Visits & Recent Completions**:
-  - Direct links to upcoming customer appointments with dates, job numbers, and address details.
-  - Recent completed jobs with completion dates and reported hours.
-- **Explicit Scope Boundaries**:
-  - **No Payroll or Earnings**: The system contains no payroll or billing calculations for technicians.
-  - **Clear Dispatch Oversight Notice**: A footer card clarifies that customer feedback ratings and on-time compliance are monitored by the admin dispatch team.
-
----
-
-## 📡 API Response Shapes & Normalization
-
-The live backend provides richer responses and slightly different structures than the initial `docs/openapi.json` specification:
-
-1. **Dual Paginated Response Envelopes**:
-   - **Shape A**: `data` as an array with top-level `pagination` or `meta` metadata `{ page, limit, total, totalPages }`.
-   - **Shape B**: `data` as an object `{ items: [...], total, page, limit }`.
-   - All paginated endpoints in the frontend are processed through a single tolerant helper (`normalizePaginated<T>` in `src/lib/extract-data.ts`), ensuring every UI list receives `{ items, meta, data, pagination, extra }` without runtime breakage regardless of the envelope shape.
-
-2. **Backend Payload Enrichments**:
-   - **Admin Dashboard Stats**: `requestsByStatus` and `workOrdersByStatus` key-value status maps, `revenue: { currency, revenueCents, refundedCents, paymentCount }`, `activePremiumUsers`, `lateReviews`, and `generatedAt` timestamp.
-   - **Technician Analytics**: Returns `data.technician: { id, name }`, `jobsDone`, `ratingCount`, `measuredJobs`, `averageJobMinutes`, and `onTimeRate` as a direct percentage (0–100, not a fraction).
-   - **Payments**: Returns `invoice: { id, invoiceNumber, type }`, `failureReason`, and `refundedAt`.
-   - **Audit Logs**: Populates `actor: { id, name, email } | null`, `ipAddress`, `oldValues`, and `newValues`.
-   - **Feedback**: Populates full references `technician: { id, name }`, `customer: { id, name }`, `workOrder: { id }`, and `requestNumber`.
-   - **Subscriptions**: Includes nested `plan: { id, name, interval, priceCents }` and `customer: { id, name, email }`.
-   - **Notifications**: Includes flexible `data` dictionary with deep link targets (`invoiceId`, `requestId`, `workOrderId`, `paymentId`) and `extra: { unreadCount }`.
-
----
-
-## 🔒 Session Handling & Cold Server Resilience
-
-Field Service is engineered for high resilience against slow or sleeping server instances (such as free-tier Render instances with cold spin-ups):
-
-1. **Instant Logout with Background Revocation**:
-   - `performLogout()` immediately resets local state (in-memory Zustand session, TanStack Query cache, session storage) and deletes frontend routing cookies (`fs_role`, `fs_hint`, `fs_must_change`) with a 2-second timeout guard.
-   - The backend token revocation (`POST /api/v1/auth/logout`) is fired in the background using native `fetch` with `keepalive: true` without blocking the user.
-   - Navigation uses a hard `window.location.assign("/login?reason=logged_out")`, eliminating stale router cache and race conditions with middleware.
-   - A module-level guard locks double-clicks while the logout is completing.
-
-2. **Reason-Based Contextual Toasts**:
-   - Redirects to `/login` carry a `reason` parameter:
-     - `logged_out`: *"You have been logged out safely."*
-     - `expired`: *"Please log in again to continue."*
-     - `login_required`: *"Please log in to continue."*
-     - `password_changed`: *"Please log in with your new password."*
-   - On mount, `LoginForm` renders one deduplicated toast and scrubs the `reason` parameter from the URL address bar while preserving the `redirect` destination.
-
-3. **Session Validation & `<AuthGate />`**:
-   - To prevent stale `fs_role` cookies from flashing dashboard content and subsequently logging out when cold refreshes finish, dashboard layouts wrap page content inside `<AuthGate role={role}>`.
-   - **`idle` / `loading`**: Renders a full dashboard skeleton with a *"Checking your session..."* notice. After 5 seconds, it alerts the user that the server may be waking up.
-   - **`authenticated`**: Renders child components. If the user's role does not match the dashboard segment, redirects to the user's authorized home with `?role_redirect=1`.
-   - **`unauthenticated`**: Clears cookies and redirects to `/login?redirect=...&reason=expired`.
-   - **`unreachable`**: Renders a dedicated card (*"We could not reach the server"*) with a **Retry** button and a **Log out** button. It does NOT destroy session cookies or eject the user.
-
-4. **Why Timeouts Do Not Log the User Out**:
-   - Only explicit HTTP `401 Unauthorized` or `403 Forbidden` responses from refresh or profile endpoints invalidate the session.
-   - Network errors, timeouts (up to 60s), or 5xx server errors indicate a waking or temporarily unreachable server, transitioning the state to `unreachable` rather than `unauthenticated`.
-
-5. **Early Warm-Up Ping & Slow Request Explanations**:
-   - `BackendWarmup`: Mounted in the root layout, it fires a non-blocking `GET /api/v1/health` once every 10 minutes per browser, waking cold backends before users click Login or Book Service.
-   - **Slow Request Interceptor**: Any API request taking longer than 6 seconds triggers a single deduplicated *"Waking up the server"* toast with an active pending counter that automatically dismisses when all in-flight slow requests complete.
-
----
-
-## 🌐 Public Marketing Pages & SEO Infrastructure
-
-### 1. Rebuilt Public Pages
-- **Home Page (`/`)**:
-  - **HeroSection**: Industrial amber & charcoal theme, tagline from site config, direct "Book a Service" CTA button, secondary "See how it works" anchor link, Unsplash hero image via `<SafeImage priority />`, and verified Premium priority review badge. Zero fabricated statistics or fake testimonials.
-  - **HowItWorksSection (`#how-it-works`)**: 5-step transparent workflow sequence (Request → Review → Assign & Schedule → Work & Report → Pay & Rate) with Lucide icons and step badges.
-  - **ServicesPreviewSection**: Live categories when available or static `SERVICE_AREAS` (AC Repair, Plumbing, Electrical, Appliance Repair), each featuring remote Unsplash photography and "From {price}" formatting.
-  - **AudienceSection**: Dedicated value proposition cards for Customers, Field Technicians, and Operations Dispatch.
-  - **PremiumTeaserSection**: Highlights Premium perks (2-hr review, 10% labor discount, free changes) and displays live plan pricing and calculated annual savings (`getYearlySavings`) when `getPublicPlans()` succeeds.
-  - **FinalCtaSection**: High-contrast charcoal band (`#111827`) with "Book a Service" CTA and account creation links.
-  - **JSON-LD Structured Data**: `<JsonLd>` helper safely renders Organization schema with contact email, telephone, and address when configured.
-- **Services Page (`/services`)**:
-  - Full catalog grid (1 col mobile, 2 col md, 3 col xl) with direct "Book this service" buttons linking to `/customer/requests/new?category={id}`.
-  - URL query parameter preselection in `ServiceRequestWizard`: When navigating with `?category={id}`, the wizard automatically preselects the matching service category.
-  - Compact "What to expect" overview and closing CTA band.
-- **Pricing Page (`/pricing`)**:
-  - **Plan Cards**: Free tier ($0) and live Premium monthly and annual tiers fetched from `GET /subscription-plans` via `getPublicPlans()`. The yearly card features a "Best value" badge and live calculated annual savings percentage (`getYearlySavings`). Falls back gracefully to benefit cards without prices if the backend is waking up.
-  - **Feature Comparison Table**: Semantic, accessible `<table>` with visible keyboard focus ring comparing review speed, labor discount, cancellation rules, Stripe checkout, digital reports, and in-app notifications.
-  - **Pricing FAQ**: Filtered accordion for billing, cancellation, and Premium questions, paired with `<JsonLd>` FAQPage structured data.
-- **About Page (`/about`)**:
-  - **AboutHero**: Factual mission statement detailing the end-to-end service cycle paired with SafeImage photography.
-  - **Specialized Disciplines (`WhatWeDoSection`)**: Core service areas (HVAC, plumbing, electrical, appliances).
-  - **Reused Operational Foundations**: Seamlessly imports `HowItWorksSection` and `AudienceSection` to avoid code duplication.
-  - **Operational Principles (`PrinciplesSection`)**: Highlights Transparency, Fair Scheduling, Secure Payments, and Accountability.
-  - **Factual Architecture (`BuiltWithSection`)**: Categorized list of frontend and backend technologies with clear purpose descriptions, concluding with a test mode footnote ("This is a demonstration platform. Payments run in Stripe test mode.").
-- **Contact Page (`/contact`)**:
-  - **Verified Touchpoints**: Displays active email, phone, street address, and business hours from environment variables using `getContactEntries()`. If no contact variables are configured, prompts users to register for dashboard-based dispatch messaging.
-  - **Mailto Inquiries Form (`<ContactForm />`)**: Validated with React Hook Form and Zod (`src/lib/validations/contact.ts`) with live 1000-character counter. Sanitizes inputs against header injection (strips CR/LF), verifies URL length limits, launches the visitor's default email client pre-filled, and provides one-click message copying. **Never claims a message was sent**.
-  - **Quick Answers Block**: Curated 4-question FAQ spotlight with deep link to `/pricing#faq`.
-
-### 2. Policy Constants & FAQ Knowledge Base
-- **Centralized Operational Policies (`src/constants/policy.ts`)**:
-  - `REVIEW_TARGET_HOURS_PREMIUM = 2`
-  - `REVIEW_TARGET_HOURS_NORMAL = 24`
-  - `LATE_FEE_CENTS = 500` ($5.00 late fee for cancel/reschedule within 24 hours of visit)
-  - `LATE_FEE_WINDOW_HOURS = 24`
-  - `PREMIUM_LABOR_DISCOUNT_PERCENT = 10` (marketing & estimate display only)
-  - `MAX_REQUEST_PHOTOS = 5`
-  - `MAX_PHOTO_MB = 5`
-- **Grounded FAQ Registry (`src/constants/faq.ts`)**: 12 verified platform questions across booking, payments, premium, technicians, and account management.
-- **Accessible Accordion (`<FaqSection />`)**: Keyboard-navigable, reduced-motion-safe, smooth expand/collapse triggers with semantic `h2`/`h3` hierarchy.
-- **Schema.org Structured Data**: Generates valid `FAQPage` JSON-LD blocks using `<JsonLd>` helper for rich Google search results.
-
-### 3. Resilient Server-Side Public Data Helpers (`src/lib/public-data.ts`)
-- **Strict Server Component Isolation**: Marked with `import "server-only"`.
-- **Never Throws / Fails Gracefully**: Wrapped in try/catch with 8-second timeout (`AbortSignal.timeout(8000)`) and 5-minute ISR revalidation (`revalidate = 300`).
-- **Endpoint Security Awareness**: Because `GET /service-categories` requires an authenticated bearer token, `getPublicCategories()` immediately returns `{ data: [], error: null }` without triggering failing 401 calls, cleanly falling back to static `SERVICE_AREAS`.
-- **Public Plans**: `getPublicPlans()` contacts `GET /subscription-plans` (verified public endpoint) and falls back safely to benefit listings without prices if unreachable.
-
-### 4. Remote Unsplash Photography & `<SafeImage />`
-- **Verified Remote Images**: Handpicked Unsplash images covering Hero, How-It-Works, and the four core trade disciplines, verified with HTTP 200 headers.
-- **Fail-Safe Fallback (`<SafeImage />`)**: Wraps Next.js `next/image`. If an image fails to load or the network drops, it replaces the image with an industrial charcoal-to-amber gradient placeholder featuring a centered Lucide `Wrench` icon and matching accessible `aria-label`.
-- **Unsplash Attribution**: Muted photo credit in the footer linking to `https://unsplash.com`.
-
-### 5. Dynamic Contact Configuration
-- Reads optional contact information from `NEXT_PUBLIC_CONTACT_EMAIL`, `NEXT_PUBLIC_CONTACT_PHONE`, `NEXT_PUBLIC_CONTACT_ADDRESS`, and `NEXT_PUBLIC_CONTACT_HOURS`.
-- Rendered only when values are provided (never displays fake placeholders or empty labels).
-
-### 6. SEO & Metadata
-- **`src/app/sitemap.ts`**: Generates dynamic XML sitemap for public routes (`/`, `/services`, `/pricing`, `/about`, `/contact`) with change frequencies and priorities.
-- **`src/app/robots.ts`**: Allows indexing of public routes while blocking internal dashboards and API routes (`/admin`, `/customer`, `/technician`, `/api`, `/payment`, etc.).
-- **`src/app/opengraph-image.tsx` & `src/app/twitter-image.tsx`**: Dynamic 1200x630 social preview image generated using `next/og` `ImageResponse` with system fonts and industrial charcoal/amber branding.
-- **Route Error Boundary**: Dedicated `src/app/(marketing)/error.tsx` providing graceful recovery, retry button, and home navigation if an unexpected runtime failure occurs.
-
----
-
-## 🎨 UX Conventions
-
-The application adheres to a unified UX design language governing toasts, query states, destructive confirmations, and button submit protections:
-
-### 1. Toast Notification Rules
-- **User-Initiated Actions Only**: Successful mutations (create, update, submit, assign, schedule, pay start, refund, cancel, mark all read, copy) trigger exactly **one** short success toast via `notify.success(title, description)`.
-- **Silent Background Operations**: Background polling (notifications bell, active work order status polling), client navigation, and automatic refetches **never** display toasts.
-- **Failed Mutations**: Mutation errors produce exactly **one** error toast via `notify.fromError(error, fallbackTitle)`. Handled globally by `MutationCache.onError`, preventing duplicate toasts across components and hooks.
-- **Copy & Formatting Style**:
-  - Titles are concise statements (<40 characters) without exclamation marks or emojis (e.g., `"Request submitted"`).
-  - Descriptions explain the immediate next step or consequence (<100 characters, e.g., `"Our team will review it shortly."`).
-  - Raw HTTP status codes, error dumps, and stack traces are never exposed to users.
-
-### 2. Centralized Message Catalog (`src/lib/messages.ts`)
-- All user-facing notification strings are strictly typed and centralized across functional domains:
-  - `requests`: `submitted`, `updated`, `cancelled`, `rescheduled`, `photosFailed`
-  - `dispatch`: `approved`, `rejected`, `assigned`, `scheduleSet`, `scheduleConflict`, `reassigned`
-  - `tasks`: `accepted`, `rejected`, `statusUpdated`, `reportSubmitted`, `reportRetry`
-  - `invoices`: `created`, `updated`, `issued`, `voided`
-  - `payments`: `redirectingToStripe`, `refunded`, `refundFailed`
-  - `premium`: `checkoutStarted`, `renewalCancelled`, `renewalResumed`
-  - `feedback`: `submitted`, `alreadyRated`
-  - `profile`: `updated`, `passwordChanged`, `skillsSaved`
-  - `admin`: `userRoleChanged`, `userStatusChanged`, `categorySaved`, `skillSaved`, `deleted`
-  - `notifications`: `allRead`
-  - `generic`: `saved`, `deleted`, `copied`, `networkProblem`, `forbidden`, `notFound`, `tryAgain`, `validation`
-
-### 3. Page & Query State Components
-- **Failed Page Loads (`<QueryError />`)**: Failed queries render an inline error card with an outline `Retry` button (with refetch loading spinner), never an intrusive toast. For network or timeout failures, displays a reassuring note: *"The server may be waking up. This can take up to a minute."*
-- **Empty Datasets (`<EmptyState />`)**: Rendered when query results contain 0 items, featuring a domain icon, title, description, and contextual primary action (e.g. *"Book a service"* on an empty customer request list).
-- **Missing Entities (`<DetailNotFound />`)**: Detail routes (`/requests/[id]`, `/work-orders/[id]`, `/invoices/[id]`, `/technicians/[id]`) render a structured not-found view with a primary back-navigation link when the entity does not exist or yields a 404/403.
-- **Cached Revalidation**: Failed background refetches while valid data exists in cache silently preserve the existing view.
-
-### 4. Confirm Dialogs for Destructive / Costly Actions (`<ConfirmDialog />`)
-- Browser dialogs (`window.alert`, `window.confirm`) are strictly forbidden across the codebase.
-- Destructive and high-impact operations require explicit confirmation via `<ConfirmDialog />` (shadcn/ui `AlertDialog` primitive):
-  - Customer request cancellation & cancellation with fee (estimating late fees)
-  - Rescheduling with late fees
-  - Admin voiding an invoice (*"The invoice will be voided and can no longer be paid."*)
-  - Admin refunding a customer payment with audit reason
-  - Admin issuing a draft invoice
-  - Admin suspending an active user account or changing roles
-  - Customer cancelling VIP subscription auto-renewal
-  - Technician declining a dispatched task (with mandatory reason)
-- Dialog confirm buttons lock during pending mutations with a spinner, and dialog dismiss is prevented until completion.
-
-### 5. Double-Submit & Mutation Button States
-- All form submit buttons and mutation actions disable automatically while pending (`disabled={isPending}`).
-- Submit buttons display a loading spinner (`<Loader2 className="animate-spin" />`) and transition copy to an active verb (*"Saving..."*, *"Submitting..."*, *"Issuing..."*, *"Paying..."*).
-- Stripe Checkout redirect buttons (*"Pay Now"*, *"Subscribe"*) remain disabled from the moment the session URL is received until the browser leaves the page, preventing duplicate checkout session generation.
-
----
-
-## 🔗 Related Repositories
-
-- Backend API: [https://github.com/Fahim7600/Field_Service.git](https://github.com/Fahim7600/Field_Service.git)
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Maintained by [@Fahim7600](https://github.com/Fahim7600).
