@@ -106,6 +106,30 @@ const STATUS_CONFIGS: Record<string, { label: string; className: string }> = {
     label: "Cancelled",
     className: "bg-destructive/15 text-destructive border-destructive/30",
   },
+  ACTIVE: {
+    label: "Active",
+    className:
+      "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30",
+  },
+  PAST_DUE: {
+    label: "Past Due",
+    className:
+      "bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30",
+  },
+  EXPIRED: {
+    label: "Expired",
+    className:
+      "bg-gray-500/15 text-gray-700 dark:text-gray-300 border-gray-500/30",
+  },
+  INACTIVE: {
+    label: "Inactive",
+    className:
+      "bg-gray-500/15 text-gray-700 dark:text-gray-300 border-gray-500/30",
+  },
+  SUSPENDED: {
+    label: "Suspended",
+    className: "bg-destructive/15 text-destructive border-destructive/30",
+  },
 };
 
 export function StatusBadge({ status, label, className }: StatusBadgeProps) {
