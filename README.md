@@ -487,8 +487,48 @@ The customer portal provides a dedicated end-to-end service request lifecycle an
   - [x] Interactive technician assignment and visit scheduling forms with conflict safety
   - [x] Comprehensive invoice and billing management (draft editing, issuance, voiding, fallback creation)
   - [x] Customer payment transactions, receipts, and refund management
-  - [ ] Customer and inventory management
-  - [ ] Operational metrics and revenue analytics
+- [x] **Phase 10: Customer Premium Membership & Service Feedback**
+  - [x] Public subscription plans (`GET /subscription-plans`) with monthly and yearly pricing comparison
+  - [x] Customer subscription status (`GET /subscriptions/me`) and membership lifecycle management
+  - [x] Webhook-driven Stripe checkout session initialization and tolerant response normalization
+  - [x] Active 45s webhook activation polling and status return handlers (`?checkout=success|cancelled`)
+  - [x] Subscription renewal cancellation dialog (`POST /subscriptions/cancel`) with retention of paid benefits until period end
+  - [x] Topbar VIP badge, profile membership card, and booking wizard priority review SLA notice
+  - [x] Accessible Star rating component (`role="radiogroup"`, keyboard navigation, read-only display)
+  - [x] Inline service feedback form on customer request detail page with duplicate rating protection (409 conflict handling)
+
+---
+
+## 💎 Premium Membership & Service Feedback
+
+### 1. Subscription Lifecycle & Statuses
+
+Customer VIP memberships are managed exclusively through Stripe integration and backend webhooks:
+
+- **`ACTIVE`**: Full benefits active. Displays renewal date, active benefit summary, and an option to cancel renewal.
+- **`PAST_DUE`**: Benefits paused due to a failed renewal charge. Prompts the customer to contact support.
+- **`CANCELLED`**: Auto-renewal is cancelled via `POST /api/v1/subscriptions/cancel`. Benefits remain active until `currentPeriodEnd`.
+- **`INACTIVE` / `EXPIRED`**: No active subscription. Displays the tier comparison table and plan upgrade cards.
+
+### 2. Webhook-Driven Membership Activation
+
+1. The customer selects a plan on `/customer/premium` and clicks **Subscribe** (orange `cta` button).
+2. The frontend contacts `POST /api/v1/subscriptions/checkout` with `planId`, validates the returned checkout URL (`isSafeCheckoutUrl`), and redirects to Stripe Checkout.
+3. Upon returning from Stripe (`?checkout=success`), the frontend immediately polls `GET /api/v1/subscriptions/me` every 2 seconds (up to 45 seconds) until the webhook activates the subscription (`status === "ACTIVE"`).
+
+### 3. Core Premium Benefits
+
+1. **Priority Queue & Review SLA**: Premium requests automatically receive `HIGH` priority and are reviewed within 2 hours instead of 24 hours.
+2. **10% Labor Discount**: 10% automatic discount applied to labor charges on every invoice.
+3. **Flexible Cancellation & Rescheduling**: Free cancellation and rescheduling before technician arrival with zero late fees.
+
+### 4. Post-Service Feedback & Rating
+
+- Customers can review completed jobs directly from the Request Detail view (`/customer/requests/[id]`).
+- **Timing Rule**: Rating is available only after the invoice is marked `PAID` or `CLOSED`. For `COMPLETED` or `INVOICED` jobs, a reminder indicates that rating unlocks upon payment.
+- **Submission Details**: 1 to 5 star rating (required) and optional comment (up to 1,000 characters).
+- **Single Submission Constraint**: Exactly one review per work order. If already submitted, the card transitions to a read-only review display. 409 conflict errors are gracefully handled.
+
 
 ---
 
